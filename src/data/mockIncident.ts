@@ -11,10 +11,14 @@ export const mockIncident: IncidentInfo = {
   },
   confidence: 91,
   vessel: {
-    id: 'V-01',
+    id: 'MV-OCEAN-001',
     name: 'MT Example',
     type: 'TANKER',
     imo: 'IMO1234567',
+    lat: 13.20,
+    lng: 80.35,
+    heading: 45,
+    status: 'ACTIVE'
   },
   environment: {
     wind: {

@@ -9,6 +9,10 @@ export interface Vessel {
   name: string;
   type: string;
   imo: string;
+  lat?: number;
+  lng?: number;
+  heading?: number;
+  status?: string;
 }
 
 export interface Wind {

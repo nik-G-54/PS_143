@@ -1,6 +1,7 @@
 const METERS_PER_DEGREE_LAT = 111320;
 export const METERS_PER_WORLD_UNIT = 100;
 export const VESSEL_SURFACE_OFFSET = 0.0; // Y-offset to keep vessels perfectly on the ocean surface
+export const OIL_SURFACE_OFFSET = 0.02; // Y-offset to keep oil spill slightly above the ocean
 
 export interface WorldPosition {
   x: number;

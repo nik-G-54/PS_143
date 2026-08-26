@@ -3,12 +3,15 @@ import { SceneCamera } from './SceneCamera';
 import { SceneLighting } from './SceneLighting';
 import { SceneGrid } from './SceneGrid';
 import { OceanSurface } from './OceanSurface';
+import { AISTrack } from './AISTrack';
+import { OilSpill } from './OilSpill';
 import { IncidentMarker } from './IncidentMarker';
 import { TestPointMarker } from './TestPointMarker';
 import { OrientationIndicator } from './OrientationIndicator';
 import { VesselModel } from './VesselModel';
-import { latLonToWorld, VESSEL_SURFACE_OFFSET } from '../../../utils/coordinates';
+import { latLonToWorld } from '../../../utils/coordinates';
 import { mockIncident } from '../../../data/mockIncident';
+import { mockAISTrack } from '../../../data/mockAIS';
 
 export const IncidentScene: React.FC = () => {
   const originLat = mockIncident.location.lat;
@@ -20,26 +23,22 @@ export const IncidentScene: React.FC = () => {
   // Test coordinate: slightly Northeast (13.20 N, 80.35 E)
   const testPos = latLonToWorld(13.20, 80.35, originLat, originLon);
 
-  // Vessel mock data
+  // Vessel mock data (used for ID and status)
   const vessel = mockIncident.vessel;
-  // Fallback to origin if coordinates are missing (though mock guarantees them)
-  const vesselLat = vessel.lat ?? originLat;
-  const vesselLon = vessel.lng ?? originLon;
-  const vesselPos = latLonToWorld(vesselLat, vesselLon, originLat, originLon);
 
   return (
     <>
       <SceneCamera />
       <SceneLighting />
       <OceanSurface />
+      <OilSpill />
+      <AISTrack track={mockAISTrack} />
       <SceneGrid />
       <IncidentMarker position={[incidentPos.x, incidentPos.y, incidentPos.z]} />
       <TestPointMarker position={[testPos.x, testPos.y, testPos.z]} />
       
-      {/* Vessel rendering */}
+      {/* Vessel rendering - Position and heading are now driven by SimulationContext */}
       <VesselModel 
-        position={[vesselPos.x, vesselPos.y + VESSEL_SURFACE_OFFSET, vesselPos.z]} 
-        heading={vessel.heading ?? 0} 
         id={vessel.id} 
         status={vessel.status ?? 'UNKNOWN'} 
       />

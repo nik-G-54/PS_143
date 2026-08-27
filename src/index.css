@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html, body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    @apply bg-white text-[#4B5563] dark:bg-[#0F1117] dark:text-[#94A3B8] transition-colors duration-150;
+  }
+}

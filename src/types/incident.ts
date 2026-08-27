@@ -45,3 +45,19 @@ export interface TimelineEvent {
   time: string;
   isIncident?: boolean;
 }
+
+export type IncidentStatus = 'ACTIVE' | 'INVESTIGATING' | 'RESOLVED';
+
+export interface Incident {
+  id: string;
+  date: string;
+  latitude: number;
+  longitude: number;
+  locationName: string;
+  status: IncidentStatus;
+  confidence: number;        // 0-100
+  vesselInvolved: string;
+  spillArea: number;         // km²
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+}
+

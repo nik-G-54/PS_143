@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { LiveMapPage } from './pages/LiveMapPage';
 import { IncidentReconstructionPage } from './pages/IncidentReconstructionPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
@@ -23,7 +24,7 @@ function App() {
       {/* Team Routes (Placeholders for now) */}
       <Route path="/" element={<PlaceholderPage title="Dashboard" />} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
-      <Route path="/live-map" element={<PlaceholderPage title="Live Map" />} />
+      <Route path="/live-map" element={<LiveMapPage />} />
       <Route 
         path="/incidents" 
         element={

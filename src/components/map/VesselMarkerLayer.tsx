@@ -40,8 +40,8 @@ export function createVesselMarkerLayer({ trajectories, attribution, visible }: 
     getFillColor: (d: VesselTrajectory) => {
       const rank = getVesselRank(d.vessel_id);
       return rank === 1
-        ? [0, 217, 166, 255]   // Green (#00D9A6)
-        : [100, 116, 139, 200]; // Gray (#64748B)
+        ? [14, 165, 233, 255]   // Marine Cyan (#0EA5E9)
+        : [16, 185, 129, 200]; // Safe Emerald (#10B981)
     },
     getLineColor: [255, 255, 255, 255],
     updateTriggers: {

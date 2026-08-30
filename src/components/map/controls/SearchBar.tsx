@@ -17,9 +17,9 @@ export function SearchBar({ spills, onSelectSpill, theme }: SearchBarProps) {
     s.source_dataset.toLowerCase().includes(query.toLowerCase())
   );
 
-  const cardBg = theme === 'dark' ? 'bg-[#1A1D27] border-[#252830]' : 'bg-white border-[#E5E7EB]';
-  const inputBg = theme === 'dark' ? 'bg-[#252830]' : 'bg-[#F9FAFB]';
-  const textColor = theme === 'dark' ? 'text-[#F1F5F9]' : 'text-[#1A1D23]';
+  const cardBg = theme === 'dark' ? 'bg-[#151F33] border-[#64748B]/30' : 'bg-white border-[#E5E7EB]';
+  const inputBg = theme === 'dark' ? 'bg-[#151F33]' : 'bg-[#F9FAFB]';
+  const textColor = theme === 'dark' ? 'text-[#F8FAFC]' : 'text-[#1A1D23]';
   const placeholderColor = 'placeholder-[#64748B]';
 
   return (
@@ -35,7 +35,7 @@ export function SearchBar({ spills, onSelectSpill, theme }: SearchBarProps) {
             onFocus={() => setIsOpen(true)}
             className={`w-full h-11 pl-10 pr-10 ${inputBg} border-0 text-sm ${textColor} 
                         ${placeholderColor} focus:outline-none focus:ring-2 
-                        focus:ring-[#00D9A6]/30`}
+                        focus:ring-[#0EA5E9]/30`}
           />
           {query && (
             <button onClick={() => { setQuery(''); setIsOpen(false); }}
@@ -47,7 +47,7 @@ export function SearchBar({ spills, onSelectSpill, theme }: SearchBarProps) {
 
         {/* Results dropdown */}
         {isOpen && query && (
-          <div className={`max-h-60 overflow-y-auto border-t ${theme === 'dark' ? 'border-[#252830]' : 'border-[#E5E7EB]'}`}>
+          <div className={`max-h-60 overflow-y-auto border-t ${theme === 'dark' ? 'border-[#64748B]/30' : 'border-[#E5E7EB]'}`}>
             {filtered.length === 0 ? (
               <div className="px-4 py-3 text-sm text-[#64748B]">No spills found</div>
             ) : (
@@ -55,11 +55,11 @@ export function SearchBar({ spills, onSelectSpill, theme }: SearchBarProps) {
                 <button
                   key={spill.spill_id}
                   onClick={() => { onSelectSpill(spill); setIsOpen(false); setQuery(''); }}
-                  className="w-full px-4 py-3 text-left hover:bg-[#F9FAFB] dark:hover:bg-[#252830] transition flex items-center gap-3"
+                  className="w-full px-4 py-3 text-left hover:bg-[#F9FAFB] dark:hover:bg-[#1F2E4A] transition flex items-center gap-3"
                 >
-                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <div className="w-2 h-2 rounded-full bg-[#DC2626]" />
                   <div>
-                    <div className={`text-sm font-mono font-semibold ${theme === 'dark' ? 'text-[#00D9A6]' : 'text-[#00B894]'}`}>{spill.spill_id}</div>
+                    <div className={`text-sm font-mono font-semibold ${theme === 'dark' ? 'text-[#0EA5E9]' : 'text-[#0EA5E9]'}`}>{spill.spill_id}</div>
                     <div className="text-xs text-[#64748B]">
                       {spill.centroid.latitude.toFixed(2)}°N, {spill.centroid.longitude.toFixed(2)}°E
                     </div>

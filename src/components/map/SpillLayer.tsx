@@ -21,8 +21,8 @@ export function createSpillLayer({ data, selectedSpillId, onClick, visible = tru
     getPolygon: (d: SpillEvent) => d.polygon.coordinates[0],
     getFillColor: (d: SpillEvent) =>
       d.spill_id === selectedSpillId
-        ? [239, 68, 68, 200]  // Highlighted: solid red with slightly more opacity
-        : [239, 68, 68, 130], // Standard: red with opacity
+        ? [220, 38, 38, 200]  // Highlighted: Spill Crimson (#DC2626)
+        : [220, 38, 38, 130], // Standard: Spill Crimson (#DC2626)
     getLineColor: [255, 255, 255, 200], // White outline
     getLineWidth: 2,
     onClick: (info) => {

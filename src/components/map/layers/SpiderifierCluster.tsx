@@ -173,7 +173,7 @@ export function createClusteredVesselsLayers({
         data: unexpandedClusters,
         pickable: true,
         getPosition: (d: any) => [d.longitude, d.latitude],
-        getFillColor: theme === 'dark' ? [0, 217, 166, 255] : [0, 184, 148, 255], // Averra green
+        getFillColor: [14, 165, 233, 255], // Marine Cyan (#0EA5E9)
         getRadius: 300,
         radiusMinPixels: 16,
         radiusMaxPixels: 24,

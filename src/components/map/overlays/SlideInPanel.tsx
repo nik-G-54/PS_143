@@ -10,14 +10,14 @@ interface SlideInPanelProps {
 
 export function SlideInPanel({ spill, attribution, onClose, theme }: SlideInPanelProps) {
   const isOpen = !!spill;
-  const cardBg = theme === 'dark' ? 'bg-[#1A1D27] border-[#252830]' : 'bg-white border-[#E5E7EB]';
-  const borderBg = theme === 'dark' ? 'border-[#252830]' : 'border-[#E5E7EB]';
-  const textHeading = theme === 'dark' ? 'text-[#F1F5F9]' : 'text-[#1A1D23]';
+  const cardBg = theme === 'dark' ? 'bg-[#151F33] border-[#64748B]/30' : 'bg-white border-[#E5E7EB]';
+  const borderBg = theme === 'dark' ? 'border-[#64748B]/30' : 'border-[#E5E7EB]';
+  const textHeading = theme === 'dark' ? 'text-[#F8FAFC]' : 'text-[#1A1D23]';
   const textBody = theme === 'dark' ? 'text-[#94A3B8]' : 'text-[#4B5563]';
-  const textPrimary = theme === 'dark' ? 'text-[#00D9A6]' : 'text-[#00B894]';
-  const bgPrimary = theme === 'dark' ? 'bg-[#00D9A6]' : 'bg-[#00B894]';
-  const hoverBg = theme === 'dark' ? 'hover:bg-[#252830]' : 'hover:bg-[#F3F4F6]';
-  const boxBg = theme === 'dark' ? 'bg-[#252830]' : 'bg-[#F9FAFB]';
+  const textPrimary = theme === 'dark' ? 'text-[#0EA5E9]' : 'text-[#00B894]';
+  const bgPrimary = theme === 'dark' ? 'bg-[#0EA5E9]' : 'bg-[#00B894]';
+  const hoverBg = theme === 'dark' ? 'hover:bg-[#1F2E4A]' : 'hover:bg-[#F3F4F6]';
+  const boxBg = theme === 'dark' ? 'bg-[#090D16]/50' : 'bg-[#F9FAFB]';
 
   const topVessel = attribution?.ranked_vessels?.[0];
 
@@ -107,10 +107,10 @@ export function SlideInPanel({ spill, attribution, onClose, theme }: SlideInPane
 
       {/* Footer link to 3D reconstruction */}
       {spill?.status === 'attributed' && (
-        <div className={`p-4 border-t ${borderBg} ${theme === 'dark' ? 'bg-[#1E2130]/40' : 'bg-slate-50'} shrink-0`}>
+        <div className={`p-4 border-t ${borderBg} ${theme === 'dark' ? 'bg-[#151F33]' : 'bg-slate-50'} shrink-0`}>
           <Link
             to="/incident-reconstruction"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#00D9A6] hover:bg-[#00B894] text-[#0F1117] font-semibold text-xs transition-all shadow-lg hover:scale-[1.01]"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#0EA5E9] hover:bg-[#0EA5E9]/80 text-[#090D16] font-semibold text-xs transition-all shadow-lg hover:scale-[1.01]"
           >
             <span>View 3D Reconstruction</span>
             <ExternalLink size={14} />
@@ -122,7 +122,7 @@ export function SlideInPanel({ spill, attribution, onClose, theme }: SlideInPane
 }
 
 function InfoRow({ icon, label, value, theme }: { icon: React.ReactNode; label: string; value: string; theme: 'light' | 'dark' }) {
-  const textHeading = theme === 'dark' ? 'text-[#F1F5F9]' : 'text-[#1A1D23]';
+  const textHeading = theme === 'dark' ? 'text-[#F8FAFC]' : 'text-[#1A1D23]';
   return (
     <div className="flex items-center gap-3">
       <div className="text-[#64748B]">{icon}</div>
@@ -137,8 +137,8 @@ function InfoRow({ icon, label, value, theme }: { icon: React.ReactNode; label: 
 function ScoreBar({ label, value, theme }: { label: string; value: number; theme: 'light' | 'dark' }) {
   const pct = Math.round(value * 100);
   const textBody = theme === 'dark' ? 'text-[#94A3B8]' : 'text-[#4B5563]';
-  const bgPrimary = theme === 'dark' ? 'bg-[#00D9A6]' : 'bg-[#00B894]';
-  const trackBg = theme === 'dark' ? 'bg-[#1A1D27]' : 'bg-slate-200';
+  const bgPrimary = theme === 'dark' ? 'bg-[#0EA5E9]' : 'bg-[#00B894]';
+  const trackBg = theme === 'dark' ? 'bg-[#090D16]' : 'bg-slate-200';
 
   return (
     <div>

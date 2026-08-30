@@ -56,14 +56,6 @@ export function LiveMapPage() {
   const [hindcast, setHindcast] = useState<HindcastResult | null>(null);
   const [trajectories, setTrajectories] = useState<Record<string, VesselTrajectory>>({});
 
-  // Data Source Origin States (true = backend, false = mock)
-  const [isSpillsBackend, setIsSpillsBackend] = useState(false);
-  const [isEnvironmentBackend, setIsEnvironmentBackend] = useState(false);
-  const [isHindcastBackend, setIsHindcastBackend] = useState(false);
-  const [isAttributionBackend, setIsAttributionBackend] = useState(false);
-  const [isTrajectoriesBackend, setIsTrajectoriesBackend] = useState<Record<string, boolean>>({});
-  const [isJobBackend, setIsJobBackend] = useState(false);
-
   // Controlled viewport state
   const [viewState, setViewState] = useState<MapViewState>({
     longitude: INITIAL_VIEW_STATE.longitude,
@@ -105,7 +97,6 @@ export function LiveMapPage() {
           const data = await res.json();
           if (Array.isArray(data)) {
             setSpills(data);
-            setIsSpillsBackend(true);
             console.log('📡 Spills successfully loaded from backend API');
             return;
           }
@@ -114,7 +105,6 @@ export function LiveMapPage() {
         console.error('Error fetching spills, using mock:', e);
       }
       setSpills(MOCK_SPILLS);
-      setIsSpillsBackend(false);
       console.log('💾 Spills loaded from frontend mock fallback');
     };
     fetchSpills();
@@ -174,16 +164,13 @@ export function LiveMapPage() {
       if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
         setEnvironment(data);
-        setIsEnvironmentBackend(true);
         console.log(`📡 Environment data for ${spill.spill_id} loaded from backend`);
       } else {
         setEnvironment(fallbackEnvironment);
-        setIsEnvironmentBackend(false);
         console.log(`💾 Environment data for ${spill.spill_id} using frontend mock fallback`);
       }
     } catch (e) {
       setEnvironment(fallbackEnvironment);
-      setIsEnvironmentBackend(false);
       console.log(`💾 Environment data for ${spill.spill_id} using frontend mock fallback (error)`);
     }
 
@@ -207,16 +194,13 @@ export function LiveMapPage() {
       if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
         setHindcast(data);
-        setIsHindcastBackend(true);
         console.log(`📡 Hindcast data for ${spill.spill_id} loaded from backend`);
       } else {
         setHindcast(fallbackHindcast);
-        setIsHindcastBackend(false);
         console.log(`💾 Hindcast data for ${spill.spill_id} using frontend mock fallback`);
       }
     } catch (e) {
       setHindcast(fallbackHindcast);
-      setIsHindcastBackend(false);
       console.log(`💾 Hindcast data for ${spill.spill_id} using frontend mock fallback (error)`);
     }
 
@@ -229,16 +213,13 @@ export function LiveMapPage() {
         const data = await res.json();
         setAttribution(data);
         activeAttribution = data;
-        setIsAttributionBackend(true);
         console.log(`📡 Attribution ranking for ${spill.spill_id} loaded from backend`);
       } else {
         setAttribution(fallbackAttribution);
-        setIsAttributionBackend(false);
         console.log(`💾 Attribution ranking for ${spill.spill_id} using frontend mock fallback`);
       }
     } catch (e) {
       setAttribution(fallbackAttribution);
-      setIsAttributionBackend(false);
       console.log(`💾 Attribution ranking for ${spill.spill_id} using frontend mock fallback (error)`);
     }
 
@@ -247,7 +228,6 @@ export function LiveMapPage() {
       const vesselsToFetch = activeAttribution?.ranked_vessels || [];
       if (vesselsToFetch.length > 0) {
         const fetchedTrajs: Record<string, VesselTrajectory> = {};
-        const trajectoryOrigins: Record<string, boolean> = {};
         const spillTime = new Date(spill.timestamp).getTime();
         const startStr = new Date(spillTime - 12 * 60 * 60 * 1000).toISOString();
         const endStr = new Date(spillTime + 12 * 60 * 60 * 1000).toISOString();
@@ -258,7 +238,6 @@ export function LiveMapPage() {
             const contentType = res.headers.get('content-type');
             if (res.ok && contentType && contentType.includes('application/json')) {
               fetchedTrajs[vessel.vessel_id] = await res.json();
-              trajectoryOrigins[vessel.vessel_id] = true;
               console.log(`📡 Trajectory for vessel ${vessel.vessel_id} loaded from backend`);
             } else {
               fetchedTrajs[vessel.vessel_id] = fallbackTrajectories[vessel.vessel_id] || {
@@ -266,7 +245,6 @@ export function LiveMapPage() {
                 vessel_type: vessel.vessel_type,
                 points: []
               };
-              trajectoryOrigins[vessel.vessel_id] = false;
               console.log(`💾 Trajectory for vessel ${vessel.vessel_id} using frontend mock fallback`);
             }
           } catch (e) {
@@ -275,19 +253,15 @@ export function LiveMapPage() {
               vessel_type: vessel.vessel_type,
               points: []
             };
-            trajectoryOrigins[vessel.vessel_id] = false;
             console.log(`💾 Trajectory for vessel ${vessel.vessel_id} using frontend mock fallback (error)`);
           }
         }
         setTrajectories(fetchedTrajs);
-        setIsTrajectoriesBackend(trajectoryOrigins);
       } else {
         setTrajectories(fallbackTrajectories);
-        setIsTrajectoriesBackend({});
       }
     } catch (e) {
       setTrajectories(fallbackTrajectories);
-      setIsTrajectoriesBackend({});
     }
   }, []);
 
@@ -370,11 +344,6 @@ export function LiveMapPage() {
     setShowAttribution(false);
     setJob(null);
     setExpandedClusterId(null);
-    setIsEnvironmentBackend(false);
-    setIsHindcastBackend(false);
-    setIsAttributionBackend(false);
-    setIsTrajectoriesBackend({});
-    setIsJobBackend(false);
     setViewState(prev => ({
       ...prev,
       longitude: INITIAL_VIEW_STATE.longitude,
@@ -442,7 +411,6 @@ export function LiveMapPage() {
         if (res.ok && contentType && contentType.includes('application/json')) {
           const data = await res.json();
           setJob(data);
-          setIsJobBackend(true);
           
           if (data.status === 'completed') {
             clearInterval(interval);
@@ -457,11 +425,8 @@ export function LiveMapPage() {
             }, 600);
           }
           return; // Skip fallback logic if API call was successful
-        } else {
-          setIsJobBackend(false);
         }
       } catch (e) {
-        setIsJobBackend(false);
         console.warn('Job status API failed, running fallback simulation:', e);
       }
 
@@ -553,7 +518,7 @@ export function LiveMapPage() {
 
   return (
     <div className={`flex h-screen w-full transition-colors duration-200 ${
-      theme === 'dark' ? 'bg-[#0F1117] text-[#94A3B8]' : 'bg-white text-[#4B5563]'
+      theme === 'dark' ? 'bg-[#090D16] text-[#94A3B8]' : 'bg-white text-[#4B5563]'
     } overflow-hidden font-sans`}>
       {/* Sidebar Navigation */}
       <Sidebar />
@@ -564,7 +529,7 @@ export function LiveMapPage() {
 
         {/* Map Viewport Area */}
         <div className={`flex-1 w-full h-full relative ${
-          theme === 'dark' ? 'bg-[#0B0D12]' : 'bg-slate-100'
+          theme === 'dark' ? 'bg-[#090D16]' : 'bg-slate-100'
         }`}>
           {!isLoaded && <MapSkeleton />}
 
@@ -600,16 +565,16 @@ export function LiveMapPage() {
           <div className="absolute top-20 left-4 z-10 flex flex-col gap-2">
             {/* Map Mode Title Indicator */}
             <div className={`flex items-center gap-2.5 px-3 py-2 border backdrop-blur-md rounded-xl text-xs font-semibold shadow-xl ${
-              theme === 'dark' ? 'bg-[#1A1D27]/90 border-[#252830] text-[#F1F5F9]' : 'bg-white/90 border-[#E5E7EB] text-[#1A1D23]'
+              theme === 'dark' ? 'bg-[#151F33]/90 border-[#64748B]/30 text-[#F8FAFC]' : 'bg-white/90 border-[#E5E7EB] text-[#1A1D23]'
             }`}>
-              <Layers size={14} className={theme === 'dark' ? 'text-[#00D9A6]' : 'text-[#00B894]'} />
+              <Layers size={14} className={theme === 'dark' ? 'text-[#0EA5E9]' : 'text-[#0EA5E9]'} />
               <span>Mediterranean Interactive Spill Map</span>
             </div>
 
             {/* Spill Stats Summary when none selected */}
             {!selectedSpill && (
               <div className={`p-4 border backdrop-blur-md rounded-xl space-y-2 shadow-xl w-60 ${
-                theme === 'dark' ? 'bg-[#1A1D27]/90 border-[#252830]' : 'bg-white/90 border-[#E5E7EB]'
+                theme === 'dark' ? 'bg-[#151F33]/90 border-[#64748B]/30' : 'bg-white/90 border-[#E5E7EB]'
               }`}>
                 <span className="text-[10px] uppercase font-bold tracking-wider text-[#64748B] block">
                   Active Spills
@@ -620,14 +585,14 @@ export function LiveMapPage() {
                       key={s.spill_id}
                       onClick={() => handleSelectSpill(s)}
                       className={`w-full text-left flex items-center justify-between text-xs p-1.5 rounded transition-colors ${
-                        theme === 'dark' ? 'hover:bg-[#252830]/50' : 'hover:bg-slate-100'
+                        theme === 'dark' ? 'hover:bg-[#1F2E4A]/50' : 'hover:bg-slate-100'
                       }`}
                     >
-                      <span className={`font-mono font-medium ${theme === 'dark' ? 'text-[#F1F5F9]' : 'text-slate-700'}`}>{s.spill_id}</span>
+                      <span className={`font-mono font-medium ${theme === 'dark' ? 'text-[#F8FAFC]' : 'text-slate-700'}`}>{s.spill_id}</span>
                       <span
                         className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${
                           s.status === 'attributed'
-                            ? 'bg-emerald-500/10 text-[#00D9A6]'
+                            ? 'bg-emerald-500/10 text-[#10B981]'
                             : s.status === 'processing'
                             ? 'bg-amber-500/10 text-amber-500'
                             : 'bg-rose-500/10 text-rose-500'
@@ -644,7 +609,7 @@ export function LiveMapPage() {
             {/* Spill click prompt when none selected */}
             {!selectedSpill && (
               <div className={`flex items-center gap-2 px-3 py-2 border text-rose-500 rounded-xl text-xs font-medium shadow-xl w-60 ${
-                theme === 'dark' ? 'bg-[#1A1D27]/95 border-[#252830]' : 'bg-white/95 border-[#E5E7EB]'
+                theme === 'dark' ? 'bg-[#151F33]/95 border-[#64748B]/30' : 'bg-white/95 border-[#E5E7EB]'
               }`}>
                 <AlertCircle size={14} className="shrink-0" />
                 <span>Select a spill polygon on the map or panel to inspect.</span>
@@ -656,10 +621,10 @@ export function LiveMapPage() {
               <button
                 onClick={resetMap}
                 className={`flex items-center gap-2 px-3.5 py-2.5 border rounded-xl text-xs font-semibold shadow-xl transition-all w-fit active:scale-95 ${
-                  theme === 'dark' ? 'bg-[#1A1D27] hover:bg-[#252830] border-[#252830] text-[#F1F5F9]' : 'bg-white hover:bg-slate-50 border-[#E5E7EB] text-slate-700'
+                  theme === 'dark' ? 'bg-[#151F33] hover:bg-[#1F2E4A] border-[#64748B]/30 text-[#F8FAFC]' : 'bg-white hover:bg-slate-50 border-[#E5E7EB] text-slate-700'
                 }`}
               >
-                <RefreshCw size={13} className={theme === 'dark' ? 'text-[#00D9A6]' : 'text-[#00B894]'} />
+                <RefreshCw size={13} className={theme === 'dark' ? 'text-[#0EA5E9]' : 'text-[#0EA5E9]'} />
                 <span>Reset View</span>
               </button>
             )}

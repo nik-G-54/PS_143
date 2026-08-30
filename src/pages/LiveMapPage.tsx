@@ -35,7 +35,6 @@ import { SlideInPanel } from '../components/map/overlays/SlideInPanel';
 import { MapTooltip } from '../components/map/overlays/MapTooltip';
 import { MapSkeleton } from '../components/map/overlays/MapSkeleton';
 import { usePulseMarkers } from '../components/map/layers/PulseMarker';
-import { useVesselAnimation } from '../hooks/useVesselAnimation';
 
 const BASE_CENTROID = { latitude: 33.5, longitude: 34.0 }; // Spill 1 centroid Reference
 
@@ -50,6 +49,20 @@ export function LiveMapPage() {
   const [job, setJob] = useState<JobStatus | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [mapInstance, setMapInstance] = useState<any>(null);
+
+  // Async API Integration States (with Fallbacks)
+  const [attribution, setAttribution] = useState<AttributionResult | null>(null);
+  const [environment, setEnvironment] = useState<EnvironmentData | null>(null);
+  const [hindcast, setHindcast] = useState<HindcastResult | null>(null);
+  const [trajectories, setTrajectories] = useState<Record<string, VesselTrajectory>>({});
+
+  // Data Source Origin States (true = backend, false = mock)
+  const [isSpillsBackend, setIsSpillsBackend] = useState(false);
+  const [isEnvironmentBackend, setIsEnvironmentBackend] = useState(false);
+  const [isHindcastBackend, setIsHindcastBackend] = useState(false);
+  const [isAttributionBackend, setIsAttributionBackend] = useState(false);
+  const [isTrajectoriesBackend, setIsTrajectoriesBackend] = useState<Record<string, boolean>>({});
+  const [isJobBackend, setIsJobBackend] = useState(false);
 
   // Controlled viewport state
   const [viewState, setViewState] = useState<MapViewState>({
@@ -82,28 +95,48 @@ export function LiveMapPage() {
     return spills.find(s => s.spill_id === selectedSpillId) || null;
   }, [spills, selectedSpillId]);
 
-  // Derive geographical offsets to align Spill 1's mock details to other centroids
-  const activeData = useMemo(() => {
-    if (!selectedSpill) {
-      return { attribution: null, environment: null, hindcast: null, trajectories: {} };
-    }
+  // Load spills from API or fall back to mock
+  useEffect(() => {
+    const fetchSpills = async () => {
+      try {
+        const res = await fetch('/api/v1/spills');
+        const contentType = res.headers.get('content-type');
+        if (res.ok && contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setSpills(data);
+            setIsSpillsBackend(true);
+            console.log('📡 Spills successfully loaded from backend API');
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching spills, using mock:', e);
+      }
+      setSpills(MOCK_SPILLS);
+      setIsSpillsBackend(false);
+      console.log('💾 Spills loaded from frontend mock fallback');
+    };
+    fetchSpills();
+  }, []);
 
-    const dLat = selectedSpill.centroid.latitude - BASE_CENTROID.latitude;
-    const dLon = selectedSpill.centroid.longitude - BASE_CENTROID.longitude;
+  // Async Load Spill Data with Fallback to Mock Data
+  const loadSpillData = useCallback(async (spill: SpillEvent) => {
+    const dLat = spill.centroid.latitude - BASE_CENTROID.latitude;
+    const dLon = spill.centroid.longitude - BASE_CENTROID.longitude;
 
-    // 1. Environment data offset
-    const environment: EnvironmentData = {
+    // 1. Generate fallback datasets using offsets from mock data
+    const fallbackEnvironment: EnvironmentData = {
       ...MOCK_ENVIRONMENT,
       location: {
-        latitude: selectedSpill.centroid.latitude,
-        longitude: selectedSpill.centroid.longitude
+        latitude: spill.centroid.latitude,
+        longitude: spill.centroid.longitude
       }
     };
 
-    // 2. Hindcast result coordinates offset
-    const hindcast: HindcastResult = {
+    const fallbackHindcast: HindcastResult = {
       ...MOCK_HINDCAST,
-      spill_id: selectedSpill.spill_id,
+      spill_id: spill.spill_id,
       source_region: {
         ...MOCK_HINDCAST.source_region,
         coordinates: MOCK_HINDCAST.source_region.coordinates.map(ring =>
@@ -117,16 +150,14 @@ export function LiveMapPage() {
       }))
     };
 
-    // 3. Attribution details
-    const attribution: AttributionResult = {
+    const fallbackAttribution: AttributionResult = {
       ...MOCK_ATTRIBUTION,
-      spill_id: selectedSpill.spill_id
+      spill_id: spill.spill_id
     };
 
-    // 4. AIS vessel track coordinates offset
-    const trajectories: Record<string, VesselTrajectory> = {};
+    const fallbackTrajectories: Record<string, VesselTrajectory> = {};
     Object.entries(MOCK_TRAJECTORIES).forEach(([id, traj]) => {
-      trajectories[id] = {
+      fallbackTrajectories[id] = {
         ...traj,
         points: traj.points.map(p => ({
           ...p,
@@ -136,24 +167,161 @@ export function LiveMapPage() {
       };
     });
 
-    return { attribution, environment, hindcast, trajectories };
-  }, [selectedSpill]);
+    // 2. Fetch Environment data
+    try {
+      const res = await fetch(`/api/v1/spills/${spill.spill_id}/environment`);
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        setEnvironment(data);
+        setIsEnvironmentBackend(true);
+        console.log(`📡 Environment data for ${spill.spill_id} loaded from backend`);
+      } else {
+        setEnvironment(fallbackEnvironment);
+        setIsEnvironmentBackend(false);
+        console.log(`💾 Environment data for ${spill.spill_id} using frontend mock fallback`);
+      }
+    } catch (e) {
+      setEnvironment(fallbackEnvironment);
+      setIsEnvironmentBackend(false);
+      console.log(`💾 Environment data for ${spill.spill_id} using frontend mock fallback (error)`);
+    }
 
-  // Selected Vessel Route Points for animation
-  const suspectVesselTrajectory = useMemo(() => {
+    // 3. Fetch Hindcast data
+    try {
+      const res = await fetch(`/api/v1/hindcast`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spill_id: spill.spill_id,
+          input: {
+            latitude: spill.centroid.latitude,
+            longitude: spill.centroid.longitude,
+            timestamp: spill.timestamp,
+            backward_hours: 72,
+            windage_factor: 0.03
+          }
+        })
+      });
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        setHindcast(data);
+        setIsHindcastBackend(true);
+        console.log(`📡 Hindcast data for ${spill.spill_id} loaded from backend`);
+      } else {
+        setHindcast(fallbackHindcast);
+        setIsHindcastBackend(false);
+        console.log(`💾 Hindcast data for ${spill.spill_id} using frontend mock fallback`);
+      }
+    } catch (e) {
+      setHindcast(fallbackHindcast);
+      setIsHindcastBackend(false);
+      console.log(`💾 Hindcast data for ${spill.spill_id} using frontend mock fallback (error)`);
+    }
+
+    // 4. Fetch Attribution data
+    let activeAttribution = fallbackAttribution;
+    try {
+      const res = await fetch(`/api/v1/attribution/${spill.spill_id}`);
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        setAttribution(data);
+        activeAttribution = data;
+        setIsAttributionBackend(true);
+        console.log(`📡 Attribution ranking for ${spill.spill_id} loaded from backend`);
+      } else {
+        setAttribution(fallbackAttribution);
+        setIsAttributionBackend(false);
+        console.log(`💾 Attribution ranking for ${spill.spill_id} using frontend mock fallback`);
+      }
+    } catch (e) {
+      setAttribution(fallbackAttribution);
+      setIsAttributionBackend(false);
+      console.log(`💾 Attribution ranking for ${spill.spill_id} using frontend mock fallback (error)`);
+    }
+
+    // 5. Fetch Trajectories for candidate vessels
+    try {
+      const vesselsToFetch = activeAttribution?.ranked_vessels || [];
+      if (vesselsToFetch.length > 0) {
+        const fetchedTrajs: Record<string, VesselTrajectory> = {};
+        const trajectoryOrigins: Record<string, boolean> = {};
+        const spillTime = new Date(spill.timestamp).getTime();
+        const startStr = new Date(spillTime - 12 * 60 * 60 * 1000).toISOString();
+        const endStr = new Date(spillTime + 12 * 60 * 60 * 1000).toISOString();
+
+        for (const vessel of vesselsToFetch) {
+          try {
+            const res = await fetch(`/api/v1/vessels/${vessel.vessel_id}/trajectory?start=${startStr}&end=${endStr}`);
+            const contentType = res.headers.get('content-type');
+            if (res.ok && contentType && contentType.includes('application/json')) {
+              fetchedTrajs[vessel.vessel_id] = await res.json();
+              trajectoryOrigins[vessel.vessel_id] = true;
+              console.log(`📡 Trajectory for vessel ${vessel.vessel_id} loaded from backend`);
+            } else {
+              fetchedTrajs[vessel.vessel_id] = fallbackTrajectories[vessel.vessel_id] || {
+                vessel_id: vessel.vessel_id,
+                vessel_type: vessel.vessel_type,
+                points: []
+              };
+              trajectoryOrigins[vessel.vessel_id] = false;
+              console.log(`💾 Trajectory for vessel ${vessel.vessel_id} using frontend mock fallback`);
+            }
+          } catch (e) {
+            fetchedTrajs[vessel.vessel_id] = fallbackTrajectories[vessel.vessel_id] || {
+              vessel_id: vessel.vessel_id,
+              vessel_type: vessel.vessel_type,
+              points: []
+            };
+            trajectoryOrigins[vessel.vessel_id] = false;
+            console.log(`💾 Trajectory for vessel ${vessel.vessel_id} using frontend mock fallback (error)`);
+          }
+        }
+        setTrajectories(fetchedTrajs);
+        setIsTrajectoriesBackend(trajectoryOrigins);
+      } else {
+        setTrajectories(fallbackTrajectories);
+        setIsTrajectoriesBackend({});
+      }
+    } catch (e) {
+      setTrajectories(fallbackTrajectories);
+      setIsTrajectoriesBackend({});
+    }
+  }, []);
+
+  // Trigger load when selected spill changes
+  useEffect(() => {
+    if (!selectedSpill) {
+      setAttribution(null);
+      setEnvironment(null);
+      setHindcast(null);
+      setTrajectories({});
+      return;
+    }
+    loadSpillData(selectedSpill);
+  }, [selectedSpill, loadSpillData]);
+
+  // Expose active data (uses state values or fallbacks dynamically)
+  const activeData = useMemo(() => {
+    return { attribution, environment, hindcast, trajectories };
+  }, [attribution, environment, hindcast, trajectories]);
+
+  // Find final destination of the suspect vessel trajectory (static position, no animation loop)
+  const suspectVesselFinalPosition = useMemo(() => {
     if (!activeData.attribution || !activeData.trajectories) return null;
     const primaryVessel = activeData.attribution.ranked_vessels.find(v => v.rank === 1);
     if (!primaryVessel) return null;
-    return activeData.trajectories[primaryVessel.vessel_id]?.points || null;
+    const trajPoints = activeData.trajectories[primaryVessel.vessel_id]?.points || [];
+    if (trajPoints.length === 0) return null;
+    const lastPoint = trajPoints[trajPoints.length - 1];
+    return {
+      lat: lastPoint.latitude,
+      lng: lastPoint.longitude,
+      course: lastPoint.course
+    };
   }, [activeData.attribution, activeData.trajectories]);
-
-  // Play animation whenever we have an attributed spill selected and detail panel is open
-  const isAnimating = !!(selectedSpill?.status === 'attributed' && showAttribution);
-
-  const { position: animatedVesselPosition } = useVesselAnimation(
-    suspectVesselTrajectory,
-    isAnimating
-  );
 
   // Click / Selection handler for Spill
   const handleSelectSpill = useCallback((spill: SpillEvent) => {
@@ -202,6 +370,11 @@ export function LiveMapPage() {
     setShowAttribution(false);
     setJob(null);
     setExpandedClusterId(null);
+    setIsEnvironmentBackend(false);
+    setIsHindcastBackend(false);
+    setIsAttributionBackend(false);
+    setIsTrajectoriesBackend({});
+    setIsJobBackend(false);
     setViewState(prev => ({
       ...prev,
       longitude: INITIAL_VIEW_STATE.longitude,
@@ -257,11 +430,42 @@ export function LiveMapPage() {
   // Pulse markers MapLibre lifecycle hook
   usePulseMarkers(mapInstance, spills, handleSelectSpill, layersVisibility.spills);
 
-  // Simulation pipeline mock loop
+  // Simulation pipeline mock loop with API Polling & Fallback
   useEffect(() => {
-    if (!job) return;
+    if (!job || job.status === 'completed' || job.status === 'failed') return;
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
+      // 1. Try polling real API first
+      try {
+        const res = await fetch(`/api/v1/jobs/${job.job_id}`);
+        const contentType = res.headers.get('content-type');
+        if (res.ok && contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          setJob(data);
+          setIsJobBackend(true);
+          
+          if (data.status === 'completed') {
+            clearInterval(interval);
+            const targetSpillId = job.job_id.replace('JOB-', '');
+            setSpills(prevSpills =>
+              prevSpills.map(s =>
+                s.spill_id === targetSpillId ? { ...s, status: 'attributed' } : s
+              )
+            );
+            setTimeout(() => {
+              setShowAttribution(true);
+            }, 600);
+          }
+          return; // Skip fallback logic if API call was successful
+        } else {
+          setIsJobBackend(false);
+        }
+      } catch (e) {
+        setIsJobBackend(false);
+        console.warn('Job status API failed, running fallback simulation:', e);
+      }
+
+      // 2. Fallback to local simulation logic if API fails or is not ok
       setJob(prevJob => {
         if (!prevJob) return null;
 
@@ -340,7 +544,7 @@ export function LiveMapPage() {
     trajectories: activeData.trajectories,
     onSpillClick: handleSelectSpill,
     layers: layersVisibility,
-    animatedVesselPosition,
+    animatedVesselPosition: suspectVesselFinalPosition,
     zoom: viewState.zoom,
     expandedClusterId,
     onClusterClick: setExpandedClusterId,
@@ -459,6 +663,7 @@ export function LiveMapPage() {
                 <span>Reset View</span>
               </button>
             )}
+
           </div>
 
           {/* Theme toggle & Controls */}

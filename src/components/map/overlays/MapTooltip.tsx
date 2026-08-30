@@ -9,10 +9,10 @@ export function MapTooltip({ hoverInfo, theme }: MapTooltipProps) {
   if (!hoverInfo) return null;
 
   const { x, y, type, data } = hoverInfo;
-  const cardBg = theme === 'dark' ? 'bg-[#1A1D27] border-[#252830]' : 'bg-white border-[#E5E7EB]';
-  const textHeading = theme === 'dark' ? 'text-[#F1F5F9]' : 'text-[#1A1D23]';
+  const cardBg = theme === 'dark' ? 'bg-[#151F33] border-[#64748B]/30' : 'bg-white border-[#E5E7EB]';
+  const textHeading = theme === 'dark' ? 'text-[#F8FAFC]' : 'text-[#1A1D23]';
   const textBody = theme === 'dark' ? 'text-[#94A3B8]' : 'text-[#4B5563]';
-  const textPrimary = theme === 'dark' ? 'text-[#00D9A6]' : 'text-[#00B894]';
+  const textPrimary = theme === 'dark' ? 'text-[#0EA5E9]' : 'text-[#00B894]';
 
   return (
     <div

@@ -13,25 +13,22 @@ Light Mode:
 - Sidebar background: #FFFFFF with right border: 1px solid #F0F0F0
 - Card background: #FFFFFF
 - Card border: 1px solid #F0F0F0 (very light gray, barely visible)
-- Card shadow: 0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02)
-- Primary green: #00B894 (Averra's teal-green)
-- Green hover: #00A381
-- Green light bg: rgba(0,184,148,0.08)
+- Primary action/cyan: #0EA5E9 (Marine Cyan)
 - Heading text: #1A1D23
 - Body text: #4B5563
 - Muted text: #9CA3AF
 - Border color: #E5E7EB
 
 Dark Mode:
-- Page background: #0F1117
-- Sidebar: #13151D
-- Card: #1A1D27
-- Card border: #252830
-- Primary green: #00D9A6 (brighter for dark bg)
-- Green light bg: rgba(0,217,166,0.1)
-- Headings: #F1F5F9
-- Body: #94A3B8
-- Muted: #64748B
+- Page background (Base): #090D16 (Deep Ocean Black)
+- Sidebar/Surface background: #151F33 (Midnight Slate)
+- Card: #151F33 (Midnight Slate)
+- Card border (Secondary): #64748B (Steel Gray)
+- Primary (Cyan): #0EA5E9 (Marine Cyan)
+- Spill Critical (Crimson): #DC2626 (Spill Crimson)
+- Vessel Normal (Emerald): #10B981 (Safe Emerald)
+- Text Primary (Ice): #F8FAFC (Pure Ice)
+- Text Muted (Fog): #94A3B8 (Fog Slate)
 
 ---
 

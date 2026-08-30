@@ -28,8 +28,8 @@ export function createVesselTrackLayer({ trajectories, attribution, visible }: V
     getColor: (d: VesselTrajectory) => {
       const rank = getVesselRank(d.vessel_id);
       return rank === 1
-        ? [0, 217, 166, 255]   // Green for #1 suspect (#00D9A6)
-        : [100, 116, 139, 180]; // Gray for others (#64748B)
+        ? [14, 165, 233, 255]   // Marine Cyan (#0EA5E9)
+        : [16, 185, 129, 180]; // Safe Emerald (#10B981)
     },
     getWidth: (d: VesselTrajectory) => {
       const rank = getVesselRank(d.vessel_id);

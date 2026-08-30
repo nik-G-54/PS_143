@@ -12,14 +12,14 @@ import {
 
 export const Sidebar: React.FC = () => {
   return (
-    <aside className="w-[240px] bg-white border-r border-[#F0F0F0] dark:bg-[#13151D] dark:border-[#252830] flex flex-col h-full shrink-0 transition-colors duration-200">
+    <aside className="w-[240px] bg-white border-r border-[#F0F0F0] dark:bg-[#151F33] dark:border-[#64748B]/30 flex flex-col h-full shrink-0 transition-colors duration-200">
       {/* Brand Header */}
-      <div className="p-4 border-b border-[#F0F0F0] dark:border-[#252830] flex items-center gap-3 transition-colors duration-200">
-        <div className="w-8 h-8 rounded bg-[#00B894] dark:bg-[#00D9A6] flex items-center justify-center font-bold text-white shadow-[0_2px_8px_rgba(0,184,148,0.25)] dark:shadow-[0_2px_8px_rgba(0,217,166,0.25)] shrink-0">
+      <div className="p-4 border-b border-[#F0F0F0] dark:border-[#64748B]/30 flex items-center gap-3 transition-colors duration-200">
+        <div className="w-8 h-8 rounded bg-[#0EA5E9] flex items-center justify-center font-bold text-white shadow-[0_2px_8px_rgba(14,165,233,0.25)] shrink-0">
           OS
         </div>
         <div>
-          <h1 className="font-bold text-[#1A1D23] dark:text-[#F1F5F9] tracking-wide text-base leading-none">OCEAN SENTINEL</h1>
+          <h1 className="font-bold text-[#1A1D23] dark:text-[#F8FAFC] tracking-wide text-base leading-none">OCEAN SENTINEL</h1>
           <p className="text-[11px] text-[#9CA3AF] dark:text-[#64748B] tracking-[0.5px] uppercase font-semibold mt-0.5">MARITIME INTELLIGENCE</p>
         </div>
       </div>
@@ -57,8 +57,8 @@ const SidebarItem: React.FC<{ icon: React.ReactNode; label: string; to: string }
       className={({ isActive }) => 
         `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all duration-150 ${
           isActive 
-            ? 'bg-[rgba(0,184,148,0.06)] dark:bg-[rgba(0,217,166,0.1)] text-[#00B894] dark:text-[#00D9A6] border-l-[3px] border-[#00B894] dark:border-[#00D9A6] font-semibold' 
-            : 'text-[#6B7280] hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-[#1A1D27]/50 hover:text-[#1A1D23] dark:hover:text-[#F1F5F9] border-l-[3px] border-transparent'
+            ? 'bg-[rgba(14,165,233,0.06)] dark:bg-[rgba(14,165,233,0.1)] text-[#0EA5E9] dark:text-[#0EA5E9] border-l-[3px] border-[#0EA5E9] dark:border-[#0EA5E9] font-semibold' 
+            : 'text-[#6B7280] hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-[#151F33]/50 hover:text-[#1A1D23] dark:hover:text-[#F8FAFC] border-l-[3px] border-transparent'
         }`
       }
     >

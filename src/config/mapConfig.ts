@@ -21,21 +21,21 @@ export const FLY_TO_CONFIG = {
 // Averra design tokens
 export const THEME_COLORS = {
   dark: {
-    page: '#0F1117',
-    sidebar: '#13151D',
-    card: '#1A1D27',
-    border: '#252830',
-    primary: '#00D9A6',
-    heading: '#F1F5F9',
-    body: '#94A3B8',
-    muted: '#64748B',
+    page: '#090D16',       // Deep Ocean Black
+    sidebar: '#151F33',    // Midnight Slate
+    card: '#151F33',       // Midnight Slate
+    border: '#64748B',     // Steel Gray
+    primary: '#0EA5E9',    // Marine Cyan
+    heading: '#F8FAFC',    // Pure Ice
+    body: '#94A3B8',       // Fog Slate
+    muted: '#64748B',      // Steel Gray
   },
   light: {
     page: '#FFFFFF',
     sidebar: '#FFFFFF',
     card: '#FFFFFF',
     border: '#E5E7EB',
-    primary: '#00B894',
+    primary: '#0EA5E9',    // Marine Cyan
     heading: '#1A1D23',
     body: '#4B5563',
     muted: '#9CA3AF',

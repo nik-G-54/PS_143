@@ -17,24 +17,24 @@ const LAYER_LABELS: Record<keyof LayerVisibility, string> = {
 };
 
 const LAYER_COLORS: Record<keyof LayerVisibility, string> = {
-  spills: '#EF4444',
+  spills: '#DC2626',      // Spill Crimson
   hindcast: '#F59E0B',
-  vessels: '#00D9A6',
-  wind: '#3B82F6',
+  vessels: '#10B981',     // Safe Emerald
+  wind: '#0EA5E9',        // Marine Cyan (Wind)
 };
 
 export function MapControls({ onZoomIn, onZoomOut, layers, onToggleLayer, theme }: MapControlsProps) {
-  const cardBg = theme === 'dark' ? 'bg-[#1A1D27] border-[#252830]' : 'bg-white border-[#E5E7EB]';
+  const cardBg = theme === 'dark' ? 'bg-[#151F33] border-[#64748B]/30' : 'bg-white border-[#E5E7EB]';
 
   return (
     <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
       {/* Zoom buttons */}
       <div className={`${cardBg} border rounded-lg overflow-hidden shadow-lg`}>
-        <button onClick={onZoomIn} className="w-10 h-10 flex items-center justify-center hover:bg-[#F9FAFB] dark:hover:bg-[#252830] transition">
+        <button onClick={onZoomIn} className="w-10 h-10 flex items-center justify-center hover:bg-[#F9FAFB] dark:hover:bg-[#1F2E4A] transition">
           <Plus size={18} className="text-[#94A3B8]" />
         </button>
-        <div className={`h-px ${theme === 'dark' ? 'bg-[#252830]' : 'bg-[#E5E7EB]'}`} />
-        <button onClick={onZoomOut} className="w-10 h-10 flex items-center justify-center hover:bg-[#F9FAFB] dark:hover:bg-[#252830] transition">
+        <div className={`h-px ${theme === 'dark' ? 'bg-[#64748B]/30' : 'bg-[#E5E7EB]'}`} />
+        <button onClick={onZoomOut} className="w-10 h-10 flex items-center justify-center hover:bg-[#F9FAFB] dark:hover:bg-[#1F2E4A] transition">
           <Minus size={18} className="text-[#94A3B8]" />
         </button>
       </div>
@@ -49,7 +49,7 @@ export function MapControls({ onZoomIn, onZoomOut, layers, onToggleLayer, theme 
           <button
             key={key}
             onClick={() => onToggleLayer(key)}
-            className="flex items-center gap-2 w-full py-1.5 px-1 rounded hover:bg-[#F9FAFB] dark:hover:bg-[#252830] transition"
+            className="flex items-center gap-2 w-full py-1.5 px-1 rounded hover:bg-[#F9FAFB] dark:hover:bg-[#1F2E4A] transition"
           >
             <div
               className="w-3 h-3 rounded-full"

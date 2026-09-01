@@ -13,7 +13,7 @@ Light Mode:
 - Sidebar background: #FFFFFF with right border: 1px solid #F0F0F0
 - Card background: #FFFFFF
 - Card border: 1px solid #F0F0F0 (very light gray, barely visible)
-- Primary action/cyan: #0EA5E9 (Marine Cyan)
+- Primary action/cyan: #0D9488 (Sea Green)
 - Heading text: #1A1D23
 - Body text: #4B5563
 - Muted text: #9CA3AF
@@ -24,7 +24,7 @@ Dark Mode:
 - Sidebar/Surface background: #151F33 (Midnight Slate)
 - Card: #151F33 (Midnight Slate)
 - Card border (Secondary): #64748B (Steel Gray)
-- Primary (Cyan): #0EA5E9 (Marine Cyan)
+- Primary (Cyan): #0D9488 (Sea Green)
 - Spill Critical (Crimson): #DC2626 (Spill Crimson)
 - Vessel Normal (Emerald): #10B981 (Safe Emerald)
 - Text Primary (Ice): #F8FAFC (Pure Ice)

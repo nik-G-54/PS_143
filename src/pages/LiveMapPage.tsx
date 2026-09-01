@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Header } from '../components/layout/Header';
 import Map, { MapRef, ScaleControl, NavigationControl } from 'react-map-gl/maplibre';
@@ -41,6 +42,7 @@ const BASE_CENTROID = { latitude: 33.5, longitude: 34.0 }; // Spill 1 centroid R
 export function LiveMapPage() {
   const mapRef = useRef<MapRef>(null);
   const { theme } = useTheme();
+  const [searchParams] = useSearchParams();
 
   // States
   const [spills, setSpills] = useState<SpillEvent[]>(MOCK_SPILLS);
@@ -337,6 +339,32 @@ export function LiveMapPage() {
       setShowAttribution(true);
     }
   }, []);
+
+  // Handle URL query parameters (e.g. ?spill_id=... or ?vessel=...)
+  useEffect(() => {
+    if (spills.length > 0) {
+      const initialSpillId = searchParams.get('spill_id');
+      const initialVesselId = searchParams.get('vessel');
+      
+      let targetSpillId = initialSpillId;
+      if (!targetSpillId && initialVesselId) {
+        if (initialVesselId === 'SYNTH-000011') targetSpillId = 'DARTIS-2019-001';
+        else if (initialVesselId === 'SYNTH-000007') targetSpillId = 'DARTIS-2019-002';
+        else if (initialVesselId === 'SYNTH-000023') targetSpillId = 'DARTIS-2019-004';
+      }
+      
+      if (targetSpillId) {
+        const foundSpill = spills.find(s => s.spill_id === targetSpillId);
+        if (foundSpill) {
+          // Add a short delay to ensure map/deckgl layers are ready
+          const timer = setTimeout(() => {
+            handleSelectSpill(foundSpill);
+          }, 300);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [spills, searchParams, handleSelectSpill]);
 
   // Reset view back to Mediterranean center
   const resetMap = useCallback(() => {

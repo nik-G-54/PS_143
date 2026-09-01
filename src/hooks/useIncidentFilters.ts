@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Incident, IncidentStatus } from '../types/incident';
 
 interface UseIncidentFiltersReturn {
@@ -12,8 +13,27 @@ interface UseIncidentFiltersReturn {
 }
 
 export const useIncidentFilters = (incidents: Incident[]): UseIncidentFiltersReturn => {
+  const [searchParams] = useSearchParams();
+  
+  const getInitialStatus = (): IncidentStatus | 'ALL' => {
+    const param = searchParams.get('status')?.toUpperCase();
+    if (param === 'ACTIVE' || param === 'INVESTIGATING' || param === 'RESOLVED') {
+      return param as IncidentStatus;
+    }
+    return 'ALL';
+  };
+
   const [searchQuery, setSearchQueryState] = useState<string>('');
-  const [statusFilter, setStatusFilterState] = useState<IncidentStatus | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilterState] = useState<IncidentStatus | 'ALL'>(getInitialStatus());
+
+  useEffect(() => {
+    const param = searchParams.get('status')?.toUpperCase();
+    if (param === 'ACTIVE' || param === 'INVESTIGATING' || param === 'RESOLVED') {
+      setStatusFilterState(param as IncidentStatus);
+    } else if (param === 'ALL') {
+      setStatusFilterState('ALL');
+    }
+  }, [searchParams]);
 
   const setSearchQuery = useCallback((query: string) => {
     setSearchQueryState(query);

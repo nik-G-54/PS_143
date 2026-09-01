@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { LiveMapPage } from './pages/LiveMapPage';
 import { IncidentReconstructionPage } from './pages/IncidentReconstructionPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
+import { DashboardPage } from './pages/DashboardPage';
 
 const IncidentsPage = lazy(() => import('./pages/IncidentsPage'));
 
@@ -21,8 +22,8 @@ const PageLoader = () => (
 function App() {
   return (
     <Routes>
-      {/* Team Routes (Placeholders for now) */}
-      <Route path="/" element={<PlaceholderPage title="Dashboard" />} />
+      {/* Team Routes */}
+      <Route path="/" element={<DashboardPage />} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
       <Route path="/live-map" element={<LiveMapPage />} />
       <Route 

@@ -1,5 +1,3 @@
-// src/components/dashboard/CaseStatusChart.tsx
-
 import React, { useState } from 'react';
 import { CaseStatusCount } from '../../types/dashboard';
 
@@ -16,20 +14,19 @@ export const CaseStatusChart: React.FC<CaseStatusChartProps> = ({ data }) => {
   const cx = 150;
   const cy = 110;
 
-  // Concentric circle configurations (Enlarged radii for the three rings)
+  // Concentric circle configurations
   const ringConfigs = [
-    { radius: 90, strokeWidth: 16, label: 'Active', colorClass: 'text-blue-500' },
-    { radius: 70, strokeWidth: 16, label: 'Resolved', colorClass: 'text-emerald-500' },
-    { radius: 50, strokeWidth: 16, label: 'Dismissed', colorClass: 'text-slate-500' },
+    { radius: 90, strokeWidth: 16, label: 'Active' },
+    { radius: 70, strokeWidth: 16, label: 'Resolved' },
+    { radius: 50, strokeWidth: 16, label: 'Dismissed' },
   ];
 
-  // Maximum value for scaling each ring (e.g. total cases represents full circle)
   const maxVal = total > 0 ? total : 30;
 
   return (
     <div className="flex flex-col h-full w-full justify-between items-center select-none relative">
       <div className="w-full text-left mb-2">
-        <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">
+        <h3 className="text-base font-bold text-foreground font-sans">
           Case Status
         </h3>
       </div>
@@ -45,7 +42,6 @@ export const CaseStatusChart: React.FC<CaseStatusChartProps> = ({ data }) => {
             if (!config) return null;
 
             const circumference = 2 * Math.PI * config.radius;
-            // Percent fill of the ring
             const pct = Math.min(item.count / maxVal, 1.0);
             const strokeDashoffset = circumference * (1 - pct);
 
@@ -58,18 +54,18 @@ export const CaseStatusChart: React.FC<CaseStatusChartProps> = ({ data }) => {
                 onMouseLeave={() => setHoveredIndex(null)}
                 className="cursor-pointer"
               >
-                {/* Background track circle (faint gray - improved light mode contrast to text-slate-200) */}
+                {/* Background track circle */}
                 <circle
                   cx={cx}
                   cy={cy}
                   r={config.radius}
                   fill="none"
                   stroke="currentColor"
-                  className="text-slate-200 dark:text-[#252830] opacity-80"
+                  className="text-border opacity-80"
                   strokeWidth={config.strokeWidth}
                 />
 
-                {/* Foreground value ring wrapped in a rotation group to fix SVG CSS center bug */}
+                {/* Foreground value ring */}
                 <g transform={`rotate(-90 ${cx} ${cy})`}>
                   <circle
                     cx={cx}
@@ -98,14 +94,14 @@ export const CaseStatusChart: React.FC<CaseStatusChartProps> = ({ data }) => {
                 <text
                   textAnchor="middle"
                   y={-5}
-                  className="text-2xl font-extrabold font-mono fill-slate-900 dark:fill-slate-100"
+                  className="text-2xl font-extrabold font-mono fill-foreground"
                 >
                   {total}
                 </text>
                 <text
                   textAnchor="middle"
                   y={15}
-                  className="text-[9px] font-extrabold uppercase tracking-wider fill-slate-500 dark:fill-slate-400"
+                  className="text-[9px] font-extrabold uppercase tracking-wider fill-muted-foreground font-sans"
                 >
                   Total Cases
                 </text>
@@ -116,21 +112,21 @@ export const CaseStatusChart: React.FC<CaseStatusChartProps> = ({ data }) => {
                   textAnchor="middle"
                   y={-8}
                   fill={data[hoveredIndex].color}
-                  className="text-base font-extrabold uppercase tracking-wide"
+                  className="text-base font-extrabold uppercase tracking-wide font-sans"
                 >
                   {data[hoveredIndex].status}
                 </text>
                 <text
                   textAnchor="middle"
                   y={12}
-                  className="text-lg font-extrabold font-mono fill-slate-900 dark:fill-slate-200"
+                  className="text-lg font-extrabold font-mono fill-foreground"
                 >
                   {data[hoveredIndex].count} cases
                 </text>
                 <text
                   textAnchor="middle"
                   y={24}
-                  className="text-[8px] font-extrabold fill-slate-500 dark:fill-slate-400 font-mono"
+                  className="text-[8px] font-extrabold fill-muted-foreground font-mono"
                 >
                   ({Math.round((data[hoveredIndex].count / total) * 100)}%)
                 </text>
@@ -141,7 +137,7 @@ export const CaseStatusChart: React.FC<CaseStatusChartProps> = ({ data }) => {
       </div>
 
       {/* Legend summary matching ring hover states */}
-      <div className="w-full flex justify-around border-t border-slate-200 dark:border-[#252830]/50 pt-3 text-[10px] text-slate-600 dark:text-slate-400 font-extrabold font-mono">
+      <div className="w-full flex justify-around border-t border-border pt-3 text-[10px] text-muted-foreground font-extrabold font-mono">
         {data.map((item, index) => {
           const isHovered = hoveredIndex === index;
           return (

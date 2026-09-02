@@ -167,14 +167,14 @@ export const mockDashboardData: DashboardData = {
   ],
 
   severityDistribution: [
-    { severity: 'HIGH', count: 15, color: '#EF4444' },
-    { severity: 'MEDIUM', count: 22, color: '#F59E0B' },
-    { severity: 'LOW', count: 10, color: '#22C55E' },
+    { severity: 'HIGH', count: 15, color: '#c96442' },
+    { severity: 'MEDIUM', count: 22, color: '#d97757' },
+    { severity: 'LOW', count: 10, color: '#b05730' },
   ],
 
   caseStatusDistribution: [
-    { status: 'ACTIVE', count: 23, color: '#3B82F6' },
-    { status: 'RESOLVED', count: 18, color: '#10B981' },
-    { status: 'DISMISSED', count: 6, color: '#64748B' },
+    { status: 'ACTIVE', count: 23, color: '#c96442' },
+    { status: 'RESOLVED', count: 18, color: '#9c87f5' },
+    { status: 'DISMISSED', count: 6, color: '#6e6d68' },
   ],
 };

@@ -2,17 +2,16 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LiveMapPage } from './pages/LiveMapPage';
 import { IncidentReconstructionPage } from './pages/IncidentReconstructionPage';
-import { PlaceholderPage } from './pages/PlaceholderPage';
 import { DashboardPage } from './pages/DashboardPage';
 
 const IncidentsPage = lazy(() => import('./pages/IncidentsPage'));
 
 const PageLoader = () => (
-  <div className="flex h-screen w-full bg-slate-950 items-center justify-center text-cyan-400 font-medium">
+  <div className="flex h-screen w-full bg-background items-center justify-center text-primary font-medium font-sans">
     <div className="flex flex-col items-center gap-3">
       <span className="relative flex h-8 w-8">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-8 w-8 bg-cyan-500"></span>
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-8 w-8 bg-primary shadow-[0_0_12px_var(--primary)]"></span>
       </span>
       <span>Loading Sentinel Systems...</span>
     </div>
@@ -22,7 +21,7 @@ const PageLoader = () => (
 function App() {
   return (
     <Routes>
-      {/* Team Routes */}
+      {/* Active Navigation Routes */}
       <Route path="/" element={<DashboardPage />} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
       <Route path="/live-map" element={<LiveMapPage />} />
@@ -34,11 +33,6 @@ function App() {
           </Suspense>
         } 
       />
-      <Route path="/vessels" element={<PlaceholderPage title="Vessels" />} />
-      <Route path="/analytics" element={<PlaceholderPage title="Analytics" />} />
-      <Route path="/reports" element={<PlaceholderPage title="Reports" />} />
-      
-      {/* Your Dedicated Route */}
       <Route path="/incident-reconstruction" element={<IncidentReconstructionPage />} />
       
       {/* Fallback route */}
@@ -46,6 +40,5 @@ function App() {
     </Routes>
   );
 }
-
 
 export default App;

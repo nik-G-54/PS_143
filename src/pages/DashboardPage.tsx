@@ -24,16 +24,16 @@ export const DashboardPage: React.FC = () => {
   const { dashboardData, loading, error } = useDashboardStats();
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Compute glow RGB color dynamically based on active theme
-  const glowColor = theme === 'dark' ? '0, 217, 166' : '14, 165, 229';
+  // Compute glow RGB color dynamically based on active theme (Claude Amber)
+  const glowColor = theme === 'dark' ? '217, 119, 87' : '201, 100, 66';
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full bg-gradient-to-br from-[#0D9488] to-white dark:bg-[#0F1117] items-center justify-center text-[#0D9488] dark:text-[#00D9A6] font-medium">
+      <div className="flex h-screen w-full bg-background items-center justify-center text-primary font-medium">
         <div className="flex flex-col items-center gap-3">
           <span className="relative flex h-8 w-8">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0D9488] dark:bg-[#00D9A6] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-8 w-8 bg-[#0D9488] dark:bg-[#00D9A6]"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-8 w-8 bg-primary"></span>
           </span>
           <span>Loading Dashboard Metrics...</span>
         </div>
@@ -43,7 +43,7 @@ export const DashboardPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex h-screen w-full bg-gradient-to-br from-[#0D9488] to-white dark:bg-[#0F1117] items-center justify-center text-red-500 font-medium">
+      <div className="flex h-screen w-full bg-background items-center justify-center text-destructive font-medium">
         <div className="flex flex-col items-center gap-3">
           <AlertCircle size={32} />
           <span>Error loading dashboard statistics. Please refresh.</span>
@@ -53,16 +53,16 @@ export const DashboardPage: React.FC = () => {
   }
 
   // Standard high contrast card class with responsive hover highlights
-  const cardClassName = "card bg-white dark:bg-[#1A1D27] border border-slate-200 dark:border-[#2C303E] hover:border-slate-300 dark:hover:border-[#00D9A6]/40 rounded-xl p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_30px_-5px_rgba(0,0,0,0.08)] transition-all duration-300 ease-out h-full flex flex-col justify-between";
+  const cardClassName = "card bg-card border border-border hover:border-primary/40 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 ease-out h-full flex flex-col justify-between";
 
   return (
-    <div className="flex h-screen w-full bg-white dark:bg-[#0F1117] text-slate-700 dark:text-slate-300 overflow-hidden font-sans transition-colors duration-200">
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans transition-colors duration-200">
       <Sidebar />
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         <Header />
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto pt-8 pb-8 px-10 space-y-6 bg-gradient-to-br from-[#0D9488] to-white dark:bg-none dark:bg-[#0F1117]">
+        <div className="flex-1 overflow-y-auto pt-8 pb-8 px-10 space-y-6 bg-background">
 
           {/* Global Spotlight tracker */}
           <GlobalSpotlight
@@ -82,8 +82,8 @@ export const DashboardPage: React.FC = () => {
                 className={cardClassName}
                 glowColor={glowColor}
                 disableAnimations={isMobile}
-                enableStars={false} // Disabled hover stars as requested
-                enableTilt={false}  // Disabled tilt as requested
+                enableStars={false}
+                enableTilt={false}
                 clickEffect={true}
                 enableMagnetism={false}
               >
@@ -94,7 +94,7 @@ export const DashboardPage: React.FC = () => {
             {/* ROW 1 RIGHT: Recent Alerts Table (8 columns) */}
             <div className="col-span-12 lg:col-span-8">
               <ParticleCard
-                className="card card--border-glow bg-white dark:bg-[#1A1D27] border border-slate-300 dark:border-[#2C303E] hover:border-slate-400 dark:hover:border-[#00D9A6]/40 rounded-xl shadow-[0_10px_30px_-5px_rgba(0,0,0,0.06)] hover:shadow-[0_15px_35px_-5px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out h-full flex flex-col"
+                className="card bg-card border border-border hover:border-primary/40 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 ease-out h-full flex flex-col"
                 glowColor={glowColor}
                 disableAnimations={isMobile}
                 enableStars={false}
@@ -139,7 +139,7 @@ export const DashboardPage: React.FC = () => {
             {/* ROW 3: Monthly Trend Heatmap Calendar Grid (12 columns - full width) */}
             <div className="col-span-12">
               <ParticleCard
-                className="card card--border-glow bg-white dark:bg-[#1A1D27] border border-slate-300 dark:border-[#2C303E] hover:border-slate-400 dark:hover:border-[#00D9A6]/40 rounded-xl p-5 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.06)] hover:shadow-[0_15px_35px_-5px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out h-full flex flex-col"
+                className="card bg-card border border-border hover:border-primary/40 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 ease-out h-full flex flex-col"
                 glowColor={glowColor}
                 disableAnimations={isMobile}
                 enableStars={false}

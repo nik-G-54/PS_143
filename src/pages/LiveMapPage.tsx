@@ -356,7 +356,6 @@ export function LiveMapPage() {
       if (targetSpillId) {
         const foundSpill = spills.find(s => s.spill_id === targetSpillId);
         if (foundSpill) {
-          // Add a short delay to ensure map/deckgl layers are ready
           const timer = setTimeout(() => {
             handleSelectSpill(foundSpill);
           }, 300);
@@ -432,7 +431,6 @@ export function LiveMapPage() {
     if (!job || job.status === 'completed' || job.status === 'failed') return;
 
     const interval = setInterval(async () => {
-      // 1. Try polling real API first
       try {
         const res = await fetch(`/api/v1/jobs/${job.job_id}`);
         const contentType = res.headers.get('content-type');
@@ -452,13 +450,12 @@ export function LiveMapPage() {
               setShowAttribution(true);
             }, 600);
           }
-          return; // Skip fallback logic if API call was successful
+          return;
         }
       } catch (e) {
         console.warn('Job status API failed, running fallback simulation:', e);
       }
 
-      // 2. Fallback to local simulation logic if API fails or is not ok
       setJob(prevJob => {
         if (!prevJob) return null;
 
@@ -478,7 +475,6 @@ export function LiveMapPage() {
           if (nextProgress >= 100) {
             clearInterval(interval);
 
-            // Simulation completes: Update spill status to 'attributed'
             const targetSpillId = prevJob.job_id.replace('JOB-', '');
             setSpills(prevSpills =>
               prevSpills.map(s =>
@@ -486,7 +482,6 @@ export function LiveMapPage() {
               )
             );
 
-            // Trigger slide-in panel display
             setTimeout(() => {
               setShowAttribution(true);
             }, 600);
@@ -545,9 +540,7 @@ export function LiveMapPage() {
   });
 
   return (
-    <div className={`flex h-screen w-full transition-colors duration-200 ${
-      theme === 'dark' ? 'bg-[#090D16] text-[#94A3B8]' : 'bg-white text-[#4B5563]'
-    } overflow-hidden font-sans`}>
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans transition-colors duration-200">
       {/* Sidebar Navigation */}
       <Sidebar />
 
@@ -556,9 +549,7 @@ export function LiveMapPage() {
         <Header />
 
         {/* Map Viewport Area */}
-        <div className={`flex-1 w-full h-full relative ${
-          theme === 'dark' ? 'bg-[#090D16]' : 'bg-slate-100'
-        }`}>
+        <div className="flex-1 w-full h-full relative bg-background">
           {!isLoaded && <MapSkeleton />}
 
           <Map
@@ -592,19 +583,15 @@ export function LiveMapPage() {
           {/* Floating Controls (Top Left) */}
           <div className="absolute top-20 left-4 z-10 flex flex-col gap-2">
             {/* Map Mode Title Indicator */}
-            <div className={`flex items-center gap-2.5 px-3 py-2 border backdrop-blur-md rounded-xl text-xs font-semibold shadow-xl ${
-              theme === 'dark' ? 'bg-[#151F33]/90 border-[#64748B]/30 text-[#F8FAFC]' : 'bg-white/90 border-[#E5E7EB] text-[#1A1D23]'
-            }`}>
-              <Layers size={14} className={theme === 'dark' ? 'text-[#0EA5E9]' : 'text-[#0EA5E9]'} />
+            <div className="flex items-center gap-2.5 px-3 py-2 border border-border bg-card/90 backdrop-blur-md rounded-xl text-xs font-semibold shadow-md text-foreground">
+              <Layers size={14} className="text-primary" />
               <span>Mediterranean Interactive Spill Map</span>
             </div>
 
             {/* Spill Stats Summary when none selected */}
             {!selectedSpill && (
-              <div className={`p-4 border backdrop-blur-md rounded-xl space-y-2 shadow-xl w-60 ${
-                theme === 'dark' ? 'bg-[#151F33]/90 border-[#64748B]/30' : 'bg-white/90 border-[#E5E7EB]'
-              }`}>
-                <span className="text-[10px] uppercase font-bold tracking-wider text-[#64748B] block">
+              <div className="p-4 border border-border bg-card/90 backdrop-blur-md rounded-xl space-y-2 shadow-md w-60">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">
                   Active Spills
                 </span>
                 <div className="space-y-1.5">
@@ -612,18 +599,16 @@ export function LiveMapPage() {
                     <button
                       key={s.spill_id}
                       onClick={() => handleSelectSpill(s)}
-                      className={`w-full text-left flex items-center justify-between text-xs p-1.5 rounded transition-colors ${
-                        theme === 'dark' ? 'hover:bg-[#1F2E4A]/50' : 'hover:bg-slate-100'
-                      }`}
+                      className="w-full text-left flex items-center justify-between text-xs p-1.5 rounded transition-colors hover:bg-accent"
                     >
-                      <span className={`font-mono font-medium ${theme === 'dark' ? 'text-[#F8FAFC]' : 'text-slate-700'}`}>{s.spill_id}</span>
+                      <span className="font-mono font-medium text-foreground">{s.spill_id}</span>
                       <span
                         className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${
                           s.status === 'attributed'
-                            ? 'bg-emerald-500/10 text-[#10B981]'
+                            ? 'bg-chart-1/15 text-chart-1'
                             : s.status === 'processing'
-                            ? 'bg-amber-500/10 text-amber-500'
-                            : 'bg-rose-500/10 text-rose-500'
+                            ? 'bg-primary/15 text-primary'
+                            : 'bg-destructive/15 text-destructive'
                         }`}
                       >
                         {s.status}
@@ -636,9 +621,7 @@ export function LiveMapPage() {
 
             {/* Spill click prompt when none selected */}
             {!selectedSpill && (
-              <div className={`flex items-center gap-2 px-3 py-2 border text-rose-500 rounded-xl text-xs font-medium shadow-xl w-60 ${
-                theme === 'dark' ? 'bg-[#151F33]/95 border-[#64748B]/30' : 'bg-white/95 border-[#E5E7EB]'
-              }`}>
+              <div className="flex items-center gap-2 px-3 py-2 border border-border bg-card/95 backdrop-blur-md text-destructive rounded-xl text-xs font-medium shadow-md w-60">
                 <AlertCircle size={14} className="shrink-0" />
                 <span>Select a spill polygon on the map or panel to inspect.</span>
               </div>
@@ -648,11 +631,9 @@ export function LiveMapPage() {
             {selectedSpill && (
               <button
                 onClick={resetMap}
-                className={`flex items-center gap-2 px-3.5 py-2.5 border rounded-xl text-xs font-semibold shadow-xl transition-all w-fit active:scale-95 ${
-                  theme === 'dark' ? 'bg-[#151F33] hover:bg-[#1F2E4A] border-[#64748B]/30 text-[#F8FAFC]' : 'bg-white hover:bg-slate-50 border-[#E5E7EB] text-slate-700'
-                }`}
+                className="flex items-center gap-2 px-3.5 py-2.5 border border-border bg-card hover:bg-accent rounded-xl text-xs font-semibold shadow-md transition-all w-fit active:scale-95 text-foreground"
               >
-                <RefreshCw size={13} className={theme === 'dark' ? 'text-[#0EA5E9]' : 'text-[#0EA5E9]'} />
+                <RefreshCw size={13} className="text-primary" />
                 <span>Reset View</span>
               </button>
             )}

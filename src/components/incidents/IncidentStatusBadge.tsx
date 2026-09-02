@@ -10,20 +10,20 @@ export const IncidentStatusBadge: React.FC<IncidentStatusBadgeProps> = ({ status
 
   switch (status) {
     case 'ACTIVE':
-      badgeStyles = 'bg-[#DCFCE7] text-[#16A34A] dark:bg-[#16A34A]/20 dark:text-[#4ADE80]';
+      badgeStyles = 'bg-[#ea580c]/15 text-[#ea580c] border-2 border-[#ea580c] dark:bg-[#f97316]/20 dark:text-[#f97316] dark:border-[#f97316] font-bold shadow-xs';
       break;
     case 'INVESTIGATING':
-      badgeStyles = 'bg-[#FEF3C7] text-[#D97706] dark:bg-[#D97706]/20 dark:text-[#FBBF24]';
+      badgeStyles = 'bg-[#d97706]/15 text-[#d97706] border-2 border-[#d97706] dark:bg-[#fbbf24]/20 dark:text-[#fbbf24] dark:border-[#fbbf24] font-bold shadow-xs';
       break;
     case 'RESOLVED':
-      badgeStyles = 'bg-[#DBEAFE] text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#60A5FA]';
+      badgeStyles = 'bg-muted text-muted-foreground border-2 border-border font-bold shadow-xs';
       break;
     default:
-      badgeStyles = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+      badgeStyles = 'bg-muted text-foreground border-2 border-border font-bold shadow-xs';
   }
 
   return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-[0.3px] transition-colors duration-150 ${badgeStyles}`}>
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs uppercase tracking-[0.3px] transition-colors duration-150 font-sans ${badgeStyles}`}>
       {status}
     </span>
   );

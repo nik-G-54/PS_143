@@ -1,5 +1,3 @@
-// src/components/dashboard/RecentIncidents.tsx
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RecentIncident } from '../../types/dashboard';
@@ -16,7 +14,6 @@ export const RecentIncidents: React.FC<RecentIncidentsProps> = ({ incidents }) =
     navigate(`/live-map?spill_id=${spillId}`);
   };
 
-  // Format ISO timestamps explicitly in UTC (Global Standard Time / Coordinated Universal Time)
   const formatTimestamp = (isoString: string) => {
     try {
       const date = new Date(isoString);
@@ -25,81 +22,80 @@ export const RecentIncidents: React.FC<RecentIncidentsProps> = ({ incidents }) =
       const dd = String(date.getUTCDate()).padStart(2, '0');
       const hh = String(date.getUTCHours()).padStart(2, '0');
       const min = String(date.getUTCMinutes()).padStart(2, '0');
-      return `${mm} ${dd}, ${hh}:${min}`; // Removed the trailing 'UTC' suffix since it's in the header
+      return `${mm} ${dd}, ${hh}:${min}`;
     } catch {
       return isoString;
     }
   };
 
-  // Status badge styling
+  // Distinct Status Colors (NEW: Terracotta Primary, REVIEW: Amethyst Violet)
   const getStatusBadge = (status: RecentIncident['status']) => {
     switch (status) {
       case 'NEW':
         return (
-          <span className="px-2.5 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border bg-blue-500/10 text-blue-700 border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30">
+          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full border-2 border-[#c96442] bg-[#c96442]/15 text-[#c96442] dark:border-[#d97757] dark:bg-[#d97757]/20 dark:text-[#d97757] font-sans shadow-xs">
             NEW
           </span>
         );
       case 'REVIEW':
         return (
-          <span className="px-2.5 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border bg-amber-500/10 text-amber-700 border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">
+          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full border-2 border-[#7c3aed] bg-[#7c3aed]/15 text-[#7c3aed] dark:border-[#9c87f5] dark:bg-[#9c87f5]/25 dark:text-[#9c87f5] font-sans shadow-xs">
             REVIEW
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border bg-slate-500/10 text-slate-700 border-slate-300 dark:bg-slate-500/20 dark:text-slate-400 dark:border-slate-500/30">
+          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full border-2 border-border bg-muted text-muted-foreground font-sans shadow-xs">
             {status}
           </span>
         );
     }
   };
 
-  // Severity badge styling
+  // Distinct Severity Colors (HIGH: Orange, MEDIUM: Golden Yellow, LOW: Cool Slate)
   const getSeverityBadge = (severity: RecentIncident['severity']) => {
     switch (severity) {
       case 'HIGH':
         return (
-          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-red-500/10 text-red-700 dark:bg-red-500/20 dark:text-red-400">
+          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full border-2 border-[#ea580c] bg-[#ea580c]/15 text-[#ea580c] dark:border-[#f97316] dark:bg-[#f97316]/20 dark:text-[#f97316] font-sans shadow-xs">
             HIGH
           </span>
         );
       case 'MEDIUM':
         return (
-          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full border-2 border-[#ca8a04] bg-[#ca8a04]/15 text-[#ca8a04] dark:border-[#facc15] dark:bg-[#facc15]/20 dark:text-[#facc15] font-sans shadow-xs">
             MEDIUM
           </span>
         );
       case 'LOW':
         return (
-          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400">
+          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full border-2 border-[#64748b] bg-[#64748b]/15 text-[#475569] dark:border-[#94a3b8] dark:bg-[#64748b]/20 dark:text-[#94a3b8] font-sans shadow-xs">
             LOW
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-slate-500/10 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400">
+          <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full border-2 border-border bg-muted text-muted-foreground font-sans shadow-xs">
             {severity}
           </span>
         );
     }
   };
 
-  // Filter out CLOSED cases — only show NEW and REVIEW (Active) alerts on dashboard
   const activeAlerts = incidents.filter(
     (incident) => incident.status === 'NEW' || incident.status === 'REVIEW'
   );
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col h-full w-full bg-card">
       {/* Table Header Section */}
-      <div className="p-5 flex items-center justify-between border-b border-slate-200 dark:border-[#252830]">
-        <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">
+      <div className="p-5 flex items-center justify-between border-b border-border">
+        <h3 className="text-base font-bold text-foreground font-sans">
           Incidents
         </h3>
         <button
           onClick={() => navigate('/incidents')}
-          className="text-xs font-bold text-[#0EA5E9] dark:text-[#00D9A6] hover:underline flex items-center gap-1 transition-colors"
+          className="text-xs font-bold text-primary hover:underline flex items-center gap-1 transition-colors font-sans"
         >
           View All <ChevronRight size={14} />
         </button>
@@ -107,18 +103,18 @@ export const RecentIncidents: React.FC<RecentIncidentsProps> = ({ incidents }) =
 
       {/* Table Area */}
       <div className="flex-1 p-5 overflow-x-auto overflow-y-auto max-h-[480px]">
-        <table className="w-full border-collapse text-left border border-slate-200 dark:border-[#252830]">
+        <table className="w-full border-collapse text-left border border-border">
           <thead>
-            {/* Table header row styled with solid sea green background and white text */}
-            <tr className="bg-[#0D9488] dark:bg-[#0D9488]/90 text-[11px] font-extrabold text-white uppercase tracking-wider h-12">
-              <th className="px-5 font-bold border border-slate-200 dark:border-[#252830]">Location</th>
-              <th className="px-5 font-bold border border-slate-200 dark:border-[#252830] w-[130px]">Time (UTC)</th>
-              <th className="px-5 font-bold border border-slate-200 dark:border-[#252830] w-[100px]">Severity</th>
-              <th className="px-5 font-bold text-center border border-slate-200 dark:border-[#252830] w-[80px]">CONF.</th>
-              <th className="px-5 font-bold border border-slate-200 dark:border-[#252830] w-[100px]">Status</th>
+            {/* Table header row styled with Claude Amber primary background */}
+            <tr className="bg-primary text-primary-foreground text-[11px] font-extrabold uppercase tracking-wider h-12">
+              <th className="px-5 font-bold border border-primary/20 font-sans">Location</th>
+              <th className="px-5 font-bold border border-primary/20 w-[130px] font-sans">Time (UTC)</th>
+              <th className="px-5 font-bold border border-primary/20 w-[100px] font-sans">Severity</th>
+              <th className="px-5 font-bold text-center border border-primary/20 w-[80px] font-sans">CONF.</th>
+              <th className="px-5 font-bold border border-primary/20 w-[100px] font-sans">Status</th>
             </tr>
           </thead>
-          <tbody className="text-sm text-slate-800 dark:text-slate-300">
+          <tbody className="text-sm text-foreground">
             {activeAlerts.slice(0, 4).map((incident) => {
               const confidencePercentage = Math.round(incident.confidence * 100);
 
@@ -126,28 +122,23 @@ export const RecentIncidents: React.FC<RecentIncidentsProps> = ({ incidents }) =
                 <tr
                   key={incident.spill_id}
                   onClick={() => handleRowClick(incident.spill_id)}
-                  className="h-[72px] cursor-pointer hover:bg-slate-100/50 dark:hover:bg-[#252830] transition-colors duration-150"
+                  className="h-[72px] cursor-pointer hover:bg-accent/50 transition-colors duration-150 border-b border-border"
                 >
-                  {/* Location */}
-                  <td className="px-5 py-4 max-w-[240px] truncate border border-slate-200 dark:border-[#252830]">
-                    <div className="font-bold text-slate-900 dark:text-slate-100">
+                  <td className="px-5 py-4 max-w-[240px] truncate border border-border">
+                    <div className="font-bold text-foreground font-sans">
                       {incident.location.name}
                     </div>
                   </td>
-                  {/* Time (forced to single line with whitespace-nowrap) */}
-                  <td className="px-5 py-4 text-xs font-semibold text-slate-700 dark:text-slate-400 border border-slate-200 dark:border-[#252830] whitespace-nowrap">
+                  <td className="px-5 py-4 text-xs font-semibold text-muted-foreground border border-border whitespace-nowrap font-mono">
                     {formatTimestamp(incident.timestamp)}
                   </td>
-                  {/* Severity */}
-                  <td className="px-5 py-4 border border-slate-200 dark:border-[#252830]">
+                  <td className="px-5 py-4 border border-border">
                     {getSeverityBadge(incident.severity)}
                   </td>
-                  {/* Confidence (Centered) */}
-                  <td className="px-5 py-4 font-mono text-xs font-bold text-slate-900 dark:text-slate-200 text-center border border-slate-200 dark:border-[#252830]">
+                  <td className="px-5 py-4 font-mono text-xs font-bold text-foreground text-center border border-border">
                     {confidencePercentage}%
                   </td>
-                  {/* Status */}
-                  <td className="px-5 py-4 border border-slate-200 dark:border-[#252830]">
+                  <td className="px-5 py-4 border border-border">
                     {getStatusBadge(incident.status)}
                   </td>
                 </tr>
@@ -155,7 +146,7 @@ export const RecentIncidents: React.FC<RecentIncidentsProps> = ({ incidents }) =
             })}
             {activeAlerts.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-center py-8 text-xs text-slate-400 italic border border-slate-200 dark:border-[#252830]">
+                <td colSpan={5} className="text-center py-8 text-xs text-muted-foreground italic border border-border font-sans">
                   No active incidents at the moment.
                 </td>
               </tr>

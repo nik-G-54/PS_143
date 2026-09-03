@@ -48,7 +48,11 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [isPlaying]);
 
   const handleTogglePlay = () => {
-    if (!isPlaying && progressRef.current >= 1) return; // Require scrubbing back
+    if (!isPlaying && progressRef.current >= 1) {
+      setProgress(0);
+      setIsPlaying(true);
+      return;
+    }
     setIsPlaying(!isPlaying);
   };
 

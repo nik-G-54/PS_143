@@ -7,6 +7,8 @@ import { latLonToWorld, OIL_SURFACE_OFFSET, METERS_PER_WORLD_UNIT } from '../../
 import { mockIncident } from '../../../data/mockIncident';
 import { useIncident } from '../../../context/IncidentContext';
 
+import { resolveTrajectoryPosition } from '../../../utils/trajectory';
+
 const timeToMins = (t: string) => {
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
@@ -18,8 +20,11 @@ export const OilSpill: React.FC = () => {
 
   // Determine if the oil spill should be visible based on simulation time
   const isVisible = useMemo(() => {
-    // If using real backend data, just show it at the end of the timeline
-    if (backtrackData) return progress >= 1.0; 
+    // If we have actual backend trajectory data, we can always show it moving
+    if (backtrackData?.backtrack.trajectory && backtrackData.backtrack.trajectory.length > 0) return true;
+    
+    // If using real backend data but no trajectory, just show it at the end of the timeline
+    if (backtrackData) return true; // Actually, show it always at the static observation point if no trajectory
 
     if (!mockAISTrack.length) return false;
     
@@ -36,8 +41,25 @@ export const OilSpill: React.FC = () => {
     const originLat = backtrackData?.backtrack.observation.latitude ?? mockIncident.location.lat;
     const originLon = backtrackData?.backtrack.observation.longitude ?? mockIncident.location.lng;
 
-    const spillLat = backtrackData?.backtrack.observation.latitude ?? mockOilSpill.latitude;
-    const spillLon = backtrackData?.backtrack.observation.longitude ?? mockOilSpill.longitude;
+    let spillLat = backtrackData?.backtrack.observation.latitude ?? mockOilSpill.latitude;
+    let spillLon = backtrackData?.backtrack.observation.longitude ?? mockOilSpill.longitude;
+
+    if (backtrackData?.backtrack.trajectory && backtrackData.backtrack.trajectory.length > 0) {
+      const startTimeMs = Date.parse(backtrackData.backtrack.estimated_release_time);
+      const endTimeMs = Date.parse(backtrackData.backtrack.observation.timestamp);
+      
+      const resolvedPos = resolveTrajectoryPosition(
+        backtrackData.backtrack.trajectory,
+        progress,
+        startTimeMs,
+        endTimeMs
+      );
+      
+      if (resolvedPos) {
+        spillLat = resolvedPos.latitude;
+        spillLon = resolvedPos.longitude;
+      }
+    }
 
     const pos = latLonToWorld(spillLat, spillLon, originLat, originLon);
     
@@ -46,7 +68,7 @@ export const OilSpill: React.FC = () => {
     const radiusUnits = radiusMeters / METERS_PER_WORLD_UNIT;
 
     return { pos, radiusUnits };
-  }, [backtrackData]);
+  }, [progress, backtrackData]);
 
   if (!isVisible) return null;
 

@@ -3,6 +3,7 @@ import { Header } from '../components/layout/Header';
 import { Sidebar } from '../components/layout/Sidebar';
 import { SimulationViewport } from '../components/incident/SimulationViewport';
 import { IncidentInfoPanel } from '../components/incident/IncidentInfoPanel';
+import { CandidateVesselPanel } from '../components/incident/CandidateVesselPanel';
 import { EnvironmentPanel } from '../components/incident/EnvironmentPanel';
 import { MapPreview } from '../components/incident/MapPreview';
 import { GlobePreview } from '../components/incident/GlobePreview';
@@ -27,8 +28,9 @@ export const IncidentReconstructionPage: React.FC = () => {
             </div>
             
             {/* Right Side Panels */}
-            <div className="w-full lg:w-80 flex flex-col gap-4 overflow-y-auto pr-2 pb-2">
+            <div className="w-full lg:w-[350px] flex flex-col gap-4 overflow-y-auto pr-2 pb-2">
               <IncidentInfoPanel />
+              <CandidateVesselPanel />
               <EnvironmentPanel />
               <div className="grid grid-cols-2 gap-4 h-40 shrink-0">
                 <MapPreview />

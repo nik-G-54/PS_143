@@ -7,6 +7,8 @@ interface IncidentContextProps {
   setSpillId: (id: string) => void;
   backtrackData: BacktrackResponse | null;
   vesselsData: VesselsResponse | null;
+  selectedVesselId: string | null;
+  setSelectedVesselId: (id: string | null) => void;
   loading: boolean;
   error: string | null;
   refresh: () => void;
@@ -18,6 +20,7 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [spillId, setSpillId] = useState<string>('spill_dba12b'); // Default spill
   const [backtrackData, setBacktrackData] = useState<BacktrackResponse | null>(null);
   const [vesselsData, setVesselsData] = useState<VesselsResponse | null>(null);
+  const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +76,7 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [fetchData]);
 
   return (
-    <IncidentContext.Provider value={{ spillId, setSpillId, backtrackData, vesselsData, loading, error, refresh: fetchData }}>
+    <IncidentContext.Provider value={{ spillId, setSpillId, backtrackData, vesselsData, selectedVesselId, setSelectedVesselId, loading, error, refresh: fetchData }}>
       {children}
     </IncidentContext.Provider>
   );

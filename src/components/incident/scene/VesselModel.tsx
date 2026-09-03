@@ -1,47 +1,87 @@
 import React, { useMemo } from 'react';
-import { Html } from '@react-three/drei';
+import { Html, Line } from '@react-three/drei';
 import { useSimulation } from '../../../context/SimulationContext';
-import { mockAISTrack } from '../../../data/mockAIS';
-import { latLonToWorld, VESSEL_SURFACE_OFFSET } from '../../../utils/coordinates';
-import { mockIncident } from '../../../data/mockIncident';
 import { useIncident } from '../../../context/IncidentContext';
+import { mockAISTrack } from '../../../data/mockAIS';
+import { latLonToWorld, VESSEL_SURFACE_OFFSET, METERS_PER_WORLD_UNIT } from '../../../utils/coordinates';
+import { mockIncident } from '../../../data/mockIncident';
+import { resolveVesselPosition } from '../../../utils/vesselTrack';
+import { VesselCandidate } from '../../../types/api';
 
 interface VesselModelProps {
   id: string;
   status: string;
+  candidate?: VesselCandidate;
+  isLegacyMock?: boolean;
 }
 
-export const VesselModel: React.FC<VesselModelProps> = ({ id, status }) => {
+export const VesselModel: React.FC<VesselModelProps> = ({ id, status, candidate, isLegacyMock }) => {
   const { progress } = useSimulation();
-  const { backtrackData, vesselsData } = useIncident();
+  const { backtrackData } = useIncident();
   
   const originLat = backtrackData?.backtrack.observation.latitude ?? mockIncident.location.lat;
   const originLon = backtrackData?.backtrack.observation.longitude ?? mockIncident.location.lng;
 
-  // Use top vessel ID from attribution if available
-  const displayId = vesselsData?.candidates[0]?.vessel_id ?? id;
+  // Use candidate ID if available
+  const displayId = candidate?.vessel_id ?? id;
+  const isTopCandidate = candidate?.rank === 1;
+  const isSelected = useIncident().selectedVesselId === candidate?.vessel_id;
 
   // Calculate current position and heading based on progress
   const currentData = useMemo(() => {
-    if (mockAISTrack.length === 0) return null;
-    if (progress <= 0) return mockAISTrack[0];
-    if (progress >= 1) return mockAISTrack[mockAISTrack.length - 1];
+    // If backend provided a track, use the chronological interpolator
+    if (candidate && candidate.track && backtrackData) {
+      const startTimeMs = Date.parse(backtrackData.backtrack.estimated_release_time);
+      const endTimeMs = Date.parse(backtrackData.backtrack.observation.timestamp);
+      const resolved = resolveVesselPosition(candidate.track, progress, startTimeMs, endTimeMs);
+      if (resolved) {
+        return { lat: resolved.latitude, lng: resolved.longitude, heading: resolved.heading };
+      }
+    }
 
-    const totalSegments = mockAISTrack.length - 1;
-    const exactIndex = progress * totalSegments;
-    const baseIndex = Math.floor(exactIndex);
-    const fraction = exactIndex - baseIndex;
+    // If it is specifically explicitly the legacy mock vessel (Phase 5 fallback), use the mock index-based interpolation
+    if (isLegacyMock && mockAISTrack.length > 0) {
+      if (progress <= 0) return mockAISTrack[0];
+      if (progress >= 1) return mockAISTrack[mockAISTrack.length - 1];
 
-    const p1 = mockAISTrack[baseIndex];
-    const p2 = mockAISTrack[baseIndex + 1];
+      const totalSegments = mockAISTrack.length - 1;
+      const exactIndex = progress * totalSegments;
+      const baseIndex = Math.floor(exactIndex);
+      const fraction = exactIndex - baseIndex;
 
-    // Linear interpolation
-    return {
-      lat: p1.lat + (p2.lat - p1.lat) * fraction,
-      lng: p1.lng + (p2.lng - p1.lng) * fraction,
-      heading: p1.heading + (p2.heading - p1.heading) * fraction,
-    };
-  }, [progress]);
+      const p1 = mockAISTrack[baseIndex];
+      const p2 = mockAISTrack[baseIndex + 1];
+
+      return {
+        lat: p1.lat + (p2.lat - p1.lat) * fraction,
+        lng: p1.lng + (p2.lng - p1.lng) * fraction,
+        heading: p1.heading + (p2.heading - p1.heading) * fraction,
+      };
+    }
+    
+    return null;
+  }, [progress, candidate, backtrackData, isLegacyMock]);
+
+  // Calculate source estimate relationship line
+  const sourceLinePoints = useMemo(() => {
+    if (!currentData) return null;
+    const worldPos = latLonToWorld(currentData.lat, currentData.lng, originLat, originLon);
+
+    if ((isSelected || isTopCandidate) && backtrackData?.backtrack.source_estimate) {
+      const sourcePos = latLonToWorld(
+        backtrackData.backtrack.source_estimate.latitude,
+        backtrackData.backtrack.source_estimate.longitude,
+        originLat,
+        originLon
+      );
+      // Return relative points from the vessel's current position group
+      return [
+        [0, 0, 0] as [number, number, number],
+        [sourcePos.x - worldPos.x, 0, sourcePos.z - worldPos.z] as [number, number, number]
+      ];
+    }
+    return null;
+  }, [isSelected, isTopCandidate, backtrackData, currentData, originLat, originLon]);
 
   if (!currentData) return null;
 
@@ -49,24 +89,65 @@ export const VesselModel: React.FC<VesselModelProps> = ({ id, status }) => {
   const position: [number, number, number] = [worldPos.x, worldPos.y + VESSEL_SURFACE_OFFSET, worldPos.z];
   const rotationY = -currentData.heading * (Math.PI / 180);
 
+  // Highlighting materials
+  const hullColor = isSelected ? "#0ea5e9" : (isTopCandidate ? "#38bdf8" : "#334155");
+  const hullEmissive = isSelected ? "#0284c7" : (isTopCandidate ? "#0369a1" : "#000000");
+  const hullEmissiveIntensity = isSelected ? 0.5 : (isTopCandidate ? 0.3 : 0);
+  
+  const bridgeColor = isSelected ? "#bae6fd" : "#cbd5e1";
+
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
+      
+      {/* Source Relationship Line */}
+      {sourceLinePoints && (
+        <group rotation={[0, -rotationY, 0]}>
+          <Line 
+            points={sourceLinePoints} 
+            color={isSelected ? "#0ea5e9" : "#38bdf8"} 
+            lineWidth={1.5}
+            dashed={true}
+            dashScale={5}
+            dashSize={2}
+            dashOffset={progress * 10}
+            opacity={0.5}
+            transparent
+          />
+        </group>
+      )}
+      
+      {/* Top Candidate Highlight Ring */}
+      {isTopCandidate && !isSelected && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -VESSEL_SURFACE_OFFSET + 0.1, 0]}>
+          <ringGeometry args={[3, 3.5, 32]} />
+          <meshBasicMaterial color="#38bdf8" transparent opacity={0.6} side={2} />
+        </mesh>
+      )}
+
+      {/* Selected Candidate Highlight Ring */}
+      {isSelected && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -VESSEL_SURFACE_OFFSET + 0.1, 0]}>
+          <ringGeometry args={[3.5, 4.5, 32]} />
+          <meshBasicMaterial color="#0ea5e9" transparent opacity={0.8} side={2} />
+        </mesh>
+      )}
+
       {/* Main Hull */}
       <mesh position={[0, 0.5, 0]}>
         <boxGeometry args={[1.5, 1, 6]} />
-        <meshStandardMaterial color="#334155" roughness={0.7} metalness={0.2} />
+        <meshStandardMaterial color={hullColor} emissive={hullEmissive} emissiveIntensity={hullEmissiveIntensity} roughness={0.7} metalness={0.2} />
       </mesh>
       
       {/* Bow */}
       <mesh position={[0, 0.5, -3.5]} rotation={[Math.PI / 2, 0, 0]}>
         <coneGeometry args={[0.75, 1, 4]} />
-        <meshStandardMaterial color="#334155" roughness={0.7} metalness={0.2} />
+        <meshStandardMaterial color={hullColor} emissive={hullEmissive} emissiveIntensity={hullEmissiveIntensity} roughness={0.7} metalness={0.2} />
       </mesh>
 
       {/* Bridge */}
       <mesh position={[0, 1.5, 2]}>
         <boxGeometry args={[1.2, 1, 1.5]} />
-        <meshStandardMaterial color="#cbd5e1" roughness={0.3} metalness={0.5} />
+        <meshStandardMaterial color={bridgeColor} roughness={0.3} metalness={0.5} />
       </mesh>
       
       {/* Stack */}
@@ -78,9 +159,15 @@ export const VesselModel: React.FC<VesselModelProps> = ({ id, status }) => {
       {/* Label */}
       <group rotation={[0, -rotationY, 0]}>
         <Html position={[0, 4, 0]} center zIndexRange={[100, 0]} distanceFactor={40}>
-          <div className="bg-slate-900/80 border border-cyan-500/50 px-2 py-1 rounded flex flex-col items-center pointer-events-none backdrop-blur-sm shadow-[0_0_10px_rgba(8,145,178,0.3)]">
-            <span className="text-[10px] text-cyan-300 font-mono font-bold tracking-widest whitespace-nowrap">{displayId}</span>
-            <span className="text-[8px] text-slate-400 font-mono tracking-widest">{status}</span>
+          <div className={`px-2 py-1 rounded flex flex-col items-center pointer-events-none backdrop-blur-sm shadow-[0_0_10px_rgba(8,145,178,0.3)] border ${
+            isSelected ? 'bg-sky-900/90 border-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.5)]' : 
+            (isTopCandidate ? 'bg-slate-900/90 border-sky-500/80' : 'bg-slate-900/70 border-slate-500/50')
+          }`}>
+            <span className={`text-[10px] font-mono font-bold tracking-widest whitespace-nowrap ${
+              isSelected ? 'text-sky-300' : (isTopCandidate ? 'text-cyan-300' : 'text-slate-300')
+            }`}>{displayId}</span>
+            {isTopCandidate && <span className="text-[7px] text-sky-400 font-bold tracking-widest uppercase mt-0.5">Top Candidate</span>}
+            {!isTopCandidate && status && <span className="text-[8px] text-slate-400 font-mono tracking-widest mt-0.5">{status}</span>}
           </div>
         </Html>
       </group>

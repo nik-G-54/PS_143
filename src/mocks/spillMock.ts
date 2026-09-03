@@ -23,7 +23,18 @@ export const mockBacktrackResponse: BacktrackResponse = {
 };
 
 export const mockVesselsResponse: VesselsResponse = {
+  spill_id: 'spill_dba12b',
+  candidate_count: 1,
   candidates: [
-    { vessel_id: 'SYNTH-Y2019-000144', score: 0.92 }
+    {
+      vessel_id: 'SYNTH-Y2019-000144',
+      is_mock: true,
+      rank: 1,
+      score: null, // As requested in Phase 10 instructions ("If score is null: display 'Score unavailable'")
+      vessel_name: 'SYNTHETIC TANKER',
+      mmsi: '123456789',
+      imo: '9876543',
+      distance_to_origin_km: 0.42
+    }
   ]
 };

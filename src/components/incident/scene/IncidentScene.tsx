@@ -17,7 +17,7 @@ import { SourceEstimate } from './SourceEstimate';
 import { OilTrajectory } from './OilTrajectory';
 
 export const IncidentScene: React.FC = () => {
-  const { backtrackData } = useIncident();
+  const { backtrackData, vesselsData } = useIncident();
 
   const originLat = backtrackData?.backtrack.observation.latitude ?? mockIncident.location.lat;
   const originLon = backtrackData?.backtrack.observation.longitude ?? mockIncident.location.lng;
@@ -39,17 +39,40 @@ export const IncidentScene: React.FC = () => {
       <OilSpill />
       <OilTrajectory />
       <SourceEstimate />
-      <AISTrack track={mockAISTrack} />
 
       <SceneGrid />
       <IncidentMarker position={[incidentPos.x, incidentPos.y, incidentPos.z]} />
       <TestPointMarker position={[testPos.x, testPos.y, testPos.z]} />
-      
-      {/* Vessel rendering - Position and heading are now driven by SimulationContext */}
-      <VesselModel 
-        id={vessel.id} 
-        status={vessel.status ?? 'UNKNOWN'} 
-      />
+
+      {/* Candidate Vessels and Tracks */}
+      {vesselsData?.candidates ? (
+        vesselsData.candidates.map(candidate => (
+          <React.Fragment key={candidate.vessel_id}>
+            {candidate.track ? (
+              <AISTrack track={candidate.track} />
+            ) : (
+              candidate.is_mock && <AISTrack track={mockAISTrack} />
+            )}
+            
+            <VesselModel 
+              id={candidate.vessel_id}
+              status="CANDIDATE"
+              candidate={candidate}
+              isLegacyMock={candidate.is_mock}
+            />
+          </React.Fragment>
+        ))
+      ) : (
+        // Fallback if no vessels data at all (for whatever reason)
+        <>
+          <AISTrack track={mockAISTrack} />
+          <VesselModel 
+            id={vessel.id} 
+            status={vessel.status ?? 'UNKNOWN'} 
+            isLegacyMock={true}
+          />
+        </>
+      )}
       
       <OrientationIndicator />
     </>

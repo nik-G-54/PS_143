@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { mockTimeline } from '../../data/mockIncident';
 import { Play, Pause } from 'lucide-react';
 import { useSimulation } from '../../context/SimulationContext';
+import { useIncident } from '../../context/IncidentContext';
+
+// Helper to format ISO strings to short HH:mm dates
+const formatTime = (iso: string) => {
+  const d = new Date(iso);
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
+};
 
 export const Timeline: React.FC = () => {
   const { isPlaying, togglePlay, progress, setProgress } = useSimulation();
+  const { backtrackData } = useIncident();
 
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const bounds = e.currentTarget.getBoundingClientRect();
@@ -12,6 +20,16 @@ export const Timeline: React.FC = () => {
     const newProgress = clickX / bounds.width;
     setProgress(newProgress);
   };
+
+  const timelineEvents = useMemo(() => {
+    if (backtrackData) {
+      return [
+        { label: 'EST. RELEASE', time: formatTime(backtrackData.backtrack.estimated_release_time) },
+        { label: 'OBSERVATION', time: formatTime(backtrackData.backtrack.observation.timestamp), isIncident: true }
+      ];
+    }
+    return mockTimeline;
+  }, [backtrackData]);
 
   return (
     <div className="bg-card border-t border-border h-24 flex flex-col justify-center px-6 relative z-10">
@@ -44,8 +62,8 @@ export const Timeline: React.FC = () => {
 
           {/* Timeline Nodes */}
           <div className="absolute left-0 right-0 flex justify-between pointer-events-none">
-            {mockTimeline.map((event, idx) => {
-              const nodeProgress = idx / (mockTimeline.length - 1);
+            {timelineEvents.map((event, idx) => {
+              const nodeProgress = idx / (timelineEvents.length - 1);
               const isPast = progress >= nodeProgress;
               const isCurrent = Math.abs(progress - nodeProgress) < 0.05;
               

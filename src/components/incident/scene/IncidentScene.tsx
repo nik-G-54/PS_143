@@ -12,10 +12,13 @@ import { VesselModel } from './VesselModel';
 import { latLonToWorld } from '../../../utils/coordinates';
 import { mockIncident } from '../../../data/mockIncident';
 import { mockAISTrack } from '../../../data/mockAIS';
+import { useIncident } from '../../../context/IncidentContext';
 
 export const IncidentScene: React.FC = () => {
-  const originLat = mockIncident.location.lat;
-  const originLon = mockIncident.location.lng;
+  const { backtrackData } = useIncident();
+
+  const originLat = backtrackData?.backtrack.observation.latitude ?? mockIncident.location.lat;
+  const originLon = backtrackData?.backtrack.observation.longitude ?? mockIncident.location.lng;
 
   // Incident origin
   const incidentPos = latLonToWorld(originLat, originLon, originLat, originLon);

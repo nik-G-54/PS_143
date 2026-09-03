@@ -3,7 +3,6 @@ import { mockIncident } from '../../data/mockIncident';
 import { Wind, Waves } from 'lucide-react';
 
 export const EnvironmentPanel: React.FC = () => {
-  const { environment } = mockIncident;
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col shadow-sm">
@@ -21,11 +20,11 @@ export const EnvironmentPanel: React.FC = () => {
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground font-sans">Direction</span>
-              <span className="text-foreground font-mono">{environment.wind.direction}°</span>
+              <span className="text-foreground font-mono">---</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground font-sans">Speed</span>
-              <span className="text-foreground font-mono">{environment.wind.speed} kn</span>
+              <span className="text-foreground font-mono">---</span>
             </div>
           </div>
         </div>
@@ -39,11 +38,11 @@ export const EnvironmentPanel: React.FC = () => {
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground font-sans">Direction</span>
-              <span className="text-foreground font-mono">{environment.current.direction}°</span>
+              <span className="text-foreground font-mono">---</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground font-sans">Speed</span>
-              <span className="text-foreground font-mono">{environment.current.speed} kn</span>
+              <span className="text-foreground font-mono">---</span>
             </div>
           </div>
         </div>

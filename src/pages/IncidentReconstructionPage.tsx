@@ -8,10 +8,12 @@ import { MapPreview } from '../components/incident/MapPreview';
 import { GlobePreview } from '../components/incident/GlobePreview';
 import { Timeline } from '../components/incident/Timeline';
 import { SimulationProvider } from '../context/SimulationContext';
+import { IncidentProvider } from '../context/IncidentContext';
 
 export const IncidentReconstructionPage: React.FC = () => {
   return (
-    <SimulationProvider>
+    <IncidentProvider>
+      <SimulationProvider>
       <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans transition-colors duration-200">
         <Sidebar />
       
@@ -39,5 +41,6 @@ export const IncidentReconstructionPage: React.FC = () => {
         </main>
       </div>
     </SimulationProvider>
+    </IncidentProvider>
   );
 };

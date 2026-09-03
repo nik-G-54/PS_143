@@ -4,6 +4,7 @@ import { useSimulation } from '../../../context/SimulationContext';
 import { mockAISTrack } from '../../../data/mockAIS';
 import { latLonToWorld, VESSEL_SURFACE_OFFSET } from '../../../utils/coordinates';
 import { mockIncident } from '../../../data/mockIncident';
+import { useIncident } from '../../../context/IncidentContext';
 
 interface VesselModelProps {
   id: string;
@@ -12,9 +13,13 @@ interface VesselModelProps {
 
 export const VesselModel: React.FC<VesselModelProps> = ({ id, status }) => {
   const { progress } = useSimulation();
+  const { backtrackData, vesselsData } = useIncident();
   
-  const originLat = mockIncident.location.lat;
-  const originLon = mockIncident.location.lng;
+  const originLat = backtrackData?.backtrack.observation.latitude ?? mockIncident.location.lat;
+  const originLon = backtrackData?.backtrack.observation.longitude ?? mockIncident.location.lng;
+
+  // Use top vessel ID from attribution if available
+  const displayId = vesselsData?.candidates[0]?.vessel_id ?? id;
 
   // Calculate current position and heading based on progress
   const currentData = useMemo(() => {
@@ -74,7 +79,7 @@ export const VesselModel: React.FC<VesselModelProps> = ({ id, status }) => {
       <group rotation={[0, -rotationY, 0]}>
         <Html position={[0, 4, 0]} center zIndexRange={[100, 0]} distanceFactor={40}>
           <div className="bg-slate-900/80 border border-cyan-500/50 px-2 py-1 rounded flex flex-col items-center pointer-events-none backdrop-blur-sm shadow-[0_0_10px_rgba(8,145,178,0.3)]">
-            <span className="text-[10px] text-cyan-300 font-mono font-bold tracking-widest whitespace-nowrap">{id}</span>
+            <span className="text-[10px] text-cyan-300 font-mono font-bold tracking-widest whitespace-nowrap">{displayId}</span>
             <span className="text-[8px] text-slate-400 font-mono tracking-widest">{status}</span>
           </div>
         </Html>

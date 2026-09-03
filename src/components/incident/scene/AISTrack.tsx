@@ -4,14 +4,17 @@ import { Vector3 } from 'three';
 import { AISPosition } from '../../../data/mockAIS';
 import { latLonToWorld, VESSEL_SURFACE_OFFSET } from '../../../utils/coordinates';
 import { mockIncident } from '../../../data/mockIncident';
+import { useIncident } from '../../../context/IncidentContext';
 
 interface AISTrackProps {
   track: AISPosition[];
 }
 
 export const AISTrack: React.FC<AISTrackProps> = ({ track }) => {
-  const originLat = mockIncident.location.lat;
-  const originLon = mockIncident.location.lng;
+  const { backtrackData } = useIncident();
+
+  const originLat = backtrackData?.backtrack.observation.latitude ?? mockIncident.location.lat;
+  const originLon = backtrackData?.backtrack.observation.longitude ?? mockIncident.location.lng;
 
   // Convert geographic coordinates to 3D world positions
   const points = useMemo(() => {

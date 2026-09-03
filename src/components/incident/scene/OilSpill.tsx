@@ -5,6 +5,7 @@ import { mockOilSpill } from '../../../data/mockOilSpill';
 import { mockAISTrack } from '../../../data/mockAIS';
 import { latLonToWorld, OIL_SURFACE_OFFSET, METERS_PER_WORLD_UNIT } from '../../../utils/coordinates';
 import { mockIncident } from '../../../data/mockIncident';
+import { useIncident } from '../../../context/IncidentContext';
 
 const timeToMins = (t: string) => {
   const [h, m] = t.split(':').map(Number);
@@ -13,9 +14,13 @@ const timeToMins = (t: string) => {
 
 export const OilSpill: React.FC = () => {
   const { progress } = useSimulation();
+  const { backtrackData } = useIncident();
 
   // Determine if the oil spill should be visible based on simulation time
   const isVisible = useMemo(() => {
+    // If using real backend data, just show it at the end of the timeline
+    if (backtrackData) return progress >= 1.0; 
+
     if (!mockAISTrack.length) return false;
     
     const startMins = timeToMins(mockAISTrack[0].timestamp);
@@ -24,22 +29,24 @@ export const OilSpill: React.FC = () => {
     const detectedMins = timeToMins(mockOilSpill.detectedAt);
 
     return currentMins >= detectedMins;
-  }, [progress]);
+  }, [progress, backtrackData]);
 
   // Compute physical position and size
   const transform = useMemo(() => {
-    const originLat = mockIncident.location.lat;
-    const originLon = mockIncident.location.lng;
+    const originLat = backtrackData?.backtrack.observation.latitude ?? mockIncident.location.lat;
+    const originLon = backtrackData?.backtrack.observation.longitude ?? mockIncident.location.lng;
 
-    const pos = latLonToWorld(mockOilSpill.latitude, mockOilSpill.longitude, originLat, originLon);
+    const spillLat = backtrackData?.backtrack.observation.latitude ?? mockOilSpill.latitude;
+    const spillLon = backtrackData?.backtrack.observation.longitude ?? mockOilSpill.longitude;
+
+    const pos = latLonToWorld(spillLat, spillLon, originLat, originLon);
     
     // Area in square meters -> radius in meters -> world units
-    const areaM2 = mockOilSpill.areaKm2 * 1_000_000;
-    const radiusMeters = Math.sqrt(areaM2 / Math.PI);
+    const radiusMeters = (backtrackData?.backtrack.source_estimate.radius_km ?? 0) * 1000 || Math.sqrt((mockOilSpill.areaKm2 * 1_000_000) / Math.PI);
     const radiusUnits = radiusMeters / METERS_PER_WORLD_UNIT;
 
     return { pos, radiusUnits };
-  }, []);
+  }, [backtrackData]);
 
   if (!isVisible) return null;
 

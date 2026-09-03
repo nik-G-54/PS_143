@@ -2,9 +2,7 @@ import React, { useMemo } from 'react';
 import { Html, Line } from '@react-three/drei';
 import { useSimulation } from '../../../context/SimulationContext';
 import { useIncident } from '../../../context/IncidentContext';
-import { mockAISTrack } from '../../../data/mockAIS';
 import { latLonToWorld, VESSEL_SURFACE_OFFSET, METERS_PER_WORLD_UNIT } from '../../../utils/coordinates';
-import { mockIncident } from '../../../data/mockIncident';
 import { resolveVesselPosition } from '../../../utils/vesselTrack';
 import { VesselCandidate } from '../../../types/api';
 
@@ -16,11 +14,11 @@ interface VesselModelProps {
 }
 
 export const VesselModel: React.FC<VesselModelProps> = ({ id, status, candidate, isLegacyMock }) => {
-  const { progress } = useSimulation();
-  const { backtrackData } = useIncident();
+  const { progress, direction } = useSimulation();
+  const { spillDetails, backtrackData } = useIncident();
   
-  const originLat = backtrackData?.backtrack.observation.latitude ?? mockIncident.location.lat;
-  const originLon = backtrackData?.backtrack.observation.longitude ?? mockIncident.location.lng;
+  const originLat = backtrackData?.backtrack.observation.latitude ?? spillDetails?.centroid?.latitude ?? 0;
+  const originLon = backtrackData?.backtrack.observation.longitude ?? spillDetails?.centroid?.longitude ?? 0;
 
   // Use candidate ID if available
   const displayId = candidate?.vessel_id ?? id;
@@ -33,34 +31,14 @@ export const VesselModel: React.FC<VesselModelProps> = ({ id, status, candidate,
     if (candidate && candidate.track && backtrackData) {
       const startTimeMs = Date.parse(backtrackData.backtrack.estimated_release_time);
       const endTimeMs = Date.parse(backtrackData.backtrack.observation.timestamp);
-      const resolved = resolveVesselPosition(candidate.track, progress, startTimeMs, endTimeMs);
+      const resolved = resolveVesselPosition(candidate.track, progress, startTimeMs, endTimeMs, direction);
       if (resolved) {
         return { lat: resolved.latitude, lng: resolved.longitude, heading: resolved.heading };
       }
     }
-
-    // If it is specifically explicitly the legacy mock vessel (Phase 5 fallback), use the mock index-based interpolation
-    if (isLegacyMock && mockAISTrack.length > 0) {
-      if (progress <= 0) return mockAISTrack[0];
-      if (progress >= 1) return mockAISTrack[mockAISTrack.length - 1];
-
-      const totalSegments = mockAISTrack.length - 1;
-      const exactIndex = progress * totalSegments;
-      const baseIndex = Math.floor(exactIndex);
-      const fraction = exactIndex - baseIndex;
-
-      const p1 = mockAISTrack[baseIndex];
-      const p2 = mockAISTrack[baseIndex + 1];
-
-      return {
-        lat: p1.lat + (p2.lat - p1.lat) * fraction,
-        lng: p1.lng + (p2.lng - p1.lng) * fraction,
-        heading: p1.heading + (p2.heading - p1.heading) * fraction,
-      };
-    }
     
     return null;
-  }, [progress, candidate, backtrackData, isLegacyMock]);
+  }, [progress, candidate, backtrackData, direction]);
 
   // Calculate source estimate relationship line
   const sourceLinePoints = useMemo(() => {

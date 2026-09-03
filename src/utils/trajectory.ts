@@ -16,7 +16,8 @@ export function resolveTrajectoryPosition(
   trajectory: TrajectoryPoint[],
   progress: number,
   startTimeMs: number,
-  endTimeMs: number
+  endTimeMs: number,
+  direction: 'FORWARD' | 'BACKTRACK' = 'FORWARD'
 ): ResolvedPosition | null {
   if (!trajectory || trajectory.length === 0) return null;
 
@@ -31,7 +32,9 @@ export function resolveTrajectoryPosition(
   }
 
   // Calculate current simulation time in ms
-  const currentTimeMs = startTimeMs + progress * (endTimeMs - startTimeMs);
+  const currentTimeMs = direction === 'FORWARD' 
+    ? startTimeMs + progress * (endTimeMs - startTimeMs)
+    : endTimeMs - progress * (endTimeMs - startTimeMs);
 
   // Get the chronological start and end of the trajectory array, assuming it's ordered in some direction
   const firstPtTime = Date.parse(validPoints[0].timestamp);

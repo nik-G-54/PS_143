@@ -1,48 +1,26 @@
 import React, { useMemo } from 'react';
 import { Html } from '@react-three/drei';
 import { useSimulation } from '../../../context/SimulationContext';
-import { mockOilSpill } from '../../../data/mockOilSpill';
-import { mockAISTrack } from '../../../data/mockAIS';
 import { latLonToWorld, OIL_SURFACE_OFFSET, METERS_PER_WORLD_UNIT } from '../../../utils/coordinates';
-import { mockIncident } from '../../../data/mockIncident';
 import { useIncident } from '../../../context/IncidentContext';
-
 import { resolveTrajectoryPosition } from '../../../utils/trajectory';
 
-const timeToMins = (t: string) => {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
-};
-
 export const OilSpill: React.FC = () => {
-  const { progress } = useSimulation();
-  const { backtrackData } = useIncident();
+  const { progress, direction } = useSimulation();
+  const { spillDetails, backtrackData } = useIncident();
 
   // Determine if the oil spill should be visible based on simulation time
   const isVisible = useMemo(() => {
-    // If we have actual backend trajectory data, we can always show it moving
-    if (backtrackData?.backtrack.trajectory && backtrackData.backtrack.trajectory.length > 0) return true;
-    
-    // If using real backend data but no trajectory, just show it at the end of the timeline
-    if (backtrackData) return true; // Actually, show it always at the static observation point if no trajectory
-
-    if (!mockAISTrack.length) return false;
-    
-    const startMins = timeToMins(mockAISTrack[0].timestamp);
-    const endMins = timeToMins(mockAISTrack[mockAISTrack.length - 1].timestamp);
-    const currentMins = startMins + progress * (endMins - startMins);
-    const detectedMins = timeToMins(mockOilSpill.detectedAt);
-
-    return currentMins >= detectedMins;
-  }, [progress, backtrackData]);
+    return true; // We now have trajectories guaranteed by the resolver
+  }, []);
 
   // Compute physical position and size
   const transform = useMemo(() => {
-    const originLat = backtrackData?.backtrack.observation.latitude ?? mockIncident.location.lat;
-    const originLon = backtrackData?.backtrack.observation.longitude ?? mockIncident.location.lng;
+    const originLat = backtrackData?.backtrack.observation.latitude ?? spillDetails?.centroid?.latitude ?? 0;
+    const originLon = backtrackData?.backtrack.observation.longitude ?? spillDetails?.centroid?.longitude ?? 0;
 
-    let spillLat = backtrackData?.backtrack.observation.latitude ?? mockOilSpill.latitude;
-    let spillLon = backtrackData?.backtrack.observation.longitude ?? mockOilSpill.longitude;
+    let spillLat = backtrackData?.backtrack.observation.latitude ?? spillDetails?.centroid?.latitude ?? 0;
+    let spillLon = backtrackData?.backtrack.observation.longitude ?? spillDetails?.centroid?.longitude ?? 0;
 
     if (backtrackData?.backtrack.trajectory && backtrackData.backtrack.trajectory.length > 0) {
       const startTimeMs = Date.parse(backtrackData.backtrack.estimated_release_time);
@@ -52,7 +30,8 @@ export const OilSpill: React.FC = () => {
         backtrackData.backtrack.trajectory,
         progress,
         startTimeMs,
-        endTimeMs
+        endTimeMs,
+        direction
       );
       
       if (resolvedPos) {
@@ -64,11 +43,12 @@ export const OilSpill: React.FC = () => {
     const pos = latLonToWorld(spillLat, spillLon, originLat, originLon);
     
     // Area in square meters -> radius in meters -> world units
-    const radiusMeters = (backtrackData?.backtrack.source_estimate.radius_km ?? 0) * 1000 || Math.sqrt((mockOilSpill.areaKm2 * 1_000_000) / Math.PI);
+    const fallbackAreaKm2 = spillDetails?.area_km2 ?? 12.5;
+    const radiusMeters = (backtrackData?.backtrack.source_estimate?.radius_km ?? 0) * 1000 || Math.sqrt((fallbackAreaKm2 * 1_000_000) / Math.PI);
     const radiusUnits = radiusMeters / METERS_PER_WORLD_UNIT;
 
     return { pos, radiusUnits };
-  }, [progress, backtrackData]);
+  }, [progress, backtrackData, direction]);
 
   if (!isVisible) return null;
 
@@ -137,7 +117,7 @@ export const OilSpill: React.FC = () => {
       <Html position={[0, 3, 0]} center zIndexRange={[90, 0]} distanceFactor={40}>
         <div className="bg-red-950/80 border border-red-500/50 px-2 py-1 rounded flex flex-col items-center pointer-events-none backdrop-blur-sm shadow-[0_0_10px_rgba(239,68,68,0.3)]">
           <span className="text-[10px] text-red-400 font-bold tracking-widest whitespace-nowrap">OIL DETECTION</span>
-          <span className="text-[8px] text-slate-300 font-mono tracking-widest mt-0.5">{backtrackData?.spill_id ?? mockOilSpill.id}</span>
+          <span className="text-[8px] text-slate-300 font-mono tracking-widest mt-0.5">{backtrackData?.spill_id ?? spillDetails?.spill_id ?? 'UNKNOWN'}</span>
         </div>
       </Html>
 

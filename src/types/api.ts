@@ -44,17 +44,52 @@ export interface AISTrackPoint {
 export interface VesselCandidate {
   vessel_id: string;
   is_mock?: boolean;
-  rank?: number;
+  rank?: number | null;
   score: number | null;
-  vessel_name?: string;
-  mmsi?: string;
-  imo?: string;
-  distance_to_origin_km?: number;
+  vessel_name?: string | null;
+  mmsi?: string | null;
+  imo?: string | null;
+  distance_to_origin_km?: number | null;
   track?: AISTrackPoint[]; // PENDING BACKEND CONTRACT
 }
 
 export interface VesselsResponse {
   spill_id?: string;
   candidate_count?: number;
-  candidates: VesselCandidate[];
+  vessels: VesselCandidate[];
+}
+
+export interface VisualizationSpill {
+  spill_id: string;
+  latitude: number;
+  longitude: number;
+  detected_at: string;
+}
+
+export interface WindCondition {
+  u: number;
+  v: number;
+  speed: number;
+  direction: number;
+  unit: string;
+}
+
+export interface CurrentCondition {
+  u: number;
+  v: number;
+  speed: number;
+  direction: number;
+  unit: string;
+}
+
+export interface EnvironmentConditions {
+  wind: WindCondition;
+  current: CurrentCondition;
+}
+
+export interface VisualizationSpillResponse {
+  spill: VisualizationSpill;
+  source_estimate: SpillSourceEstimate;
+  environment: EnvironmentConditions;
+  trajectory: TrajectoryPoint[];
 }

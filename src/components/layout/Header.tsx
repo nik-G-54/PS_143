@@ -7,14 +7,18 @@ import {
   AlertTriangle, 
   Sun, 
   Moon, 
-  ShieldAlert 
+  ShieldAlert,
+  Loader2
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import { mockIncident } from '../../data/mockIncident';
+import { useIncidentOptional } from '../../context/IncidentContext';
+
+import { IncidentSelector } from '../incident/IncidentSelector';
 
 export const Header: React.FC = () => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const incidentContext = useIncidentOptional();
 
   // Determine page title and icon based on current path
   const getPageDetails = () => {
@@ -50,6 +54,9 @@ export const Header: React.FC = () => {
 
   const { title, icon } = getPageDetails();
 
+  const incidentId = incidentContext?.spillId ?? incidentContext?.spillDetails?.spill_id ?? 'UNKNOWN';
+  const incidentStatus = incidentContext?.loading ? 'LOADING...' : (incidentContext?.spillDetails?.status ?? 'ACTIVE');
+
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 transition-colors duration-200 shrink-0">
       {/* Left: Route Title */}
@@ -63,11 +70,11 @@ export const Header: React.FC = () => {
             <div className="h-4 w-px bg-border"></div>
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground font-sans">Incident:</span>
-              <span className="font-mono text-primary font-semibold">{mockIncident.id}</span>
+              <IncidentSelector currentSpillId={incidentId} />
             </div>
             <div className="flex items-center gap-2 px-3 py-0.5 bg-destructive/10 border border-destructive/20 rounded-full text-destructive text-xs font-semibold font-sans">
-              <ShieldAlert size={12} />
-              <span>{mockIncident.status}</span>
+              {incidentContext?.loading ? <Loader2 size={12} className="animate-spin" /> : <ShieldAlert size={12} />}
+              <span>{incidentStatus}</span>
             </div>
           </>
         )}

@@ -1,25 +1,28 @@
 import React, { useMemo } from 'react';
 import { Line } from '@react-three/drei';
 import { Vector3 } from 'three';
-import { AISPosition } from '../../../data/mockAIS';
 import { latLonToWorld, VESSEL_SURFACE_OFFSET } from '../../../utils/coordinates';
-import { mockIncident } from '../../../data/mockIncident';
 import { useIncident } from '../../../context/IncidentContext';
+import { AISTrackPoint } from '../../../types/api';
 
 interface AISTrackProps {
-  track: AISPosition[];
+  track: any[];
 }
 
 export const AISTrack: React.FC<AISTrackProps> = ({ track }) => {
-  const { backtrackData } = useIncident();
+  const { spillDetails, backtrackData } = useIncident();
 
-  const originLat = backtrackData?.backtrack.observation.latitude ?? mockIncident.location.lat;
-  const originLon = backtrackData?.backtrack.observation.longitude ?? mockIncident.location.lng;
+  if (!track || track.length < 2) return null;
+
+  const originLat = backtrackData?.backtrack.observation.latitude ?? spillDetails?.centroid?.latitude ?? 0;
+  const originLon = backtrackData?.backtrack.observation.longitude ?? spillDetails?.centroid?.longitude ?? 0;
 
   // Convert geographic coordinates to 3D world positions
   const points = useMemo(() => {
-    return track.map((pos) => {
-      const worldPos = latLonToWorld(pos.lat, pos.lng, originLat, originLon);
+    return track.map((pos: any) => {
+      const lat = pos.latitude ?? pos.lat;
+      const lng = pos.longitude ?? pos.lng;
+      const worldPos = latLonToWorld(lat, lng, originLat, originLon);
       // Lift the track slightly above the ocean surface to avoid z-fighting
       return new Vector3(worldPos.x, worldPos.y + VESSEL_SURFACE_OFFSET + 0.1, worldPos.z);
     });

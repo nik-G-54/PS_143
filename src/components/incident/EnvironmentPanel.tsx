@@ -1,13 +1,22 @@
 import React from 'react';
-import { mockIncident } from '../../data/mockIncident';
 import { Wind, Waves } from 'lucide-react';
+import { useIncident } from '../../context/IncidentContext';
 
 export const EnvironmentPanel: React.FC = () => {
+  const { environment, dataSources } = useIncident();
+
+  const wind = environment?.wind;
+  const current = environment?.current;
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col shadow-sm">
-      <div className="bg-muted/40 px-4 py-2 border-b border-border">
+      <div className="bg-muted/40 px-4 py-2 border-b border-border flex justify-between items-center">
         <h3 className="text-xs font-semibold text-foreground tracking-wider font-sans">ENVIRONMENTAL CONDITIONS</h3>
+        {dataSources && (
+          <span className="text-[9px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded border border-border/50">
+            {dataSources.environment.toUpperCase()}
+          </span>
+        )}
       </div>
       
       <div className="p-3 grid grid-cols-2 gap-3">
@@ -20,11 +29,11 @@ export const EnvironmentPanel: React.FC = () => {
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground font-sans">Direction</span>
-              <span className="text-foreground font-mono">---</span>
+              <span className="text-foreground font-mono">{wind ? `${wind.direction.toFixed(1)}°` : '---'}</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground font-sans">Speed</span>
-              <span className="text-foreground font-mono">---</span>
+              <span className="text-foreground font-mono">{wind ? `${wind.speed.toFixed(2)} m/s` : '---'}</span>
             </div>
           </div>
         </div>
@@ -38,11 +47,11 @@ export const EnvironmentPanel: React.FC = () => {
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground font-sans">Direction</span>
-              <span className="text-foreground font-mono">---</span>
+              <span className="text-foreground font-mono">{current ? `${current.direction.toFixed(1)}°` : '---'}</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground font-sans">Speed</span>
-              <span className="text-foreground font-mono">---</span>
+              <span className="text-foreground font-mono">{current ? `${current.speed.toFixed(3)} m/s` : '---'}</span>
             </div>
           </div>
         </div>

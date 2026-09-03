@@ -1,15 +1,38 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Header } from '../components/layout/Header';
 import { IncidentsTable } from '../components/incidents/IncidentsTable';
 import { IncidentFilters } from '../components/incidents/IncidentFilters';
 import { useIncidentFilters } from '../hooks/useIncidentFilters';
-import { MOCK_INCIDENTS } from '../data/mockIncidents';
+import { spillService } from '../services/spillService';
 import { AlertTriangle } from 'lucide-react';
+import { Incident } from '../types/incident';
 
 const IncidentsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    spillService.getSpills().then(data => {
+      const items = Array.isArray(data) ? data : data.items || [];
+      const mapped = items.map((d: any) => ({
+        id: d.spill_id,
+        date: d.detected_at ? new Date(d.detected_at).toISOString().split('T')[0] : 'N/A',
+        latitude: d.centroid?.latitude ?? d.centroid?.lat ?? 0,
+        longitude: d.centroid?.longitude ?? d.centroid?.lon ?? 0,
+        locationName: d.location_name || 'Mediterranean Sea',
+        status: d.status || 'ACTIVE',
+        confidence: d.confidence_score,
+        vesselInvolved: `${d.candidate_count ?? 0} Candidates`,
+        spillArea: d.area_km2,
+        severity: d.area_km2 > 10 ? 'CRITICAL' : (d.area_km2 > 5 ? 'HIGH' : 'MEDIUM')
+      }));
+      setIncidents(mapped);
+      setLoading(false);
+    });
+  }, []);
   
   const {
     filteredIncidents,
@@ -19,11 +42,11 @@ const IncidentsPage: React.FC = () => {
     setStatusFilter,
     totalCount,
     filteredCount,
-  } = useIncidentFilters(MOCK_INCIDENTS);
+  } = useIncidentFilters(incidents);
 
   const handleViewIncident = useCallback((id: string) => {
-    if (id === 'OS-001') {
-      navigate('/incident-reconstruction');
+    if (id === 'OS-001' || id.startsWith('spill_')) {
+      navigate(`/incident-reconstruction?id=${id}`);
     } else {
       alert(`Navigation to details for incident ${id} will be integrated in future phases.`);
     }

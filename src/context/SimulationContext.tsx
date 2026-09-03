@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useIncident } from './IncidentContext';
 
 interface SimulationContextProps {
   isPlaying: boolean;
   togglePlay: () => void;
   progress: number; // 0 to 1
   setProgress: (p: number) => void;
+  direction: 'FORWARD' | 'BACKTRACK';
+  setDirection: (d: 'FORWARD' | 'BACKTRACK') => void;
 }
 
 const SimulationContext = createContext<SimulationContextProps | undefined>(undefined);
@@ -14,9 +17,17 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [progress, setProgress] = useState(0);
   const lastTimeRef = useRef<number>(0);
   const progressRef = useRef(progress);
+  const { spillId } = useIncident();
+
   useEffect(() => {
     progressRef.current = progress;
   }, [progress]);
+
+  useEffect(() => {
+    setProgress(0);
+    setIsPlaying(false);
+    lastTimeRef.current = 0;
+  }, [spillId]);
 
   const SIMULATION_DURATION_MS = 20000; // 20 seconds for a full loop
 
@@ -56,8 +67,10 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setIsPlaying(!isPlaying);
   };
 
+  const [direction, setDirection] = useState<'FORWARD' | 'BACKTRACK'>('FORWARD');
+
   return (
-    <SimulationContext.Provider value={{ isPlaying, togglePlay: handleTogglePlay, progress, setProgress }}>
+    <SimulationContext.Provider value={{ isPlaying, togglePlay: handleTogglePlay, progress, setProgress, direction, setDirection }}>
       {children}
     </SimulationContext.Provider>
   );

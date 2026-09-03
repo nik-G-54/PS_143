@@ -10,7 +10,7 @@ const formatIso = (iso?: string) => {
 };
 
 export const IncidentInfoPanel: React.FC = () => {
-  const { spillId, backtrackData, vesselsData, loading } = useIncident();
+  const { spillId, backtrackData, dataSources, loading, error } = useIncident();
 
   if (loading) {
     return (
@@ -19,6 +19,19 @@ export const IncidentInfoPanel: React.FC = () => {
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="bg-card border border-destructive/50 rounded-lg p-4 shadow-sm h-64 flex flex-col items-center justify-center gap-2">
+        <AlertCircle size={24} className="text-destructive" />
+        <span className="text-destructive font-sans font-semibold">Incident Data Unavailable</span>
+        <span className="text-muted-foreground text-xs font-sans text-center">{error}</span>
+      </div>
+    );
+  }
+
+  const obsLat = backtrackData?.backtrack.observation.latitude;
+  const obsLng = backtrackData?.backtrack.observation.longitude;
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col shadow-sm">
@@ -41,11 +54,15 @@ export const IncidentInfoPanel: React.FC = () => {
         <div className="grid grid-cols-2 gap-2 border-b border-border pb-2">
           <div>
             <span className="block text-muted-foreground text-[10px] tracking-wider mb-1 font-sans">OBSERVED LAT</span>
-            <span className="text-foreground font-mono text-xs bg-muted/50 px-2 py-1 rounded">{backtrackData?.backtrack.observation.latitude ?? '---'}° N</span>
+            <span className="text-foreground font-mono text-xs bg-muted/50 px-2 py-1 rounded">
+              {obsLat !== undefined ? `${obsLat.toFixed(4)}° ${obsLat >= 0 ? 'N' : 'S'}` : '---'}
+            </span>
           </div>
           <div>
             <span className="block text-muted-foreground text-[10px] tracking-wider mb-1 font-sans">OBSERVED LON</span>
-            <span className="text-foreground font-mono text-xs bg-muted/50 px-2 py-1 rounded">{backtrackData?.backtrack.observation.longitude ?? '---'}° E</span>
+            <span className="text-foreground font-mono text-xs bg-muted/50 px-2 py-1 rounded">
+              {obsLng !== undefined ? `${obsLng.toFixed(4)}° ${obsLng >= 0 ? 'E' : 'W'}` : '---'}
+            </span>
           </div>
         </div>
 
@@ -71,6 +88,10 @@ export const IncidentInfoPanel: React.FC = () => {
               <span className="text-muted-foreground text-[10px] font-sans">RADIUS</span>
               <span className="text-primary font-mono text-xs">{backtrackData?.backtrack.source_estimate.radius_km ? `${backtrackData.backtrack.source_estimate.radius_km.toFixed(2)} km` : '---'}</span>
             </div>
+            <div className="flex justify-between pt-1 border-t border-border/50">
+              <span className="text-muted-foreground text-[9px] font-sans">DATA SOURCE</span>
+              <span className="text-muted-foreground font-mono text-[9px]">{dataSources?.sourceEstimate.toUpperCase()}</span>
+            </div>
           </div>
         </div>
 
@@ -87,6 +108,10 @@ export const IncidentInfoPanel: React.FC = () => {
             <div className="flex justify-between">
               <span className="text-muted-foreground text-[10px] font-sans">TOP VESSEL</span>
               <span className="text-primary font-mono text-xs">{backtrackData?.attribution.top_vessel ?? '---'}</span>
+            </div>
+            <div className="flex justify-between pt-1 border-t border-border/50">
+              <span className="text-muted-foreground text-[9px] font-sans">DATA SOURCE</span>
+              <span className="text-muted-foreground font-mono text-[9px]">{dataSources?.vessels.toUpperCase()}</span>
             </div>
           </div>
         </div>

@@ -13,7 +13,8 @@ export function resolveVesselPosition(
   track: AISTrackPoint[],
   progress: number,
   startTimeMs: number,
-  endTimeMs: number
+  endTimeMs: number,
+  direction: 'FORWARD' | 'BACKTRACK' = 'FORWARD'
 ): ResolvedVesselPosition | null {
   if (!track || track.length === 0) return null;
 
@@ -31,7 +32,9 @@ export function resolveVesselPosition(
     };
   }
 
-  const currentTimeMs = startTimeMs + progress * (endTimeMs - startTimeMs);
+  const currentTimeMs = direction === 'FORWARD'
+    ? startTimeMs + progress * (endTimeMs - startTimeMs)
+    : endTimeMs - progress * (endTimeMs - startTimeMs);
 
   // Chronological bounds
   const firstPtTime = Date.parse(validPoints[0].timestamp);

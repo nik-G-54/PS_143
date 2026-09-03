@@ -3,7 +3,7 @@ import { Ship, Info } from 'lucide-react';
 import { useIncident } from '../../context/IncidentContext';
 
 export const CandidateVesselPanel: React.FC = () => {
-  const { vesselsData, loading, error, selectedVesselId, setSelectedVesselId } = useIncident();
+  const { vesselsData, loading, error, dataSources, selectedVesselId, setSelectedVesselId } = useIncident();
 
   if (loading) {
     return (
@@ -21,7 +21,7 @@ export const CandidateVesselPanel: React.FC = () => {
     );
   }
 
-  if (!vesselsData || !vesselsData.candidates || vesselsData.candidates.length === 0) {
+  if (!vesselsData || !vesselsData.vessels || vesselsData.vessels.length === 0) {
     return (
       <div className="bg-card border border-border rounded-lg p-4 shadow-sm h-64 flex items-center justify-center">
         <span className="text-muted-foreground font-sans text-sm">No candidate vessels identified.</span>
@@ -36,11 +36,11 @@ export const CandidateVesselPanel: React.FC = () => {
           <Ship size={16} className="text-primary" />
           <h3 className="text-sm font-semibold text-foreground tracking-wider font-sans">CANDIDATE VESSELS</h3>
         </div>
-        <span className="text-xs text-muted-foreground font-mono">{vesselsData.candidates.length} FOUND</span>
+        <span className="text-xs text-muted-foreground font-mono">{vesselsData.vessels.length} FOUND</span>
       </div>
       
       <div className="p-2 space-y-2 overflow-y-auto">
-        {vesselsData.candidates.map((candidate) => {
+        {vesselsData.vessels.map((candidate) => {
           const isTopCandidate = candidate.rank === 1;
           const isSelected = selectedVesselId === candidate.vessel_id;
 
@@ -84,24 +84,36 @@ export const CandidateVesselPanel: React.FC = () => {
                 <div>
                   <span className="block text-[9px] text-muted-foreground tracking-wider">CORRELATION SCORE</span>
                   <span className="text-xs font-mono text-foreground">
-                    {candidate.score !== null ? candidate.score.toFixed(3) : 'Unavailable'}
+                    {typeof candidate.score === 'number' ? candidate.score.toFixed(3) : 'Unavailable'}
                   </span>
                 </div>
                 <div>
                   <span className="block text-[9px] text-muted-foreground tracking-wider">DIST. TO SOURCE EST.</span>
                   <span className="text-xs font-mono text-foreground">
-                    {candidate.distance_to_origin_km !== undefined ? `${candidate.distance_to_origin_km.toFixed(2)} km` : '---'}
+                    {typeof candidate.distance_to_origin_km === 'number' ? `${candidate.distance_to_origin_km.toFixed(2)} km` : 'Unavailable'}
                   </span>
                 </div>
               </div>
 
               {isSelected && (
-                <div className="mt-3 pt-2 border-t border-border/50 flex items-start gap-2">
-                  <Info size={12} className="text-primary shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-muted-foreground">
-                    This vessel is identified as a potential source through AIS correlation. This does not confirm causation.
-                    {candidate.track ? ' Historical track data available.' : ' Detailed track data is pending backend support.'}
-                  </p>
+                <div className="mt-3 pt-2 border-t border-border/50 flex flex-col gap-2">
+                  <div className="flex items-start gap-2">
+                    <Info size={12} className="text-primary shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-muted-foreground">
+                      This vessel is identified as a potential source through AIS correlation. This does not confirm causation.
+                      {candidate.track ? ' Track data available.' : ' Detailed track data is pending backend support.'}
+                    </p>
+                  </div>
+                  {dataSources && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[9px] font-sans">TRACK SOURCE</span>
+                      <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                        dataSources.vesselTracks === 'Simulated Demo' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-primary/20 text-primary border-primary/30'
+                      }`}>
+                        {dataSources.vesselTracks.toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

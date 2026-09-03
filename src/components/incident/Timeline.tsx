@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { mockTimeline } from '../../data/mockIncident';
+
 import { Play, Pause } from 'lucide-react';
 import { useSimulation } from '../../context/SimulationContext';
 import { useIncident } from '../../context/IncidentContext';
@@ -11,7 +11,7 @@ const formatTime = (iso: string) => {
 };
 
 export const Timeline: React.FC = () => {
-  const { isPlaying, togglePlay, progress, setProgress } = useSimulation();
+  const { isPlaying, togglePlay, progress, setProgress, direction, setDirection } = useSimulation();
   const { backtrackData } = useIncident();
 
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -23,23 +23,53 @@ export const Timeline: React.FC = () => {
 
   const timelineEvents = useMemo(() => {
     if (backtrackData) {
-      return [
-        { label: 'EST. RELEASE', time: formatTime(backtrackData.backtrack.estimated_release_time) },
-        { label: 'OBSERVATION', time: formatTime(backtrackData.backtrack.observation.timestamp), isIncident: true }
-      ];
+      const releaseTime = formatTime(backtrackData.backtrack.estimated_release_time);
+      const obsTime = formatTime(backtrackData.backtrack.observation.timestamp);
+
+      if (direction === 'FORWARD') {
+        return [
+          { label: 'EST. RELEASE', time: releaseTime },
+          { label: 'OBSERVATION', time: obsTime, isIncident: true }
+        ];
+      } else {
+        return [
+          { label: 'OBSERVATION', time: obsTime, isIncident: true },
+          { label: 'EST. RELEASE', time: releaseTime }
+        ];
+      }
     }
-    return mockTimeline;
-  }, [backtrackData]);
+    return [
+      { label: 'START', time: '00:00' },
+      { label: 'END', time: '23:59' }
+    ];
+  }, [backtrackData, direction]);
 
   return (
     <div className="bg-card border-t border-border h-24 flex flex-col justify-center px-6 relative z-10">
       <div className="flex items-center gap-6">
-        <button 
-          onClick={togglePlay}
-          className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground shrink-0 transition-colors shadow-md"
-        >
-          {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-1" />}
-        </button>
+        
+        <div className="flex flex-col gap-1 items-center">
+          <div className="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border">
+            <button
+              onClick={() => setDirection('FORWARD')}
+              className={`px-3 py-1 text-[10px] font-semibold tracking-wider font-sans rounded transition-colors ${direction === 'FORWARD' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              FORWARD
+            </button>
+            <button
+              onClick={() => setDirection('BACKTRACK')}
+              className={`px-3 py-1 text-[10px] font-semibold tracking-wider font-sans rounded transition-colors ${direction === 'BACKTRACK' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              BACKTRACK
+            </button>
+          </div>
+          <button 
+            onClick={togglePlay}
+            className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground shrink-0 transition-colors shadow-md mt-1"
+          >
+            {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-1" />}
+          </button>
+        </div>
         
         <div 
           className="flex-1 relative flex items-center h-12 cursor-pointer group/timeline"

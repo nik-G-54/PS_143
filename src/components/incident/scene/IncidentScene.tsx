@@ -13,6 +13,8 @@ import { latLonToWorld } from '../../../utils/coordinates';
 import { mockIncident } from '../../../data/mockIncident';
 import { mockAISTrack } from '../../../data/mockAIS';
 import { useIncident } from '../../../context/IncidentContext';
+import { SourceEstimate } from './SourceEstimate';
+import { OilTrajectory } from './OilTrajectory';
 
 export const IncidentScene: React.FC = () => {
   const { backtrackData } = useIncident();
@@ -35,7 +37,10 @@ export const IncidentScene: React.FC = () => {
       <SceneLighting />
       <OceanSurface />
       <OilSpill />
+      <OilTrajectory />
+      <SourceEstimate />
       <AISTrack track={mockAISTrack} />
+
       <SceneGrid />
       <IncidentMarker position={[incidentPos.x, incidentPos.y, incidentPos.z]} />
       <TestPointMarker position={[testPos.x, testPos.y, testPos.z]} />

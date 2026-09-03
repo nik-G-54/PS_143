@@ -6,7 +6,6 @@ import { IncidentsTable } from '../components/incidents/IncidentsTable';
 import { IncidentFilters } from '../components/incidents/IncidentFilters';
 import { useIncidentFilters } from '../hooks/useIncidentFilters';
 import { MOCK_INCIDENTS } from '../data/mockIncidents';
-import { AlertTriangle } from 'lucide-react';
 
 const IncidentsPage: React.FC = () => {
   const navigate = useNavigate();

@@ -1,233 +1,177 @@
-# OCEAN SENTINEL — Averra-Style Incidents Dashboard
+# NAUKA — Maritime Intelligence Design System
 
-## CRITICAL: Match Averra B2B Dashboard Exactly
-
-Reference: https://www.behance.net/gallery/246765881/Averra-B2B-Invoice-Platform-UX-UI
+This document outlines the official design system, typography scales, color tokens, and layout guidelines for **NAUKA — Maritime Intelligence**.
 
 ---
 
-## EXACT COLORS (No deviations)
+## 1. Brand Identity & Design Philosophy
 
-Light Mode:
-- Page background: #FFFFFF (PURE WHITE, not off-white)
-- Sidebar background: #FFFFFF with right border: 1px solid #F0F0F0
-- Card background: #FFFFFF
-- Card border: 1px solid #F0F0F0 (very light gray, barely visible)
-- Primary action/cyan: #0D9488 (Sea Green)
-- Heading text: #1A1D23
-- Body text: #4B5563
-- Muted text: #9CA3AF
-- Border color: #E5E7EB
-
-Dark Mode:
-- Page background (Base): #090D16 (Deep Ocean Black)
-- Sidebar/Surface background: #151F33 (Midnight Slate)
-- Card: #151F33 (Midnight Slate)
-- Card border (Secondary): #64748B (Steel Gray)
-- Primary (Cyan): #0D9488 (Sea Green)
-- Spill Critical (Crimson): #DC2626 (Spill Crimson)
-- Vessel Normal (Emerald): #10B981 (Safe Emerald)
-- Text Primary (Ice): #F8FAFC (Pure Ice)
-- Text Muted (Fog): #94A3B8 (Fog Slate)
+- **Application Name**: NAUKA — Maritime Intelligence
+- **Design Philosophy**: High-contrast, tactical maritime GIS interface balancing high-density data visualization with clean aesthetics.
+- **Dual Aesthetic**:
+  - **Light Mode**: Warm Cream & Soft Earth tones (`#faf9f5` base) reducing eye fatigue during daytime monitoring.
+  - **Dark Mode**: Dark Obsidian & Slate (`#262624` base) designed for night shifts, command centers, and map overlay contrast.
+- **Tactical Features**: Glassmorphism (`backdrop-blur`), crisp border tokens, micro-telemetry data fields, and smooth theme switching.
 
 ---
 
-## SIDEBAR (Exact Averra Style)
+## 2. Color Palette & Token System
 
-- Width: 240px
-- Background: white (light) / #13151D (dark)
-- Border-right: 1px solid #F0F0F0 (light) / #252830 (dark)
-- Logo: "OCEAN SENTINEL" in bold 16px, "MARITIME INTELLIGENCE" in 11px muted uppercase
-- Menu items: 14px, color #6B7280
-- Active item: background rgba(0,184,148,0.06), color #00B894, font-weight 600
-- Active item LEFT BORDER: 3px solid #00B894
-- Menu icon: 18px, stroke-width 1.5
-- Spacing between items: 4px
-- Section headers ("MAIN MENU", "INVESTIGATION"): 11px, uppercase, #9CA3AF, letter-spacing 0.5px
+### 2.1 Primary Brand Color (Averra Amber)
 
----
+The brand primary color is **Averra Amber**, used for interactive controls, active states, focus rings, and tactical accents.
 
-## TOP HEADER BAR
-
-- Height: 64px
-- Background: white / #1A1D27
-- Border-bottom: 1px solid #F0F0F0 / #252830
-- Left: "INCIDENTS" text with alert icon, font-weight 600
-- Right: "SYSTEM ONLINE" with small green dot (6px circle, background #00B894, box-shadow 0 0 6px rgba(0,184,148,0.4))
+| State / Variant | Light Mode | Dark Mode | CSS Token / Utility |
+|---|---|---|---|
+| Primary Default | `#c96442` | `#d97757` | `var(--primary)` / `bg-primary` |
+| Primary Hover | `#b05730` | `#b05730` | `averra.amber.hover` |
+| Focus Ring | `#c96442` | `#d97757` | `var(--ring)` |
 
 ---
 
-## PAGE HEADER
+### 2.2 Surface & Layout Color Tokens
 
-- Padding: 32px 40px 24px
-- Icon: Warning triangle in green circle (40px, bg rgba(0,184,148,0.1))
-- Title: "Incidents Dashboard" — 28px, font-weight 700, color #1A1D23
-- Subtitle: "Monitor and investigate..." — 15px, color #6B7280, margin-top 8px
+All background and border colors adapt dynamically via CSS Custom Properties.
 
----
-
-## SEARCH/FILTER BAR (Inside Card)
-
-- Card: white bg, border 1px solid #F0F0F0, border-radius 12px, padding 16px 20px
-- Search input: height 44px, bg #F9FAFB, border 1px solid #E5E7EB, border-radius 8px
-- Input focus: border-color #00B894, box-shadow 0 0 0 3px rgba(0,184,148,0.1)
-- Dropdown: same style as input, width 160px
-- "Showing X of X" text: 13px, color #6B7280
-- RESULTS label: 11px, uppercase, #9CA3AF, letter-spacing 0.5px
+| Token | Light Mode | Dark Mode | Usage Description |
+|---|---|---|---|
+| `--background` | `#faf9f5` *(Warm Cream)* | `#262624` *(Dark Obsidian)* | Main view/page background |
+| `--card` | `#f5f4ef` *(Soft Paper)* | `#2c2c2b` *(Charcoal Slate)* | Dashboard cards, popups, panel containers |
+| `--popover` | `#ffffff` *(Pure White)* | `#30302e` *(Dark Popover)* | Tooltips, dropdowns, modal windows |
+| `--sidebar` | `#f5f4ee` *(Warm Surface)* | `#1f1e1d` *(Midnight Black)* | Navigation sidebar container |
+| `--muted` | `#ede9de` | `#1b1b19` | Quiet areas, disabled button surfaces |
+| `--accent` | `#e9e6dc` | `#1a1915` | Hover backgrounds, active tab pills |
+| `--border` | `#dad9d4` | `#3e3e38` | Container borders, table dividers |
+| `--input` | `#b4b2a7` | `#52514a` | Form field outlines, search borders |
 
 ---
 
-## TABLE (Critical — Match Averra's Clean Look)
+### 2.3 Typography & Foreground Colors
 
-Table Card:
-- Background: white / #1A1D27
-- Border: 1px solid #F0F0F0 / #252830
-- Border-radius: 12px
-- Overflow: hidden
-- No outer shadow (keep flat)
+Text colors maintain WCAG AA contrast standards across both light and dark backgrounds.
 
-Table Header:
-- Background: #FAFBFC (very subtle gray) / #1E2130 (dark)
-- Text: 11px, uppercase, #9CA3AF, letter-spacing 0.5px, font-weight 600
-- Height: 48px
-- Padding: 0 20px
-- Border-bottom: 1px solid #F0F0F0 / #252830
-
-Table Rows:
-- Height: 72px (generous)
-- Padding: 0 20px
-- Border-bottom: 1px solid #F0F0F0 (between rows only)
-- Hover: background #FAFBFC (light) / #1E2130 (dark)
-- Transition: background 150ms ease
-
-Table Cells:
-- Padding: 16px 20px
-- Vertical-align: middle
+| Token | Light Mode | Dark Mode | Usage Description |
+|---|---|---|---|
+| `--foreground` | `#3d3929` *(Dark Earth)* | `#f1f1ef` *(Off-White)* | Main body text, primary titles |
+| `--card-foreground` | `#141413` | `#faf9f5` | Card titles, widget body copy |
+| `--muted-foreground` | `#6e6d68` | `#b7b5a9` | Labels, subtitles, table headers |
+| `--accent-foreground` | `#28261b` | `#f5f4ee` | Highlighted text in active states |
+| `--primary-foreground` | `#ffffff` | `#141413` | Text on active primary buttons |
 
 ---
 
-## DATA STYLING IN TABLE
+### 2.4 Data Visualization & Chart Palette
 
-Incident ID:
-- Font: 'JetBrains Mono', monospace
-- Size: 14px
-- Weight: 600
-- Color: #00B894 (green, clickable)
-- Cursor: pointer
+Chart colors are tuned for multi-layered series, satellite radar plots, and trend analytics.
 
-Date:
-- Size: 14px
-- Color: #4B5563
-
-Location:
-- Place name: 14px, #1A1D23, font-weight 500
-- Coordinates: 12px, #9CA3AF, margin-top 2px, font-family monospace
-
-Status Badge:
-- Padding: 4px 12px
-- Border-radius: 100px (pill)
-- Font-size: 12px
-- Font-weight: 600
-- Text-transform: uppercase
-- Letter-spacing: 0.3px
-
-Status Colors:
-- ACTIVE: bg #DCFCE7, color #16A34A
-- INVESTIGATING: bg #FEF3C7, color #D97706
-- RESOLVED: bg #DBEAFE, color #2563EB
-
-Confidence:
-- Size: 14px
-- Weight: 600
-- Color: #00B894
-
-Severity Badge:
-- Same pill style as status
-- HIGH: bg #FEE2E2, color #DC2626
-- MEDIUM: bg #FEF3C7, color #EA580C
-- LOW: bg #DCFCE7, color #16A34A
-
-Vessel Name:
-- Size: 14px
-- Weight: 500
-- Color: #1A1D23
-
-Spill Area:
-- Value: 16px, font-weight 700, color #1A1D23
-- Unit: 12px, color #9CA3AF, margin-left 2px
-
-Action Button:
-- Size: 36px circle
-- Border: 1px solid #E5E7EB
-- Background: white
-- Icon: #6B7280
-- Hover: border-color #00B894, color #00B894, background rgba(0,184,148,0.04)
-- Transition: all 150ms ease
+| Chart Token | Color Code | Purpose / Usage |
+|---|---|---|
+| `var(--chart-1)` | `#b05730` *(Deep Amber)* | Primary metric line, high severity trends |
+| `var(--chart-2)` | `#9c87f5` *(Purple Blue)* | AIS vessel tracks, secondary dataset |
+| `var(--chart-3)` | `#ded8c4` / `#1a1915` | Baseline / Neutral reference lines |
+| `var(--chart-4)` | `#dbd3f0` / `#2f2b48` | Area chart fills, historical ranges |
+| `var(--chart-5)` | `#b4552d` *(Rust Red)* | Spill radius thresholds, critical alerts |
 
 ---
 
-## BUTTONS (Averra Style)
+## 3. Typography System
 
-Primary Button:
-- Height: 40px
-- Padding: 0 20px
-- Background: #00B894
-- Color: white
-- Border-radius: 8px
-- Font-size: 14px
-- Font-weight: 600
-- Hover: background #00A381, transform translateY(-1px), box-shadow 0 4px 12px rgba(0,184,148,0.25)
-- Transition: all 200ms ease
+### 3.1 Font Families
 
-Secondary Button:
-- Same dimensions
-- Background: white
-- Border: 1px solid #E5E7EB
-- Color: #4B5563
-- Hover: border-color #D1D5DB, background #F9FAFB
+1. **Primary Sans-Serif (`Outfit`)**:
+   - CSS Variable: `var(--font-sans)`
+   - Used for: Headers, navigation, cards, UI controls, body text.
+   - Google Font: `'Outfit', sans-serif`
+
+2. **Monospace (`Geist Mono`)**:
+   - CSS Variable: `var(--font-mono)`
+   - Used for: Lat/Lng coordinates, timestamps, incident IDs, telemetry HUD, map scale.
+   - Google Font: `'Geist Mono', ui-monospace, monospace`
 
 ---
 
-## THEME TOGGLE
+### 3.2 Type Scale & Hierarchy
 
-- Size: 40px circle
-- Border: 1px solid #E5E7EB
-- Background: white / #1A1D27
-- Icon: sun/moon, 18px
-- Position: fixed in top-right of header area
-- Hover: background #F9FAFB / #252830
-- Transition: all 200ms ease
-
----
-
-## TYPOGRAPHY
-
-- Primary: Inter (Google Fonts)
-- Monospace: JetBrains Mono (for IDs, coordinates)
-- Heading weight: 700
-- Body weight: 400
-- Label weight: 600
-- Line height: 1.5
+| Typography Role | Size | Font Weight | Line Height | Font Family | Example Usage |
+|---|---|---|---|---|---|
+| **Display Title** | `28px / 1.75rem` | Bold (700) | `1.2` | Outfit | Dashboard & Incident titles |
+| **Card Header** | `20px / 1.25rem` | SemiBold (600) | `1.3` | Outfit | Panel headers, modal titles |
+| **Section Header** | `16px / 1.00rem` | SemiBold (600) | `1.4` | Outfit | Sidebar headers, form labels |
+| **Body Regular** | `14px / 0.875rem` | Regular (400/500) | `1.5` | Outfit | Table rows, general copy |
+| **Micro Caption** | `12px / 0.75rem` | Regular (400) | `1.4` | Outfit | Timestamps, metadata |
+| **Telemetry Main** | `14px / 0.875rem` | Medium (500) | `1.2` | Geist Mono | Coordinates `13.08° N, 80.18° E` |
+| **Telemetry Micro** | `10px / 0.625rem` | Medium (500) | `1.0` | Geist Mono | Map scale, badge numbers |
 
 ---
 
-## ANIMATIONS
+## 4. Component Specifications
 
-- Page load: content fades in 300ms
-- Table rows: staggered fade-in 50ms each
-- Hover transitions: 150ms ease
-- Theme toggle: 200ms color transition
-- Button hover: 200ms ease with slight lift
+### 4.1 Cards & Containers
+- **Border Radius**: `var(--radius)` = `1rem` (`16px`).
+- **Border**: `1px solid var(--border)`
+- **Background**: `var(--card)`
+- **Shadow**: `box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08)` (Light) / `rgba(0, 0, 0, 0.3)` (Dark).
+
+### 4.2 Buttons
+- **Primary Button**: `bg-primary text-primary-foreground hover:opacity-90 rounded-lg px-4 py-2 font-medium`
+- **Secondary Button**: `bg-secondary text-secondary-foreground hover:bg-accent border border-border rounded-lg`
+- **Ghost/Icon Button**: `bg-transparent hover:bg-accent text-foreground rounded-lg p-2`
+
+### 4.3 Status & Severity Badges
+- **Active / High Alert**: Red badge (`bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20`)
+- **Investigating / Medium**: Amber badge (`bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20`)
+- **Resolved / Low**: Emerald badge (`bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20`)
+- **Shape**: Full pill (`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider`)
 
 ---
 
-## KEY DIFFERENCES FROM CURRENT BUILD
+## 5. Map & GIS UI Elements (MapLibre GL)
 
-1. Use PURE WHITE background, not off-white
-2. Add proper card shadows (very subtle)
-3. Increase table row height to 72px
-4. Add more padding (20px minimum)
-5. Make badges more rounded (full pill)
-6. Use #00B894 green instead of #2D8A56
-7. Add monospace font for IDs
-8. Make table header uppercase and smaller
+Custom MapLibre controls match the application design system:
+
+```css
+/* MapLibre Scale Control */
+.maplibregl-ctrl-scale {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--muted-foreground) !important;
+  border-radius: 6px !important;
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+  padding: 3px 10px !important;
+  backdrop-filter: blur(4px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* MapLibre Control Group Buttons */
+.maplibregl-ctrl-group {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Compass Needle Pointer Accent */
+.maplibregl-ctrl-compass-pointer {
+  fill: var(--primary) !important;
+}
+```
+
+---
+
+## 6. Micro-Interactions & Animation Guidelines
+
+- **Theme Transition**: Smooth color updates across all elements using `transition-colors duration-150`.
+- **Live Marker Pulse**:
+  ```css
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 1; }
+  }
+  ```
+- **Ping Radar Alert**:
+  ```css
+  @keyframes ping {
+    75%, 100% { transform: scale(2); opacity: 0; }
+  }
+  ```

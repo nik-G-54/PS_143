@@ -5,6 +5,7 @@ import { IncidentReconstructionPage } from './pages/IncidentReconstructionPage';
 import { DashboardPage } from './pages/DashboardPage';
 
 const IncidentsPage = lazy(() => import('./pages/IncidentsPage'));
+const ImageTestPage = lazy(() => import('./pages/ImageTestPage'));
 
 const PageLoader = () => (
   <div className="flex h-screen w-full bg-background items-center justify-center text-primary font-medium font-sans">
@@ -34,6 +35,14 @@ function App() {
         } 
       />
       <Route path="/incident-reconstruction" element={<IncidentReconstructionPage />} />
+      <Route 
+        path="/test-image" 
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <ImageTestPage />
+          </Suspense>
+        } 
+      />
       
       {/* Fallback route */}
       <Route path="*" element={<Navigate to="/" replace />} />

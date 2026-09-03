@@ -102,16 +102,16 @@ export const RecentIncidents: React.FC<RecentIncidentsProps> = ({ incidents }) =
       </div>
 
       {/* Table Area */}
-      <div className="flex-1 p-5 overflow-x-auto overflow-y-auto max-h-[480px]">
-        <table className="w-full border-collapse text-left border border-border">
+      <div className="flex-1 p-5 overflow-x-hidden overflow-y-auto max-h-[480px]">
+        <table className="w-full table-fixed border-collapse text-left border border-border">
           <thead>
             {/* Table header row styled with Claude Amber primary background */}
             <tr className="bg-primary text-primary-foreground text-[11px] font-extrabold uppercase tracking-wider h-12">
-              <th className="px-5 font-bold border border-primary/20 font-sans">Location</th>
-              <th className="px-5 font-bold border border-primary/20 w-[130px] font-sans">Time (UTC)</th>
-              <th className="px-5 font-bold border border-primary/20 w-[100px] font-sans">Severity</th>
-              <th className="px-5 font-bold text-center border border-primary/20 w-[80px] font-sans">CONF.</th>
-              <th className="px-5 font-bold border border-primary/20 w-[100px] font-sans">Status</th>
+              <th className="px-3 font-bold border border-primary/20 font-sans w-[30%]">Location</th>
+              <th className="px-3 font-bold border border-primary/20 font-sans w-[25%]">Time (UTC)</th>
+              <th className="px-3 font-bold border border-primary/20 font-sans w-[16%]">Severity</th>
+              <th className="px-3 font-bold text-center border border-primary/20 font-sans w-[13%]">CONF.</th>
+              <th className="px-3 font-bold border border-primary/20 font-sans w-[16%]">Status</th>
             </tr>
           </thead>
           <tbody className="text-sm text-foreground">
@@ -124,21 +124,21 @@ export const RecentIncidents: React.FC<RecentIncidentsProps> = ({ incidents }) =
                   onClick={() => handleRowClick(incident.spill_id)}
                   className="h-[72px] cursor-pointer hover:bg-accent/50 transition-colors duration-150 border-b border-border"
                 >
-                  <td className="px-5 py-4 max-w-[240px] truncate border border-border">
-                    <div className="font-bold text-foreground font-sans">
+                  <td className="px-3 py-3 border border-border truncate" title={incident.location.name}>
+                    <div className="font-bold text-foreground font-sans truncate">
                       {incident.location.name}
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-xs font-semibold text-muted-foreground border border-border whitespace-nowrap font-mono">
+                  <td className="px-3 py-3 text-xs font-semibold text-muted-foreground border border-border whitespace-nowrap font-mono">
                     {formatTimestamp(incident.timestamp)}
                   </td>
-                  <td className="px-5 py-4 border border-border">
+                  <td className="px-3 py-3 border border-border">
                     {getSeverityBadge(incident.severity)}
                   </td>
-                  <td className="px-5 py-4 font-mono text-xs font-bold text-foreground text-center border border-border">
+                  <td className="px-3 py-3 font-mono text-xs font-bold text-foreground text-center border border-border">
                     {confidencePercentage}%
                   </td>
-                  <td className="px-5 py-4 border border-border">
+                  <td className="px-3 py-3 border border-border">
                     {getStatusBadge(incident.status)}
                   </td>
                 </tr>

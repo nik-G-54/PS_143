@@ -4,7 +4,8 @@ import {
   LayoutDashboard, 
   Map, 
   AlertTriangle, 
-  Video 
+  Video,
+  Scan
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -60,6 +61,12 @@ export const Sidebar: React.FC = () => {
           icon={<Video size={18} strokeWidth={1.5} />} 
           label="3D Incident Reconstruction" 
           to="/incident-reconstruction" 
+          isCollapsed={isCollapsed}
+        />
+        <SidebarItem 
+          icon={<Scan size={18} strokeWidth={1.5} />} 
+          label="Test Your Image" 
+          to="/test-image" 
           isCollapsed={isCollapsed}
         />
       </nav>

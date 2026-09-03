@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 :root {
+  --brand: #c96442;
+  --bg: #faf9f5;
+  --fg: #3d3929;
+  --alert: #ef4444;
   --card: #f5f4ef;
   --ring: #c96442;
   --input: #b4b2a7;
@@ -50,6 +54,10 @@
 }
 
 .dark {
+  --brand: #d97757;
+  --bg: #262624;
+  --fg: #f1f1ef;
+  --alert: #ef4444;
   --card: #2c2c2b;
   --ring: #d97757;
   --input: #52514a;

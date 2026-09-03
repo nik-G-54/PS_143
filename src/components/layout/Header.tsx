@@ -7,7 +7,8 @@ import {
   AlertTriangle, 
   Sun, 
   Moon, 
-  ShieldAlert 
+  ShieldAlert,
+  Scan
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { mockIncident } from '../../data/mockIncident';
@@ -39,6 +40,11 @@ export const Header: React.FC = () => {
         return {
           title: '3D INCIDENT RECONSTRUCTION',
           icon: <Activity size={18} className="text-primary" />
+        };
+      case '/test-image':
+        return {
+          title: 'TEST YOUR IMAGE',
+          icon: <Scan size={18} className="text-primary" />
         };
       default:
         return {

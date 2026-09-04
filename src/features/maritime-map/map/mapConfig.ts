@@ -4,6 +4,8 @@ export type BasemapMode = 'standard' | 'satellite' | 'hybrid';
 // Free development satellite provider (Esri World Imagery)
 // No API key required for prototype/development usage.
 // For production, replace with a licensed provider.
+import cartoLabels from './cartoLabels.json';
+
 const ESRI_SATELLITE_STYLE = {
   version: 8,
   sources: {
@@ -18,7 +20,6 @@ const ESRI_SATELLITE_STYLE = {
   },
   layers: [
     {
-      // Dark background so the globe isn't a white ball while tiles load
       id: 'background',
       type: 'background',
       paint: {
@@ -33,6 +34,20 @@ const ESRI_SATELLITE_STYLE = {
   ]
 };
 
+const HYBRID_STYLE = {
+  version: 8,
+  sprite: cartoLabels.sprite,
+  glyphs: cartoLabels.glyphs,
+  sources: {
+    ...ESRI_SATELLITE_STYLE.sources,
+    ...cartoLabels.sources,
+  },
+  layers: [
+    ...ESRI_SATELLITE_STYLE.layers,
+    ...cartoLabels.layers,
+  ]
+};
+
 export const MAP_CONFIG = {
   styles: {
     standard: {
@@ -44,10 +59,8 @@ export const MAP_CONFIG = {
       light: ESRI_SATELLITE_STYLE as any,
     },
     hybrid: {
-      // Hybrid falls back to satellite for now.
-      // In production, overlay a label/borders vector style on top.
-      dark: ESRI_SATELLITE_STYLE as any,
-      light: ESRI_SATELLITE_STYLE as any,
+      dark: HYBRID_STYLE as any,
+      light: HYBRID_STYLE as any,
     }
   },
   initialCamera: {

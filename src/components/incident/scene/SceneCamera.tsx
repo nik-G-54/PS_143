@@ -3,7 +3,7 @@ import { PerspectiveCamera, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useViewportCamera } from '../../../context/ViewportCameraContext';
 
-const INITIAL_POSITION: [number, number, number] = [45, 20, 65];
+const INITIAL_POSITION: [number, number, number] = [55, 28, 85];
 const INITIAL_TARGET: [number, number, number] = [0, 0, 0];
 
 export const SceneCamera: React.FC = () => {
@@ -37,9 +37,9 @@ export const SceneCamera: React.FC = () => {
       <PerspectiveCamera
         makeDefault
         position={INITIAL_POSITION}
-        fov={45}
+        fov={48}
         near={0.1}
-        far={3000}
+        far={8000}
       />
       <OrbitControls
         ref={bindControls}
@@ -48,8 +48,8 @@ export const SceneCamera: React.FC = () => {
         enableDamping={true}
         dampingFactor={0.05}
         minDistance={5}
-        maxDistance={500}
-        maxPolarAngle={Math.PI / 2 - 0.05}
+        maxDistance={1400}
+        maxPolarAngle={Math.PI / 2 - 0.02}
       />
     </>
   );

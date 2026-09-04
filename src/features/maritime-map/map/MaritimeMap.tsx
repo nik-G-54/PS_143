@@ -5,21 +5,24 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { MAP_CONFIG, BasemapMode } from './mapConfig';
 import { useTheme } from '../../../hooks/useTheme';
 import { BasemapSelector } from '../controls/BasemapSelector';
+import { createDeckOverlay } from '../deck/DeckOverlay';
+import { MapboxOverlay } from '@deck.gl/mapbox';
 
 // Explicitly set the worker URL using Vite's ?worker&url syntax
 // This fixes the 'maplibre-gl-worker.mjs does not exist in optimize deps' error
 maplibregl.setWorkerUrl(workerUrl);
 
-
 export function MaritimeMap() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const deckOverlayRef = useRef<MapboxOverlay | null>(null);
   const { theme } = useTheme();
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [basemapMode, setBasemapMode] = useState<BasemapMode>('standard');
   const [isStyleLoading, setIsStyleLoading] = useState(false);
+  const [isTilesLoading, setIsTilesLoading] = useState(false);
 
   // Helper: apply globe projection to a map instance.
   // Must be called AFTER the style has finished loading (inside style.load).
@@ -59,6 +62,13 @@ export function MaritimeMap() {
 
       map.on('load', () => {
         setIsLoading(false);
+        
+        // Add Deck.gl overlay once map is loaded
+        if (!deckOverlayRef.current) {
+          const deckOverlay = createDeckOverlay();
+          deckOverlayRef.current = deckOverlay;
+          map.addControl(deckOverlay as unknown as maplibregl.IControl);
+        }
       });
 
       // Navigation controls
@@ -97,6 +107,11 @@ export function MaritimeMap() {
     }
 
     return () => {
+      if (deckOverlayRef.current && mapRef.current) {
+        mapRef.current.removeControl(deckOverlayRef.current as unknown as maplibregl.IControl);
+        deckOverlayRef.current.finalize();
+        deckOverlayRef.current = null;
+      }
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -105,34 +120,59 @@ export function MaritimeMap() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Style switching (theme or basemap change) ---
-  // setStyle() resets everything including projection.
-  // The 'style.load' handler registered above fires after EVERY style load,
-  // so globe projection is automatically re-applied.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || isLoading) return;
 
     setIsStyleLoading(true);
+    // When switching styles, we wait for new tiles to load
+    setIsTilesLoading(true);
+    
     const newStyle = MAP_CONFIG.styles[basemapMode][theme];
     map.setStyle(newStyle);
 
-    // Clear loading indicator once style data arrives.
-    const onStyleData = () => {
-      if (map.isStyleLoaded()) {
-        setIsStyleLoading(false);
-        map.off('styledata', onStyleData);
+    // style.load fires when the style JSON is fully parsed
+    const onStyleLoad = () => {
+      setIsStyleLoading(false);
+      // We must check if tiles are magically already loaded (e.g. from cache)
+      if (map.areTilesLoaded()) {
+        setIsTilesLoading(false);
       }
     };
-    map.on('styledata', onStyleData);
+
+    map.once('style.load', onStyleLoad);
   }, [theme, basemapMode, isLoading]);
+
+  // --- Tile loading tracker ---
+  // We want to dismiss the loader once the tiles for the current viewport arrive.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const checkLoadingState = () => {
+      if (map.isStyleLoaded() && map.areTilesLoaded()) {
+        setIsTilesLoading(false);
+      }
+    };
+
+    // 'sourcedata' fires when a tile finishes loading
+    map.on('sourcedata', checkLoadingState);
+    // 'styledata' fires when style changes
+    map.on('styledata', checkLoadingState);
+
+    return () => {
+      map.off('sourcedata', checkLoadingState);
+      map.off('styledata', checkLoadingState);
+    };
+  }, [isLoading]); // Attach after initial map load
 
   return (
     <div className="maritime-map-wrapper h-full w-full relative">
       <BasemapSelector currentMode={basemapMode} onSelectMode={setBasemapMode} />
 
-      {(isLoading || isStyleLoading) && !error && (
+      {(isLoading || isStyleLoading || isTilesLoading) && !error && (
         <div className="maritime-map-loading">
-          <span>{isLoading ? 'Loading maritime map…' : 'Loading imagery…'}</span>
+          <span>{isLoading ? 'Initializing map…' : isStyleLoading ? 'Loading style…' : 'Loading imagery…'}</span>
         </div>
       )}
 

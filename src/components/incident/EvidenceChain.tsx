@@ -56,17 +56,17 @@ export const EvidenceChain: React.FC = () => {
   };
 
   return (
-    <div className="w-full bg-sidebar border-b border-border py-2 px-6 overflow-x-auto shrink-0 custom-scrollbar z-10">
-      <div className="flex items-center justify-between min-w-[700px] gap-2 max-w-5xl mx-auto">
+    <div className="w-full bg-sidebar/80 border-b border-border py-1.5 px-4 overflow-x-auto shrink-0 custom-scrollbar z-10">
+      <div className="flex items-center justify-between min-w-[640px] gap-2 max-w-4xl mx-auto">
         {steps.map((step, idx) => (
           <React.Fragment key={step.id}>
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${getStatusClasses(step.status)} transition-colors cursor-pointer`}>
-              <step.icon size={12} />
-              <span className="text-[10px] font-bold tracking-wider whitespace-nowrap">{step.label}</span>
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border ${getStatusClasses(step.status)} transition-colors`}
+            >
+              <step.icon size={11} />
+              <span className="text-[9px] font-bold tracking-wider whitespace-nowrap">{step.label}</span>
             </div>
-            {idx < steps.length - 1 && (
-              <div className="flex-1 h-px bg-border min-w-[20px]" />
-            )}
+            {idx < steps.length - 1 && <div className="flex-1 h-px bg-border min-w-[12px]" />}
           </React.Fragment>
         ))}
       </div>

@@ -11,20 +11,32 @@ export const EnvironmentIndicators: React.FC = () => {
 
   if (!environment) return null;
 
-  const originLat = backtrackData?.backtrack.observation.latitude ?? spillDetails?.centroid?.latitude ?? 0;
-  const originLon = backtrackData?.backtrack.observation.longitude ?? spillDetails?.centroid?.longitude ?? 0;
+  const originLat =
+    backtrackData?.backtrack.observation.latitude ?? spillDetails?.centroid?.latitude ?? 0;
+  const originLon =
+    backtrackData?.backtrack.observation.longitude ?? spillDetails?.centroid?.longitude ?? 0;
 
-  // Center indicators around the incident origin
   const center = latLonToWorld(originLat, originLon, originLat, originLon);
 
-  const toUV = (flow?: { u?: number; v?: number; speed?: number; direction?: number }) => {
-    if (!flow) return { u: 0, v: 0, speed: 0 };
+  const toUV = (flow?: {
+    u?: number;
+    v?: number;
+    speed?: number;
+    direction?: number;
+  }) => {
+    if (!flow) return { u: 0, v: 0, speed: 0, direction: 0 };
     if (typeof flow.u === 'number' && typeof flow.v === 'number') {
-      return { u: flow.u, v: flow.v, speed: flow.speed ?? Math.hypot(flow.u, flow.v) };
+      return {
+        u: flow.u,
+        v: flow.v,
+        speed: flow.speed ?? Math.hypot(flow.u, flow.v),
+        direction: flow.direction ?? ((Math.atan2(flow.u, flow.v) * 180) / Math.PI + 360) % 360,
+      };
     }
     const speed = flow.speed ?? 0;
-    const rad = ((flow.direction ?? 0) * Math.PI) / 180;
-    return { u: Math.sin(rad) * speed, v: Math.cos(rad) * speed, speed };
+    const direction = flow.direction ?? 0;
+    const rad = (direction * Math.PI) / 180;
+    return { u: Math.sin(rad) * speed, v: Math.cos(rad) * speed, speed, direction };
   };
 
   const wind = toUV(environment.wind);
@@ -33,10 +45,20 @@ export const EnvironmentIndicators: React.FC = () => {
   return (
     <group position={[center.x, 0, center.z]}>
       {layers.wind && (
-        <WindIndicator u={wind.u} v={wind.v} speed={wind.speed} />
+        <WindIndicator
+          u={wind.u}
+          v={wind.v}
+          speed={wind.speed}
+          directionDeg={wind.direction}
+        />
       )}
       {layers.current && (
-        <CurrentIndicator u={current.u} v={current.v} speed={current.speed} />
+        <CurrentIndicator
+          u={current.u}
+          v={current.v}
+          speed={current.speed}
+          directionDeg={current.direction}
+        />
       )}
     </group>
   );

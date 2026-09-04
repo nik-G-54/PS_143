@@ -8,6 +8,7 @@ export interface SceneLayersState {
   current: boolean;
   grid: boolean;
   lite: boolean;
+  night: boolean;
 }
 
 export type SceneLayerKey = keyof SceneLayersState;
@@ -28,11 +29,13 @@ const DEFAULT_LAYERS: SceneLayersState = {
   current: true,
   grid: false,
   lite: preferLiteOcean(),
+  night: false,
 };
 
 interface SceneLayersContextValue {
   layers: SceneLayersState;
   toggleLayer: (key: SceneLayerKey) => void;
+  setLayer: (key: SceneLayerKey, value: boolean) => void;
 }
 
 const SceneLayersContext = createContext<SceneLayersContextValue | undefined>(undefined);
@@ -44,7 +47,14 @@ export const SceneLayersProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  const value = useMemo(() => ({ layers, toggleLayer }), [layers, toggleLayer]);
+  const setLayer = useCallback((key: SceneLayerKey, value: boolean) => {
+    setLayers((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const value = useMemo(
+    () => ({ layers, toggleLayer, setLayer }),
+    [layers, toggleLayer, setLayer]
+  );
 
   return (
     <SceneLayersContext.Provider value={value}>

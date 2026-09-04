@@ -12,19 +12,25 @@ export const SimulationViewport: React.FC = () => {
   const { layers } = useSceneLayers();
   const { api } = useViewportCamera();
 
+  const bg = layers.night ? '#020814' : '#0b5f9e';
+  const fogColor = layers.night ? '#06101f' : '#1578b5';
+  const fogDensity = layers.night ? 0.0011 : 0.0007;
+  const exposure = layers.night ? 0.72 : 1.18;
+
   return (
-    <div className="relative w-full h-full bg-[#0a4f86] overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden" style={{ background: bg }}>
       <div className="absolute inset-0 z-0">
         <Canvas
+          key={layers.night ? 'night' : 'day'}
           dpr={layers.lite ? [1, 1] : [1, 2]}
           gl={{
             antialias: !layers.lite,
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.12,
+            toneMappingExposure: exposure,
           }}
           scene={{
-            background: new THREE.Color('#1477b8'),
-            fog: new THREE.FogExp2('#1a7ec4', 0.0018),
+            background: new THREE.Color(bg),
+            fog: new THREE.FogExp2(fogColor, fogDensity),
           }}
         >
           <IncidentScene />
@@ -33,9 +39,7 @@ export const SimulationViewport: React.FC = () => {
 
       <div className="absolute inset-0 z-10 pointer-events-none">
         <SimulationHUD />
-        <div className="pointer-events-auto">
-          <ViewportControls />
-        </div>
+        <ViewportControls />
 
         <div className="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
           <button
@@ -63,11 +67,6 @@ export const SimulationViewport: React.FC = () => {
             <ZoomOut size={18} />
           </button>
         </div>
-
-        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-primary/40 m-4 pointer-events-none" />
-        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary/40 m-4 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary/40 m-4 pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-primary/40 m-4 pointer-events-none" />
       </div>
     </div>
   );

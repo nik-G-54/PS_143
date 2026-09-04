@@ -26,6 +26,9 @@ export const VesselModel: React.FC<VesselModelProps> = ({ id, status, candidate,
 
   // Use candidate ID if available
   const displayId = candidate?.vessel_id ?? id;
+  const displayName = candidate?.vessel_name || displayId;
+  const matchPct =
+    typeof candidate?.score === 'number' ? `${(candidate.score * 100).toFixed(0)}% match` : null;
   const isTopCandidate = candidate?.rank === 1;
   const isSelected = useIncident().selectedVesselId === candidate?.vessel_id;
 
@@ -165,16 +168,28 @@ export const VesselModel: React.FC<VesselModelProps> = ({ id, status, candidate,
 
       {/* Label */}
       <group rotation={[0, -rotationY, 0]}>
-        <Html position={[0, 4, 0]} center zIndexRange={[100, 0]} distanceFactor={40}>
-          <div className={`px-2 py-1 rounded flex flex-col items-center pointer-events-none backdrop-blur-sm shadow-[0_0_10px_rgba(8,145,178,0.3)] border ${
+        <Html position={[0, 4.2, 0]} center zIndexRange={[100, 0]} distanceFactor={40}>
+          <div className={`px-2.5 py-1.5 rounded flex flex-col items-center pointer-events-none backdrop-blur-sm shadow-[0_0_10px_rgba(8,145,178,0.3)] border min-w-[110px] ${
             isSelected ? 'bg-sky-900/90 border-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.5)]' : 
             (isTopCandidate ? 'bg-slate-900/90 border-sky-500/80' : 'bg-slate-900/70 border-slate-500/50')
           }`}>
             <span className={`text-[10px] font-mono font-bold tracking-widest whitespace-nowrap ${
               isSelected ? 'text-sky-300' : (isTopCandidate ? 'text-cyan-300' : 'text-slate-300')
-            }`}>{displayId}</span>
-            {isTopCandidate && <span className="text-[7px] text-sky-400 font-bold tracking-widest uppercase mt-0.5">Top Candidate</span>}
-            {!isTopCandidate && status && <span className="text-[8px] text-slate-400 font-mono tracking-widest mt-0.5">{status}</span>}
+            }`}>{displayName}</span>
+            {displayName !== displayId && (
+              <span className="text-[7px] text-slate-400 font-mono mt-0.5">{displayId}</span>
+            )}
+            {isTopCandidate && (
+              <span className="text-[7px] text-sky-400 font-bold tracking-widest uppercase mt-0.5">
+                Top Candidate{matchPct ? ` · ${matchPct}` : ''}
+              </span>
+            )}
+            {!isTopCandidate && matchPct && (
+              <span className="text-[8px] text-slate-400 font-mono tracking-widest mt-0.5">{matchPct}</span>
+            )}
+            {!isTopCandidate && !matchPct && status && (
+              <span className="text-[8px] text-slate-400 font-mono tracking-widest mt-0.5">{status}</span>
+            )}
           </div>
         </Html>
       </group>

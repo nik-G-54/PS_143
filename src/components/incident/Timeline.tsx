@@ -45,8 +45,8 @@ export const Timeline: React.FC = () => {
   }, [backtrackData, direction]);
 
   return (
-    <div className="bg-card border-t border-border h-16 flex flex-col justify-center px-6 relative z-10 shrink-0">
-      <div className="flex items-center gap-4 w-full max-w-7xl mx-auto">
+    <div className="bg-card/95 border-t border-border h-14 flex flex-col justify-center px-4 relative z-10 shrink-0">
+      <div className="flex items-center gap-3 w-full max-w-7xl mx-auto">
         
         {/* Backtrack Button */}
         <button

@@ -158,30 +158,27 @@ export const OceanFragmentShader = `
     vec3 halfVector = normalize(sunDir + viewDir);
     float NdotH = max(0.0, dot(perturbedNormal, halfVector));
     
-    // Primary tight specular
-    float specPrimary = pow(NdotH, 512.0) * 1.5;
-    
-    // Broader soft specular for general water sheen
-    float specBroad = pow(NdotH, 32.0) * 0.12;
+    float specPrimary = pow(NdotH, 220.0) * 2.4;
+    float specBroad = pow(NdotH, 18.0) * 0.32;
     
     float specular = specPrimary + specBroad;
 
     // Soft ambient + directional lighting
     float NdotL = max(0.0, dot(perturbedNormal, sunDir));
-    float diffuse = NdotL * 0.25 + 0.75; // High ambient, subtle directional
+    float diffuse = NdotL * 0.4 + 0.72;
 
     // Combine
     vec3 finalColor = baseColor * diffuse;
     finalColor += uSunColor * specular * uSunIntensity;
     
-    // Subtle reflection-like sky contribution at grazing angles
-    vec3 skyColor = vec3(0.02, 0.04, 0.08);
-    finalColor = mix(finalColor, skyColor, fresnel * 0.3);
+    // Sky reflection at grazing angles — bright maritime blue, not a night void
+    vec3 skyColor = vec3(0.42, 0.72, 0.92);
+    finalColor = mix(finalColor, skyColor, fresnel * 0.45);
 
-    // Atmospheric depth (distance fade to dark)
+    // Horizon fade into the same water family
     float dist = length(cameraPosition - vWorldPosition);
-    float fogFactor = smoothstep(20.0, 500.0, dist);
-    vec3 fogColor = uColorDeep * 0.15; // Very dark fade
+    float fogFactor = smoothstep(80.0, 720.0, dist);
+    vec3 fogColor = mix(uColorMid, vec3(0.22, 0.52, 0.78), 0.35);
     finalColor = mix(finalColor, fogColor, fogFactor);
     
     // Edge softening — fade alpha at extreme distance

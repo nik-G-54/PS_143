@@ -44,9 +44,9 @@ export const WindIndicator: React.FC<WindIndicatorProps> = ({ u, v, speed }) => 
       <Instances limit={20}>
         <coneGeometry args={[0.1, 1.0, 3]} />
         <meshBasicMaterial 
-          color="#7dd3fc"
+          color="#facc15"
           transparent 
-          opacity={0.25} 
+          opacity={0.55} 
           side={THREE.DoubleSide}
           depthWrite={false}
         />

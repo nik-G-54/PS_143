@@ -9,7 +9,7 @@ import {
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
-  const isLiveMap = location.pathname === '/live-map';
+  const isLiveMap = location.pathname === '/maritime-map';
   const isReconstruction = location.pathname === '/incident-reconstruction';
   
   const [isHovered, setIsHovered] = useState(false);
@@ -55,7 +55,7 @@ export const Sidebar: React.FC = () => {
       {/* Navigation Links */}
       <nav className="flex-1 py-4 px-2 overflow-y-auto space-y-[4px]">
         <SidebarItem icon={<LayoutDashboard size={18} strokeWidth={1.5} />} label="Dashboard" to="/" isCollapsed={isCollapsed} />
-        <SidebarItem icon={<Map size={18} strokeWidth={1.5} />} label="Live Map" to="/live-map" isCollapsed={isCollapsed} />
+        <SidebarItem icon={<Map size={18} strokeWidth={1.5} />} label="Maritime Map" to="/maritime-map" isCollapsed={isCollapsed} />
         <SidebarItem icon={<AlertTriangle size={18} strokeWidth={1.5} />} label="Incidents" to="/incidents" isCollapsed={isCollapsed} />
         <SidebarItem 
           icon={<Video size={18} strokeWidth={1.5} />} 

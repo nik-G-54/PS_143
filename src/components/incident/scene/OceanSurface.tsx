@@ -2,37 +2,36 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { OceanVertexShader, OceanFragmentShader } from './shaders/OceanShader';
+import { useSceneLayers } from '../../../context/SceneLayersContext';
 
 export const OceanSurface: React.FC = () => {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const { layers } = useSceneLayers();
+  const segments = layers.lite ? 96 : 200;
+  const waveStrength = layers.lite ? 0.06 : 0.2;
 
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
-    uWaveStrength: { value: 0.12 },
-    // Deep abyss color - matches the atmospheric fog for a seamless horizon
-    uColorDeep: { value: new THREE.Color('#071524') },
-    // Mid-tone 
-    uColorMid: { value: new THREE.Color('#0c2438') },
-    // Surface/crest highlight 
-    uColorSurface: { value: new THREE.Color('#163e5c') },
-    // Low-angle sun from slight elevation for nighttime maritime feel
-    uSunDirection: { value: new THREE.Vector3(0.3, 0.4, 0.6).normalize() },
-    // Cool blue-white sun for night/dusk mood
-    uSunColor: { value: new THREE.Color('#c9e1f5') },
-    uSunIntensity: { value: 0.8 }
+    uWaveStrength: { value: 0.2 },
+    uColorDeep: { value: new THREE.Color('#0a4f86') },
+    uColorMid: { value: new THREE.Color('#1a7ec4') },
+    uColorSurface: { value: new THREE.Color('#6ec8ef') },
+    uSunDirection: { value: new THREE.Vector3(0.45, 0.85, 0.35).normalize() },
+    uSunColor: { value: new THREE.Color('#fff4d6') },
+    uSunIntensity: { value: 1.45 }
   }), []);
 
   useFrame((state) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+      materialRef.current.uniforms.uWaveStrength.value = waveStrength;
     }
   });
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
-      {/* 600x600 world units, 200x200 segments for smooth wave displacement */}
-      <planeGeometry args={[600, 600, 200, 200]} />
-      <shaderMaterial 
+    <mesh key={segments} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+      <planeGeometry args={[600, 600, segments, segments]} />
+      <shaderMaterial
         ref={materialRef}
         vertexShader={OceanVertexShader}
         fragmentShader={OceanFragmentShader}

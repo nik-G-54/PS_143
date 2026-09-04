@@ -45,9 +45,9 @@ export const CurrentIndicator: React.FC<CurrentIndicatorProps> = ({ u, v, speed 
       <Instances limit={40}>
         <coneGeometry args={[0.05, 0.35, 4]} />
         <meshBasicMaterial 
-          color="#38bdf8"
+          color="#22d3ee"
           transparent 
-          opacity={0.35} 
+          opacity={0.5} 
           side={THREE.DoubleSide}
           depthWrite={false}
         />

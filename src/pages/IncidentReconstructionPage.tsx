@@ -7,6 +7,8 @@ import { Timeline } from '../components/incident/Timeline';
 import { EvidenceChain } from '../components/incident/EvidenceChain';
 import { SimulationProvider } from '../context/SimulationContext';
 import { IncidentProvider, IncidentContext } from '../context/IncidentContext';
+import { SceneLayersProvider } from '../context/SceneLayersContext';
+import { ViewportCameraProvider } from '../context/ViewportCameraContext';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { SlideInDrawer } from '../components/ui/SlideInDrawer';
 
@@ -94,6 +96,8 @@ export const IncidentReconstructionPage: React.FC = () => {
   return (
     <IncidentProvider>
       <SimulationProvider>
+        <SceneLayersProvider>
+        <ViewportCameraProvider>
         <InteractionContext.Provider value={{
           selectedObject, 
           setSelectedObject, 
@@ -161,6 +165,8 @@ export const IncidentReconstructionPage: React.FC = () => {
 
           </div>
         </InteractionContext.Provider>
+        </ViewportCameraProvider>
+        </SceneLayersProvider>
       </SimulationProvider>
     </IncidentProvider>
   );

@@ -27,9 +27,9 @@ export const OilTrajectory: React.FC = () => {
       <Line
         points={points}
         color="#f59e0b"
-        lineWidth={2}
+        lineWidth={1}
         transparent
-        opacity={0.6}
+        opacity={0.42}
         dashed={true}
         dashScale={1}
         dashSize={2}

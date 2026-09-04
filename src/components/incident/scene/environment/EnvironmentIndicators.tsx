@@ -1,11 +1,13 @@
 import React from 'react';
 import { useIncident } from '../../../../context/IncidentContext';
+import { useSceneLayers } from '../../../../context/SceneLayersContext';
 import { WindIndicator } from './WindIndicator';
 import { CurrentIndicator } from './CurrentIndicator';
 import { latLonToWorld } from '../../../../utils/coordinates';
 
 export const EnvironmentIndicators: React.FC = () => {
   const { environment, spillDetails, backtrackData } = useIncident();
+  const { layers } = useSceneLayers();
 
   if (!environment) return null;
 
@@ -15,21 +17,26 @@ export const EnvironmentIndicators: React.FC = () => {
   // Center indicators around the incident origin
   const center = latLonToWorld(originLat, originLon, originLat, originLon);
 
+  const toUV = (flow?: { u?: number; v?: number; speed?: number; direction?: number }) => {
+    if (!flow) return { u: 0, v: 0, speed: 0 };
+    if (typeof flow.u === 'number' && typeof flow.v === 'number') {
+      return { u: flow.u, v: flow.v, speed: flow.speed ?? Math.hypot(flow.u, flow.v) };
+    }
+    const speed = flow.speed ?? 0;
+    const rad = ((flow.direction ?? 0) * Math.PI) / 180;
+    return { u: Math.sin(rad) * speed, v: Math.cos(rad) * speed, speed };
+  };
+
+  const wind = toUV(environment.wind);
+  const current = toUV(environment.current);
+
   return (
     <group position={[center.x, 0, center.z]}>
-      {environment.wind && (
-        <WindIndicator 
-          u={environment.wind.u} 
-          v={environment.wind.v} 
-          speed={environment.wind.speed} 
-        />
+      {layers.wind && (
+        <WindIndicator u={wind.u} v={wind.v} speed={wind.speed} />
       )}
-      {environment.current && (
-        <CurrentIndicator 
-          u={environment.current.u} 
-          v={environment.current.v} 
-          speed={environment.current.speed} 
-        />
+      {layers.current && (
+        <CurrentIndicator u={current.u} v={current.v} speed={current.speed} />
       )}
     </group>
   );

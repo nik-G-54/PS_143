@@ -37,20 +37,16 @@ export const AISTrack: React.FC<AISTrackProps> = ({ track }) => {
       {/* The main AIS track line */}
       <Line 
         points={points}
-        color="#f59e0b" // Amber/Orange color to distinguish from cyan grid and red incident
-        lineWidth={2}
-        dashed={true}
-        dashScale={20}
-        dashSize={1}
-        dashOffset={0}
+        color="#22d3ee"
+        lineWidth={3}
         transparent
-        opacity={0.8}
+        opacity={0.9}
       />
 
       {/* Track Start Marker */}
       <mesh position={[startPoint.x, startPoint.y, startPoint.z]}>
         <sphereGeometry args={[0.2, 16, 16]} />
-        <meshBasicMaterial color="#94a3b8" /> {/* Neutral slate color */}
+        <meshBasicMaterial color="#67e8f9" />
       </mesh>
     </group>
   );

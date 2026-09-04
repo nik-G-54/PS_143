@@ -1,160 +1,80 @@
 // src/pages/DashboardPage.tsx
 
-import React, { useRef } from 'react';
+import React from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Header } from '../components/layout/Header';
-import { RecentIncidents } from '../components/dashboard/RecentIncidents';
-import { SeverityDistribution } from '../components/dashboard/SeverityDistribution';
-import { MonthlyTrend } from '../components/dashboard/MonthlyTrend';
-import { CaseStatusChart } from '../components/dashboard/CaseStatusChart';
-import { SatelliteRadar } from '../components/dashboard/SatelliteRadar';
-import { useDashboardStats } from '../hooks/useDashboardStats';
-import { AlertCircle } from 'lucide-react';
-import { useTheme } from '../hooks/useTheme';
-import {
-  BentoCardGrid,
-  ParticleCard,
-  GlobalSpotlight,
-  useMobileDetection
-} from '../components/dashboard/MagicBento';
+import { DashboardProvider, useDashboardContext } from '../context/DashboardContext';
+import { DashboardHeader } from '../components/dashboard/DashboardHeader';
+import { DashboardFilters } from '../components/dashboard/DashboardFilters';
+import { ActiveFilterChips } from '../components/dashboard/ActiveFilterChips';
+import { KpiGrid } from '../components/dashboard/KpiGrid';
+import { SpillDetectionTrend } from '../components/dashboard/SpillDetectionTrend';
+import { SpillSizeDistribution } from '../components/dashboard/SpillSizeDistribution';
+import { ConfidenceDistribution } from '../components/dashboard/ConfidenceDistribution';
+import { DetectionHeatmap } from '../components/dashboard/DetectionHeatmap';
+import { SpillTable } from '../components/dashboard/SpillTable';
+import { InvestigationDock } from '../components/investigation/InvestigationDock';
+import { LoadingState } from '../components/dashboard/LoadingState';
+import { ErrorState } from '../components/dashboard/ErrorState';
 
-export const DashboardPage: React.FC = () => {
-  const { theme } = useTheme();
-  const isMobile = useMobileDetection();
-  const { dashboardData, loading, error } = useDashboardStats();
-  const gridRef = useRef<HTMLDivElement>(null);
-
-  // Compute glow RGB color dynamically based on active theme (Claude Amber)
-  const glowColor = theme === 'dark' ? '217, 119, 87' : '201, 100, 66';
-
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full bg-background items-center justify-center text-primary font-medium">
-        <div className="flex flex-col items-center gap-3">
-          <span className="relative flex h-8 w-8">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-8 w-8 bg-primary"></span>
-          </span>
-          <span>Loading Dashboard Metrics...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex h-screen w-full bg-background items-center justify-center text-destructive font-medium">
-        <div className="flex flex-col items-center gap-3">
-          <AlertCircle size={32} />
-          <span>Error loading dashboard statistics. Please refresh.</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Standard high contrast card class with responsive hover highlights
-  const cardClassName = "card bg-card border border-border hover:border-primary/40 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 ease-out h-full flex flex-col justify-between";
+const DashboardContent: React.FC = () => {
+  const { isLoading, error, refetch } = useDashboardContext();
 
   return (
-    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans transition-colors duration-200">
-      <Sidebar />
-      <main className="flex-1 flex flex-col h-full overflow-hidden">
-        <Header />
+    <div className="flex-1 overflow-y-auto pt-6 pb-20 px-4 sm:px-6 lg:px-8 space-y-6 bg-background">
+      {/* Page Header */}
+      <DashboardHeader />
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto pt-8 pb-8 px-10 space-y-6 bg-background">
+      {isLoading ? (
+        <LoadingState />
+      ) : error ? (
+        <ErrorState message={error} onRetry={refetch} />
+      ) : (
+        <>
+          {/* Global Filter Bar */}
+          <DashboardFilters />
 
-          {/* Global Spotlight tracker */}
-          <GlobalSpotlight
-            gridRef={gridRef}
-            disableAnimations={isMobile}
-            enabled={true}
-            glowColor={glowColor}
-            spotlightRadius={180}
-          />
+          {/* Active Filter Chips */}
+          <ActiveFilterChips />
 
-          {/* Bento Grid Layout (5-Card layout) */}
-          <BentoCardGrid gridRef={gridRef} glowColor={glowColor}>
+          {/* KPI Cards (4 Grid) */}
+          <KpiGrid />
 
-            {/* ROW 1 LEFT: Globe surveillance sphere (4 columns) */}
-            <div className="col-span-12 lg:col-span-4">
-              <ParticleCard
-                className={cardClassName}
-                glowColor={glowColor}
-                disableAnimations={isMobile}
-                enableStars={false}
-                enableTilt={false}
-                clickEffect={true}
-                enableMagnetism={false}
-              >
-                <SatelliteRadar />
-              </ParticleCard>
-            </div>
+          {/* Analytics Grid 1: Detection Trend & Size Distribution */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <SpillDetectionTrend />
+            <SpillSizeDistribution />
+          </div>
 
-            {/* ROW 1 RIGHT: Recent Alerts Table (8 columns) */}
-            <div className="col-span-12 lg:col-span-8">
-              <ParticleCard
-                className="card bg-card border border-border hover:border-primary/40 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 ease-out h-full flex flex-col"
-                glowColor={glowColor}
-                disableAnimations={isMobile}
-                enableStars={false}
-                enableTilt={false}
-                clickEffect={true}
-                enableMagnetism={false}
-              >
-                <RecentIncidents incidents={dashboardData.recentIncidents} />
-              </ParticleCard>
-            </div>
+          {/* Analytics Grid 2: Confidence Distribution & Activity Heatmap */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ConfidenceDistribution />
+            <DetectionHeatmap />
+          </div>
 
-            {/* ROW 2 LEFT: Severity Distribution Solid Pie Chart (6 columns) */}
-            <div className="col-span-12 lg:col-span-6">
-              <ParticleCard
-                className={cardClassName}
-                glowColor={glowColor}
-                disableAnimations={isMobile}
-                enableStars={false}
-                enableTilt={false}
-                clickEffect={true}
-                enableMagnetism={false}
-              >
-                <SeverityDistribution data={dashboardData.severityDistribution} />
-              </ParticleCard>
-            </div>
+          {/* Incident Overview Table (Max 7 Rows) */}
+          <SpillTable />
 
-            {/* ROW 2 RIGHT: Case Status Radial Activity Rings (6 columns) */}
-            <div className="col-span-12 lg:col-span-6">
-              <ParticleCard
-                className={cardClassName}
-                glowColor={glowColor}
-                disableAnimations={isMobile}
-                enableStars={false}
-                enableTilt={false}
-                clickEffect={true}
-                enableMagnetism={false}
-              >
-                <CaseStatusChart data={dashboardData.caseStatusDistribution} />
-              </ParticleCard>
-            </div>
-
-            {/* ROW 3: Monthly Trend Heatmap Calendar Grid (12 columns - full width) */}
-            <div className="col-span-12">
-              <ParticleCard
-                className="card bg-card border border-border hover:border-primary/40 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 ease-out h-full flex flex-col"
-                glowColor={glowColor}
-                disableAnimations={isMobile}
-                enableStars={false}
-                enableTilt={false}
-                clickEffect={true}
-                enableMagnetism={false}
-              >
-                <MonthlyTrend data={dashboardData.monthlyTrend} />
-              </ParticleCard>
-            </div>
-
-          </BentoCardGrid>
-        </div>
-      </main>
+          {/* Fixed Bottom Investigation Teaser Overlay */}
+          <InvestigationDock />
+        </>
+      )}
     </div>
   );
 };
+
+export const DashboardPage: React.FC = () => {
+  return (
+    <DashboardProvider>
+      <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans transition-colors duration-200">
+        <Sidebar />
+        <main className="flex-1 flex flex-col h-full overflow-hidden">
+          <Header />
+          <DashboardContent />
+        </main>
+      </div>
+    </DashboardProvider>
+  );
+};
+
 export default DashboardPage;

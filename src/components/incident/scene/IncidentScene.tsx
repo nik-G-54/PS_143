@@ -6,13 +6,14 @@ import { OceanSurface } from './OceanSurface';
 import { AISTrack } from './AISTrack';
 import { OilSpill } from './OilSpill';
 import { IncidentMarker } from './IncidentMarker';
-import { TestPointMarker } from './TestPointMarker';
 import { OrientationIndicator } from './OrientationIndicator';
 import { VesselModel } from './VesselModel';
 import { latLonToWorld } from '../../../utils/coordinates';
 import { useIncident } from '../../../context/IncidentContext';
 import { SourceEstimate } from './SourceEstimate';
 import { OilTrajectory } from './OilTrajectory';
+import { EnvironmentIndicators } from './environment/EnvironmentIndicators';
+import { Sky } from '@react-three/drei';
 
 export const IncidentScene: React.FC = () => {
   const { spillDetails, backtrackData, vesselsData } = useIncident();
@@ -22,22 +23,29 @@ export const IncidentScene: React.FC = () => {
 
   // Incident origin
   const incidentPos = latLonToWorld(originLat, originLon, originLat, originLon);
-  
-  // Test coordinate: slightly Northeast (we just use origin + small offset for test)
-  const testPos = latLonToWorld(originLat + 0.02, originLon + 0.03, originLat, originLon);
 
   return (
     <>
+      <Sky 
+        distance={450000} 
+        sunPosition={[30, 40, 60]} 
+        inclination={0.49} 
+        azimuth={0.25} 
+        turbidity={6}
+        rayleigh={4}
+        mieCoefficient={0.005}
+        mieDirectionalG={0.8}
+      />
       <SceneCamera />
       <SceneLighting />
       <OceanSurface />
+      <EnvironmentIndicators />
       <OilSpill />
       <OilTrajectory />
       <SourceEstimate />
 
-      <SceneGrid />
+      <SceneGrid visible={false} />
       <IncidentMarker position={[incidentPos.x, incidentPos.y, incidentPos.z]} />
-      <TestPointMarker position={[testPos.x, testPos.y, testPos.z]} />
 
       {/* Candidate Vessels and Tracks */}
       {vesselsData?.vessels?.map(candidate => (
@@ -55,3 +63,4 @@ export const IncidentScene: React.FC = () => {
     </>
   );
 };
+

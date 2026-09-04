@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Html, Line } from '@react-three/drei';
 import { useSimulation } from '../../../context/SimulationContext';
 import { useIncident } from '../../../context/IncidentContext';
+import { useInteraction } from '../../../pages/IncidentReconstructionPage';
 import { latLonToWorld, VESSEL_SURFACE_OFFSET, METERS_PER_WORLD_UNIT } from '../../../utils/coordinates';
 import { resolveVesselPosition } from '../../../utils/vesselTrack';
 import { VesselCandidate } from '../../../types/api';
@@ -15,7 +16,10 @@ interface VesselModelProps {
 
 export const VesselModel: React.FC<VesselModelProps> = ({ id, status, candidate, isLegacyMock }) => {
   const { progress, direction } = useSimulation();
-  const { spillDetails, backtrackData } = useIncident();
+  const { spillDetails, backtrackData, setSelectedVesselId } = useIncident();
+  const { setSelectedObject } = useInteraction();
+  const groupRef = useRef<any>(null);
+  const clickStartRef = useRef<{ x: number, y: number } | null>(null);
   
   const originLat = backtrackData?.backtrack.observation.latitude ?? spillDetails?.centroid?.latitude ?? 0;
   const originLon = backtrackData?.backtrack.observation.longitude ?? spillDetails?.centroid?.longitude ?? 0;
@@ -74,8 +78,33 @@ export const VesselModel: React.FC<VesselModelProps> = ({ id, status, candidate,
   
   const bridgeColor = isSelected ? "#bae6fd" : "#cbd5e1";
 
+  const handlePointerDown = (e: any) => {
+    clickStartRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = (e: any) => {
+    if (!clickStartRef.current) return;
+    const dx = e.clientX - clickStartRef.current.x;
+    const dy = e.clientY - clickStartRef.current.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Only count as click if cursor didn't move much (e.g. less than 5 pixels)
+    if (distance < 5) {
+      e.stopPropagation();
+      setSelectedVesselId(displayId);
+      setSelectedObject({ type: 'vessel', id: displayId });
+    }
+    clickStartRef.current = null;
+  };
+
   return (
-    <group position={position} rotation={[0, rotationY, 0]}>
+    <group 
+      position={position} 
+      rotation={[0, rotationY, 0]}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      ref={groupRef}
+    >
       
       {/* Source Relationship Line */}
       {sourceLinePoints && (

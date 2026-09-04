@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Html } from '@react-three/drei';
 import { useSimulation } from '../../../context/SimulationContext';
+import { useInteraction } from '../../../pages/IncidentReconstructionPage';
 import { latLonToWorld, OIL_SURFACE_OFFSET, METERS_PER_WORLD_UNIT } from '../../../utils/coordinates';
 import { useIncident } from '../../../context/IncidentContext';
 import { resolveTrajectoryPosition } from '../../../utils/trajectory';
@@ -8,6 +9,8 @@ import { resolveTrajectoryPosition } from '../../../utils/trajectory';
 export const OilSpill: React.FC = () => {
   const { progress, direction } = useSimulation();
   const { spillDetails, backtrackData } = useIncident();
+  const { setSelectedObject } = useInteraction();
+  const clickStartRef = useRef<{ x: number, y: number } | null>(null);
 
   // Determine if the oil spill should be visible based on simulation time
   const isVisible = useMemo(() => {
@@ -50,10 +53,29 @@ export const OilSpill: React.FC = () => {
     return { pos, radiusUnits };
   }, [progress, backtrackData, direction]);
 
+  const handlePointerDown = (e: any) => {
+    clickStartRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = (e: any) => {
+    if (!clickStartRef.current) return;
+    const dx = e.clientX - clickStartRef.current.x;
+    const dy = e.clientY - clickStartRef.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) < 5) {
+      e.stopPropagation();
+      setSelectedObject({ type: 'oil', id: backtrackData?.spill_id ?? spillDetails?.spill_id ?? 'spill' });
+    }
+    clickStartRef.current = null;
+  };
+
   if (!isVisible) return null;
 
   return (
-    <group position={[transform.pos.x, OIL_SURFACE_OFFSET, transform.pos.z]}>
+    <group 
+      position={[transform.pos.x, OIL_SURFACE_OFFSET, transform.pos.z]}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+    >
       
       {/* Main Irregular Oil Slick */}
       <group rotation={[-Math.PI / 2, 0, 0]}>

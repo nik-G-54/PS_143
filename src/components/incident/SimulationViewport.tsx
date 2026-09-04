@@ -1,16 +1,29 @@
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
+import * as THREE from 'three';
 import { SimulationHUD } from './SimulationHUD';
+import { ViewportControls } from './scene/ViewportControls';
 import { Maximize, ZoomIn, ZoomOut, Navigation2 } from 'lucide-react';
 import { IncidentScene } from './scene/IncidentScene';
 
 export const SimulationViewport: React.FC = () => {
   return (
-    <div className="relative w-full h-full bg-card rounded-lg border border-border overflow-hidden shadow-inner">
+    <div className="relative w-full h-full bg-[#010508] overflow-hidden">
       
       {/* 3D Canvas Layer */}
       <div className="absolute inset-0 z-0">
-        <Canvas>
+        <Canvas
+          dpr={[1, 2]}
+          gl={{ 
+            antialias: true, 
+            toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 0.9,
+          }}
+          scene={{ 
+            background: new THREE.Color('#071524'),
+            fog: new THREE.FogExp2('#071524', 0.0035),
+          }}
+        >
           <IncidentScene />
         </Canvas>
       </div>
@@ -18,6 +31,9 @@ export const SimulationViewport: React.FC = () => {
       {/* HUD Layer */}
       <div className="absolute inset-0 z-10 pointer-events-none">
         <SimulationHUD />
+        <div className="pointer-events-auto">
+          <ViewportControls />
+        </div>
         
         {/* Viewport UI Controls */}
         <div className="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">

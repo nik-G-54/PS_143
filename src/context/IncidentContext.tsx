@@ -19,7 +19,7 @@ interface IncidentContextProps {
   refresh: () => void;
 }
 
-const IncidentContext = createContext<IncidentContextProps | undefined>(undefined);
+export const IncidentContext = createContext<IncidentContextProps | undefined>(undefined);
 
 export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [spillId, setSpillId] = useState<string>(() => {
@@ -73,8 +73,17 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const activeSpillIdRef = React.useRef(spillId);
+  useEffect(() => {
+    activeSpillIdRef.current = spillId;
+  }, [spillId]);
+
   const fetchData = React.useCallback(async () => {
     if (!spillId) return;
+    
+    // Capture the request ID
+    const requestId = spillId;
+
     setLoading(true);
     setError(null);
     setSpillDetails(null);
@@ -86,12 +95,17 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     try {
       const [detailsRes, backtrackRes, vesselsRes, visRes] = await Promise.all([
-        spillService.getSpill(spillId),
-        spillService.backtrackSpill(spillId),
-        spillService.getSpillVessels(spillId),
-        spillService.getVisualization(spillId).catch(() => null) // Optional
+        spillService.getSpill(requestId),
+        spillService.backtrackSpill(requestId),
+        spillService.getSpillVessels(requestId),
+        spillService.getVisualization(requestId).catch(() => null) // Optional
       ]);
       
+      // STALE DATA GUARD: Check against the ref to see if the user selected a different incident while we were awaiting
+      if (activeSpillIdRef.current !== requestId) {
+        return;
+      }
+
       validateBacktrack(backtrackRes);
 
       const resolved = resolveReconstruction(detailsRes, backtrackRes, vesselsRes, visRes);
@@ -102,9 +116,13 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setEnvironment(resolved.environment);
       setDataSources(resolved.dataSources);
     } catch (err: any) {
-      setError(err.message || 'Failed to load incident data');
+      if (activeSpillIdRef.current === requestId) {
+        setError(err.message || 'Failed to load incident data');
+      }
     } finally {
-      setLoading(false);
+      if (activeSpillIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }, [spillId]);
 

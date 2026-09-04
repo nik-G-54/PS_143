@@ -6,17 +6,19 @@ export const SceneCamera: React.FC = () => {
     <>
       <PerspectiveCamera 
         makeDefault 
-        position={[20, 30, 40]} // Positioned slightly above and away from the origin
+        position={[45, 20, 65]} 
+        fov={45} 
         near={0.1} 
-        far={10000} 
+        far={3000} 
       />
       <OrbitControls 
         makeDefault
+        target={[0, 0, 0]}
         enableDamping={true}
         dampingFactor={0.05}
-        minDistance={2}
+        minDistance={5}
         maxDistance={500}
-        maxPolarAngle={Math.PI / 2 - 0.05} // Prevent camera from going below the ground
+        maxPolarAngle={Math.PI / 2 - 0.05} // Keep camera above water
       />
     </>
   );

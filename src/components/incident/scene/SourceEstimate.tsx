@@ -1,10 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Html } from '@react-three/drei';
 import { useIncident } from '../../../context/IncidentContext';
+import { useInteraction } from '../../../pages/IncidentReconstructionPage';
 import { latLonToWorld, METERS_PER_WORLD_UNIT, OIL_SURFACE_OFFSET } from '../../../utils/coordinates';
 
 export const SourceEstimate: React.FC = () => {
   const { backtrackData } = useIncident();
+  const { setSelectedObject } = useInteraction();
+  const clickStartRef = useRef<{ x: number, y: number } | null>(null);
 
   const transform = useMemo(() => {
     if (!backtrackData?.backtrack.source_estimate) return null;
@@ -26,8 +29,27 @@ export const SourceEstimate: React.FC = () => {
 
   if (!transform) return null;
 
+  const handlePointerDown = (e: any) => {
+    clickStartRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = (e: any) => {
+    if (!clickStartRef.current) return;
+    const dx = e.clientX - clickStartRef.current.x;
+    const dy = e.clientY - clickStartRef.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) < 5) {
+      e.stopPropagation();
+      setSelectedObject({ type: 'source', id: 'source' });
+    }
+    clickStartRef.current = null;
+  };
+
   return (
-    <group position={[transform.pos.x, OIL_SURFACE_OFFSET + 0.01, transform.pos.z]}>
+    <group 
+      position={[transform.pos.x, OIL_SURFACE_OFFSET + 0.01, transform.pos.z]}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+    >
       {/* Source Area Radius */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[Math.max(transform.radiusUnits - 0.5, 0), transform.radiusUnits, 64]} />

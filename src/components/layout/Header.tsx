@@ -41,7 +41,7 @@ export const Header: React.FC = () => {
         };
       case '/incident-reconstruction':
         return {
-          title: '3D INCIDENT RECONSTRUCTION',
+          title: 'OCEAN SENTINEL',
           icon: <Activity size={18} className="text-primary" />
         };
       default:
@@ -72,9 +72,31 @@ export const Header: React.FC = () => {
               <span className="text-muted-foreground font-sans">Incident:</span>
               <IncidentSelector currentSpillId={incidentId} />
             </div>
-            <div className="flex items-center gap-2 px-3 py-0.5 bg-destructive/10 border border-destructive/20 rounded-full text-destructive text-xs font-semibold font-sans">
-              {incidentContext?.loading ? <Loader2 size={12} className="animate-spin" /> : <ShieldAlert size={12} />}
-              <span>{incidentStatus}</span>
+            
+            {/* Dataset Provenance Status */}
+            <div className={`flex items-center gap-2 px-3 py-0.5 rounded-full border text-xs font-semibold font-sans ${
+              incidentContext?.loading 
+                ? 'bg-muted text-muted-foreground border-border'
+                : (incidentContext?.dataSources?.vessels === 'Simulated Demo' || incidentContext?.dataSources?.trajectory === 'Simulated Demo')
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+                  : 'bg-primary/10 border-primary/20 text-primary'
+            }`}>
+              {incidentContext?.loading ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <div className={`w-2 h-2 rounded-full ${
+                  (incidentContext?.dataSources?.vessels === 'Simulated Demo' || incidentContext?.dataSources?.trajectory === 'Simulated Demo')
+                    ? 'bg-amber-500'
+                    : 'bg-primary'
+                }`} />
+              )}
+              <span>
+                {incidentContext?.loading 
+                  ? 'LOADING...' 
+                  : ((incidentContext?.dataSources?.vessels === 'Simulated Demo' || incidentContext?.dataSources?.trajectory === 'Simulated Demo') 
+                      ? 'DEMO DATA' 
+                      : 'LIVE DATA')}
+              </span>
             </div>
           </>
         )}

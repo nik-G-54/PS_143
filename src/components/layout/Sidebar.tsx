@@ -10,11 +10,12 @@ import {
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const isLiveMap = location.pathname === '/live-map';
+  const isReconstruction = location.pathname === '/incident-reconstruction';
   
   const [isHovered, setIsHovered] = useState(false);
   
-  // Collapse sidebar to icon-only mode on Live Map page unless hovered
-  const isCollapsed = isLiveMap && !isHovered;
+  // Collapse sidebar to icon-only mode on specific pages unless hovered
+  const isCollapsed = (isLiveMap || isReconstruction) && !isHovered;
 
   return (
     <aside 
@@ -22,7 +23,7 @@ export const Sidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
       className={`relative bg-sidebar border-r border-border flex flex-col h-full shrink-0 transition-all duration-300 z-40 select-none ${
         isCollapsed ? 'w-[68px]' : 'w-[240px]'
-      } ${isLiveMap && isHovered ? 'shadow-2xl' : ''}`}
+      } ${(isLiveMap || isReconstruction) && isHovered ? 'shadow-2xl absolute left-0 h-full' : ''}`}
     >
       {/* Official Brand Header */}
       <div className={`p-3.5 border-b border-border flex items-center gap-3 transition-all duration-300 ${

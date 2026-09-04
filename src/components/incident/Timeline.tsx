@@ -45,34 +45,32 @@ export const Timeline: React.FC = () => {
   }, [backtrackData, direction]);
 
   return (
-    <div className="bg-card border-t border-border h-24 flex flex-col justify-center px-6 relative z-10">
-      <div className="flex items-center gap-6">
+    <div className="bg-card border-t border-border h-16 flex flex-col justify-center px-6 relative z-10 shrink-0">
+      <div className="flex items-center gap-4 w-full max-w-7xl mx-auto">
         
-        <div className="flex flex-col gap-1 items-center">
-          <div className="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border">
-            <button
-              onClick={() => setDirection('FORWARD')}
-              className={`px-3 py-1 text-[10px] font-semibold tracking-wider font-sans rounded transition-colors ${direction === 'FORWARD' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              FORWARD
-            </button>
-            <button
-              onClick={() => setDirection('BACKTRACK')}
-              className={`px-3 py-1 text-[10px] font-semibold tracking-wider font-sans rounded transition-colors ${direction === 'BACKTRACK' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              BACKTRACK
-            </button>
-          </div>
-          <button 
-            onClick={togglePlay}
-            className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground shrink-0 transition-colors shadow-md mt-1"
-          >
-            {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-1" />}
-          </button>
-        </div>
+        {/* Backtrack Button */}
+        <button
+          onClick={() => setDirection('BACKTRACK')}
+          className={`px-4 py-1.5 text-xs font-semibold tracking-wider font-sans rounded transition-colors border ${
+            direction === 'BACKTRACK' 
+              ? 'bg-primary/20 text-primary border-primary/50 shadow-sm' 
+              : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground'
+          }`}
+        >
+          BACKTRACK
+        </button>
+
+        {/* Play/Pause */}
+        <button 
+          onClick={togglePlay}
+          className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground shrink-0 transition-colors shadow-md"
+        >
+          {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
+        </button>
         
+        {/* Scrubber Line */}
         <div 
-          className="flex-1 relative flex items-center h-12 cursor-pointer group/timeline"
+          className="flex-1 relative flex items-center h-10 cursor-pointer group/timeline mx-4"
           onClick={handleTimelineClick}
         >
           {/* Main Line */}
@@ -105,9 +103,11 @@ export const Timeline: React.FC = () => {
                     'bg-card border-border'
                   }`} />
                   
-                  <div className="absolute top-5 flex flex-col items-center w-24">
-                    <span className={`text-[10px] font-semibold tracking-wider font-sans ${
-                      event.isIncident ? 'text-destructive' : (isCurrent ? 'text-primary' : 'text-muted-foreground')
+                  <div className={`absolute -top-6 flex flex-col items-center whitespace-nowrap ${
+                    idx === 0 ? 'items-start -left-1' : idx === timelineEvents.length - 1 ? 'items-end -right-1' : 'items-center'
+                  }`}>
+                    <span className={`text-[9px] font-semibold tracking-wider font-sans ${
+                      event.isIncident ? 'text-red-500' : (isCurrent ? 'text-primary' : 'text-muted-foreground')
                     }`}>
                       {event.label}
                     </span>
@@ -120,6 +120,19 @@ export const Timeline: React.FC = () => {
             })}
           </div>
         </div>
+
+        {/* Forward Button */}
+        <button
+          onClick={() => setDirection('FORWARD')}
+          className={`px-4 py-1.5 text-xs font-semibold tracking-wider font-sans rounded transition-colors border ${
+            direction === 'FORWARD' 
+              ? 'bg-primary/20 text-primary border-primary/50 shadow-sm' 
+              : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground'
+          }`}
+        >
+          FORWARD
+        </button>
+
       </div>
     </div>
   );

@@ -1,124 +1,79 @@
 import React from 'react';
-import { Ship, Info } from 'lucide-react';
+import { Ship, ChevronRight } from 'lucide-react';
 import { useIncident } from '../../context/IncidentContext';
+import { useInteraction } from '../../pages/IncidentReconstructionPage';
 
 export const CandidateVesselPanel: React.FC = () => {
-  const { vesselsData, loading, error, dataSources, selectedVesselId, setSelectedVesselId } = useIncident();
+  const { vesselsData, loading, error } = useIncident();
+  const { setDrawerContent } = useInteraction();
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-lg p-4 shadow-sm h-64 flex items-center justify-center">
-        <span className="animate-pulse text-muted-foreground font-sans text-sm">Loading vessel correlation...</span>
+      <div className="bg-card/50 border border-border rounded p-3 shadow-sm flex items-center justify-center">
+        <span className="animate-pulse text-muted-foreground font-sans text-xs">Loading vessels...</span>
       </div>
     );
   }
 
-  if (error) {
+  const vessels = vesselsData?.vessels || [];
+  
+  if (error || vessels.length === 0) {
     return (
-      <div className="bg-card border border-border rounded-lg p-4 shadow-sm h-64 flex flex-col items-center justify-center gap-2">
-        <span className="text-destructive text-sm">Vessel correlation unavailable.</span>
+      <div className="bg-card/50 border border-border rounded overflow-hidden flex flex-col shadow-sm">
+        <div className="bg-muted/40 px-3 py-2 border-b border-border flex items-center gap-2">
+          <Ship size={14} className="text-muted-foreground" />
+          <h3 className="text-xs font-semibold text-muted-foreground tracking-wider font-sans">TOP CANDIDATE</h3>
+        </div>
+        <div className="p-3 flex items-center justify-center">
+          <span className="text-muted-foreground font-sans text-xs">No candidate vessels available</span>
+        </div>
       </div>
     );
   }
 
-  if (!vesselsData || !vesselsData.vessels || vesselsData.vessels.length === 0) {
-    return (
-      <div className="bg-card border border-border rounded-lg p-4 shadow-sm h-64 flex items-center justify-center">
-        <span className="text-muted-foreground font-sans text-sm">No candidate vessels identified.</span>
-      </div>
+  // Find the top candidate by score
+  const topCandidate = [...vessels].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+
+  const handleDetails = () => {
+    setDrawerContent(
+      <div className="space-y-4 text-sm">
+        <p>Full vessel details via progressive disclosure.</p>
+        <p className="text-muted-foreground">ID: {topCandidate.vessel_id}</p>
+        <p className="text-muted-foreground">Name: {topCandidate.vessel_name}</p>
+        <p className="text-muted-foreground">Match: {((topCandidate.score ?? 0) * 100).toFixed(1)}%</p>
+        <p className="text-muted-foreground">Provenance: {topCandidate.is_mock ? 'DEMO / MOCK' : 'LIVE AIS'}</p>
+        
+        {/* Further details like track length, speeds, score breakdown can go here */}
+      </div>,
+      "Top Candidate Details"
     );
-  }
+  };
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col shadow-sm max-h-96">
-      <div className="bg-muted/40 px-4 py-3 border-b border-border flex items-center justify-between">
+    <div className="bg-card border border-border rounded overflow-hidden flex flex-col shadow-sm">
+      <div className="bg-muted/40 px-3 py-2 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Ship size={16} className="text-primary" />
-          <h3 className="text-sm font-semibold text-foreground tracking-wider font-sans">CANDIDATE VESSELS</h3>
+          <Ship size={14} className="text-primary" />
+          <h3 className="text-xs font-semibold text-foreground tracking-wider font-sans">TOP CANDIDATE</h3>
         </div>
-        <span className="text-xs text-muted-foreground font-mono">{vesselsData.vessels.length} FOUND</span>
+        <button onClick={handleDetails} className="flex items-center text-[10px] text-primary hover:text-primary/80 transition-colors uppercase tracking-wider font-bold">
+          Details <ChevronRight size={12} />
+        </button>
       </div>
       
-      <div className="p-2 space-y-2 overflow-y-auto">
-        {vesselsData.vessels.map((candidate) => {
-          const isTopCandidate = candidate.rank === 1;
-          const isSelected = selectedVesselId === candidate.vessel_id;
-
-          return (
-            <div 
-              key={candidate.vessel_id}
-              onClick={() => setSelectedVesselId(isSelected ? null : candidate.vessel_id)}
-              className={`p-3 rounded-md border cursor-pointer transition-colors ${
-                isSelected 
-                  ? 'bg-primary/10 border-primary' 
-                  : 'bg-muted/20 border-transparent hover:border-primary/50'
-              }`}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-foreground">
-                      {candidate.vessel_name || candidate.vessel_id}
-                    </span>
-                    {isTopCandidate && (
-                      <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-bold tracking-wider">
-                        TOP CANDIDATE
-                      </span>
-                    )}
-                  </div>
-                  {(candidate.imo || candidate.mmsi) && (
-                    <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                      {candidate.imo && `IMO: ${candidate.imo}`}
-                      {candidate.imo && candidate.mmsi && ' • '}
-                      {candidate.mmsi && `MMSI: ${candidate.mmsi}`}
-                    </div>
-                  )}
-                </div>
-                <div className="text-right">
-                  <span className="block text-[10px] text-muted-foreground tracking-wider">RANK</span>
-                  <span className="text-sm font-mono font-bold text-primary">#{candidate.rank ?? '?'}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-border/50">
-                <div>
-                  <span className="block text-[9px] text-muted-foreground tracking-wider">CORRELATION SCORE</span>
-                  <span className="text-xs font-mono text-foreground">
-                    {typeof candidate.score === 'number' ? candidate.score.toFixed(3) : 'Unavailable'}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-[9px] text-muted-foreground tracking-wider">DIST. TO SOURCE EST.</span>
-                  <span className="text-xs font-mono text-foreground">
-                    {typeof candidate.distance_to_origin_km === 'number' ? `${candidate.distance_to_origin_km.toFixed(2)} km` : 'Unavailable'}
-                  </span>
-                </div>
-              </div>
-
-              {isSelected && (
-                <div className="mt-3 pt-2 border-t border-border/50 flex flex-col gap-2">
-                  <div className="flex items-start gap-2">
-                    <Info size={12} className="text-primary shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-muted-foreground">
-                      This vessel is identified as a potential source through AIS correlation. This does not confirm causation.
-                      {candidate.track ? ' Track data available.' : ' Detailed track data is pending backend support.'}
-                    </p>
-                  </div>
-                  {dataSources && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground text-[9px] font-sans">TRACK SOURCE</span>
-                      <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
-                        dataSources.vesselTracks === 'Simulated Demo' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-primary/20 text-primary border-primary/30'
-                      }`}>
-                        {dataSources.vesselTracks.toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+      <div className="p-3 flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <span className="text-foreground font-mono text-sm font-bold truncate">{topCandidate.vessel_id}</span>
+          {topCandidate.is_mock && (
+            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border bg-amber-500/20 text-amber-300 border-amber-500/30">DEMO</span>
+          )}
+        </div>
+        <div className="flex justify-between items-center text-xs mt-1">
+          <span className="text-muted-foreground capitalize">{topCandidate.vessel_name || 'Unknown'}</span>
+          {topCandidate.score != null && (
+            <span className="text-primary font-mono font-bold">{(topCandidate.score * 100).toFixed(1)}% Match</span>
+          )}
+        </div>
       </div>
     </div>
   );

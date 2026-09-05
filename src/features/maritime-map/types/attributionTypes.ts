@@ -38,20 +38,41 @@ export interface RawAttributedVessel {
   trajectory?: RawAttributionTrackPoint[] | null;
 }
 
+export interface RawBacktrackOrigin {
+  latitude?: number | null;
+  longitude?: number | null;
+  timestamp?: string | null;
+  radius_km?: number | null;
+}
+
+export interface RawAttributionSummary {
+  top_vessel?: string | null;
+  top_score?: number | null;
+  rank?: number | null;
+  candidate_count?: number | null;
+}
+
+export interface RawAttributionVerification {
+  culprit_vessel_id?: string | null;
+  culprit_position_timestamp?: string | null;
+  origin_to_culprit_distance_km?: number | null;
+  within_backtrack_radius?: boolean | null;
+  ais_points_in_window?: number | null;
+  display_trajectory_points?: number | null;
+  trajectory_window?: {
+    start?: string | null;
+    end?: string | null;
+  } | null;
+  nearest_origin_ais_point?: RawAttributionTrackPoint | null;
+  timestamp_nearest_ais_point?: RawAttributionTrackPoint | null;
+  timestamp_nearest_distance_from_origin_km?: number | null;
+}
+
 export interface RawAttributionTrajectoryResponse {
   spill_id?: string | null;
-  backtrack_origin?: {
-    latitude?: number | null;
-    longitude?: number | null;
-    timestamp?: string | null;
-    radius_km?: number | null;
-  } | null;
-  attribution?: {
-    top_vessel?: string | null;
-    top_score?: number | null;
-    rank?: number | null;
-    candidate_count?: number | null;
-  } | null;
+  backtrack_origin?: RawBacktrackOrigin | null;
+  verification?: RawAttributionVerification | null;
+  attribution?: RawAttributionSummary | null;
   vessels?: RawAttributedVessel[] | null;
 }
 
@@ -66,6 +87,35 @@ export interface VesselTrackPoint {
   heading: number | null;
 }
 
+export type VesselTrajectoryPoint = VesselTrackPoint;
+
+export interface BacktrackOrigin {
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+  timestampMs: number;
+  radiusKm: number;
+}
+
+export interface AttributionVerification {
+  culpritVesselId: string | null;
+  culpritPositionTimestamp: string | null;
+  culpritPositionTimestampMs: number | null;
+  originToCulpritDistanceKm: number | null;
+  withinBacktrackRadius: boolean | null;
+  aisPointsInWindow: number;
+  displayTrajectoryPoints: number;
+  trajectoryWindow: {
+    start: string;
+    startMs: number;
+    end: string;
+    endMs: number;
+  } | null;
+  nearestOriginAisPoint: VesselTrackPoint | null;
+  timestampNearestAisPoint: VesselTrackPoint | null;
+  timestampNearestDistanceFromOriginKm: number | null;
+}
+
 /** Ranked candidate vessel ready for map + panel rendering. */
 export interface AttributedVessel {
   vesselId: string;
@@ -77,15 +127,27 @@ export interface AttributedVessel {
   imo: string | null;
   country: string | null;
   vesselType: string | null;
+  distanceFromBacktrackOriginKm: number | null;
   distanceFromOriginKm: number | null;
-  /** Position at the backtrack origin time, when the backend provides one. */
+  /** Position at the backtrack origin / attribution time. */
   culpritLocation: VesselTrackPoint | null;
-  /** Chronological AIS track (may be empty for vessels with no window coverage). */
+  /** Chronological AIS track display points provided by backend. */
+  trajectory: VesselTrackPoint[];
   track: VesselTrackPoint[];
 }
 
+export type VesselAttribution = AttributedVessel;
+
 export interface SpillAttribution {
   spillId: string;
+  backtrackOrigin: BacktrackOrigin | null;
+  verification: AttributionVerification | null;
+  attribution: {
+    topVessel: string | null;
+    topScore: number | null;
+    rank: number;
+    candidateCount: number;
+  };
   topVesselId: string | null;
   candidateCount: number;
   vessels: AttributedVessel[];
@@ -93,3 +155,5 @@ export interface SpillAttribution {
   drawableVessels: AttributedVessel[];
   bounds: GeoBounds | null;
 }
+
+export type VesselAttributionResponse = SpillAttribution;

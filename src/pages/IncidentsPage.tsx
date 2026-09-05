@@ -6,13 +6,11 @@ import { IncidentsTable } from '../components/incidents/IncidentsTable';
 import { IncidentFilters } from '../components/incidents/IncidentFilters';
 import { useIncidentFilters } from '../hooks/useIncidentFilters';
 import { spillService } from '../services/spillService';
-import { AlertTriangle } from 'lucide-react';
 import { Incident } from '../types/incident';
 
 const IncidentsPage: React.FC = () => {
   const navigate = useNavigate();
   const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     spillService.getSpills().then(data => {
@@ -30,7 +28,6 @@ const IncidentsPage: React.FC = () => {
         severity: d.area_km2 > 10 ? 'CRITICAL' : (d.area_km2 > 5 ? 'HIGH' : 'MEDIUM')
       }));
       setIncidents(mapped);
-      setLoading(false);
     });
   }, []);
   

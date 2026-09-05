@@ -60,7 +60,7 @@ export const generateDemoTrajectory = (
 
 export const generateDemoAISTrack = (
   source: SpillSourceEstimate,
-  observation: SpillObservation,
+  _observation: SpillObservation,
   estimatedReleaseTime: string,
   detectedTime: string,
   seedStr: string,

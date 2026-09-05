@@ -18,4 +18,6 @@ export const LAYER_IDS = {
   currentArrows: 'env-current-arrows',
   vesselTracks: 'vessel-tracks',
   vesselMarkers: 'vessel-markers',
+  culpritMarker: 'vessel-culprit-marker',
+  culpritMarkerLabel: 'vessel-culprit-label',
 } as const;

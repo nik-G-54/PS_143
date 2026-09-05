@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SpillTrajectory } from '../types/trajectoryTypes';
 import type { AttributedVessel } from '../types/attributionTypes';
-import { vesselPositionAt } from '../adapters/vesselAdapter';
+import { vesselPositionAt } from '../adapters/attributionTrajectoryAdapter';
 
 export interface TimelineVesselPosition {
   vesselId: string;
@@ -63,20 +63,29 @@ function interpolateOil(
 
 function formatWindow(timeMs: number | null, endMs: number): string {
   if (timeMs == null || !Number.isFinite(timeMs)) return '—';
+  const d = new Date(timeMs);
+  const timeStr = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
   const hoursBack = (endMs - timeMs) / 3_600_000;
-  if (hoursBack < 0.05) return 'At detection';
-  if (hoursBack < 1) return `${Math.round(hoursBack * 60)} min before detection`;
-  return `${hoursBack.toFixed(1)} h before detection`;
+  if (Math.abs(hoursBack) < 0.05) return `${timeStr} (At observation)`;
+  if (hoursBack > 0) {
+    if (hoursBack < 1) return `${timeStr} (${Math.round(hoursBack * 60)}m before)`;
+    return `${timeStr} (${hoursBack.toFixed(1)}h before)`;
+  }
+  return timeStr;
 }
 
 /**
- * Play/scrub the investigation timeline across the oil drift window.
- * Vessel positions are interpolated from backend AIS tracks at the same playhead.
+ * Play/scrub the investigation timeline across the oil drift and attribution window.
+ * Authoritative simulation clock drives both oil drift position and vessel visual positions.
+ *
+ * NOTE: Vessel positions are interpolated on-the-fly for animation only;
+ * no fake AIS observations are created or persisted.
  */
 export function useInvestigationTimeline(
   trajectory: SpillTrajectory | null,
   vessels: AttributedVessel[],
-  active: boolean
+  active: boolean,
+  trajectoryWindow?: { start: string; startMs: number; end: string; endMs: number } | null
 ): UseInvestigationTimelineResult {
   const [progress, setProgressState] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -97,8 +106,10 @@ export function useInvestigationTimeline(
   const pause = useCallback(() => setIsPlaying(false), []);
   const togglePlay = useCallback(() => setIsPlaying((prev) => !prev), []);
 
+  const hasAnimationSubject = Boolean(trajectory || vessels.length > 0);
+
   useEffect(() => {
-    if (!isPlaying || !active || !trajectory) {
+    if (!isPlaying || !active || !hasAnimationSubject) {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
       lastTsRef.current = null;
@@ -128,15 +139,36 @@ export function useInvestigationTimeline(
       rafRef.current = null;
       lastTsRef.current = null;
     };
-  }, [isPlaying, active, trajectory]);
+  }, [isPlaying, active, hasAnimationSubject]);
 
-  const startMs = trajectory?.points[0]?.timestampMs ?? 0;
-  const endMs = trajectory?.points[trajectory.points.length - 1]?.timestampMs ?? 0;
+  // Derive dynamic time boundaries from backend trajectoryWindow or data points
+  const { startMs, endMs } = useMemo(() => {
+    if (trajectoryWindow?.startMs && trajectoryWindow?.endMs) {
+      return { startMs: trajectoryWindow.startMs, endMs: trajectoryWindow.endMs };
+    }
+    const trajStart = trajectory?.points[0]?.timestampMs ?? 0;
+    const trajEnd = trajectory?.points[trajectory.points.length - 1]?.timestampMs ?? 0;
+    if (trajStart && trajEnd) return { startMs: trajStart, endMs: trajEnd };
+
+    // Fallback to vessels tracks
+    let minMs = Number.POSITIVE_INFINITY;
+    let maxMs = Number.NEGATIVE_INFINITY;
+    for (const v of vessels) {
+      for (const p of v.trajectory) {
+        if (p.timestampMs < minMs) minMs = p.timestampMs;
+        if (p.timestampMs > maxMs) maxMs = p.timestampMs;
+      }
+    }
+    if (Number.isFinite(minMs) && Number.isFinite(maxMs) && maxMs > minMs) {
+      return { startMs: minMs, endMs: maxMs };
+    }
+    return { startMs: trajStart, endMs: trajEnd };
+  }, [trajectoryWindow, trajectory, vessels]);
 
   const currentTimeMs = useMemo(() => {
-    if (!trajectory || !active) return null;
+    if (!active || !hasAnimationSubject || startMs === 0 || endMs === 0) return null;
     return startMs + (endMs - startMs) * progress;
-  }, [trajectory, active, startMs, endMs, progress]);
+  }, [active, hasAnimationSubject, startMs, endMs, progress]);
 
   const oilPosition = useMemo(() => {
     if (!trajectory || currentTimeMs == null) return null;

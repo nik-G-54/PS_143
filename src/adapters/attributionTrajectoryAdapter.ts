@@ -4,4 +4,4 @@ export {
   adaptSpillAttribution,
   adaptTrackPoint,
   vesselPositionAt,
-} from './attributionTrajectoryAdapter';
+} from '../features/maritime-map/adapters/attributionTrajectoryAdapter';

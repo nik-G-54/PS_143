@@ -22,10 +22,29 @@ import { useSpillAttribution } from '../hooks/useSpillAttribution';
 import { useInvestigation } from '../investigation/useInvestigation';
 import { useInvestigationTimeline } from '../timeline/useInvestigationTimeline';
 import { MapboxOverlay } from '@deck.gl/mapbox';
+import type { GeoBounds } from '../types/spillTypes';
 
 // Explicitly set the worker URL using Vite's ?worker&url syntax
 // This fixes the 'maplibre-gl-worker.mjs does not exist in optimize deps' error
 maplibregl.setWorkerUrl(workerUrl);
+
+function combineBounds(...list: (GeoBounds | null | undefined)[]): GeoBounds | null {
+  let res: GeoBounds | null = null;
+  for (const b of list) {
+    if (!b) continue;
+    if (!res) {
+      res = { ...b };
+    } else {
+      res = {
+        minLon: Math.min(res.minLon, b.minLon),
+        minLat: Math.min(res.minLat, b.minLat),
+        maxLon: Math.max(res.maxLon, b.maxLon),
+        maxLat: Math.max(res.maxLat, b.maxLat),
+      };
+    }
+  }
+  return res;
+}
 
 export function MaritimeMap() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -41,12 +60,21 @@ export function MaritimeMap() {
   const [isTilesLoading, setIsTilesLoading] = useState(false);
   const [showWind, setShowWind] = useState(false);
   const [showCurrent, setShowCurrent] = useState(false);
-  /** Spill id for which backtrack mode is armed — auto-clears when selection changes. */
+  /** Spill id for which backtrack mode is armed — auto-arms on selection. */
   const [backtrackSpillId, setBacktrackSpillId] = useState<string | null>(null);
 
   const { spills, isLoading: isSpillsLoading, error: spillsError, reload } = useSpills();
   const { selectedSpillId, focusMode, selectSpill, clearInvestigation, toggleFocusMode } =
     useInvestigation();
+
+  // Auto-arm backtrack when a spill is selected so trajectories & timeline are ready
+  useEffect(() => {
+    if (selectedSpillId) {
+      setBacktrackSpillId(selectedSpillId);
+    } else {
+      setBacktrackSpillId(null);
+    }
+  }, [selectedSpillId]);
 
   const backtrackActive = backtrackSpillId != null && backtrackSpillId === selectedSpillId;
 
@@ -65,12 +93,14 @@ export function MaritimeMap() {
   const {
     attribution,
     isLoading: isAttributionLoading,
-  } = useSpillAttribution(selectedSpillId, backtrackActive);
+    error: attributionError,
+  } = useSpillAttribution(selectedSpillId);
 
   const timeline = useInvestigationTimeline(
     trajectory,
-    attribution?.drawableVessels ?? [],
-    backtrackActive && Boolean(trajectory)
+    attribution?.vessels ?? [],
+    backtrackActive && (Boolean(trajectory) || Boolean(attribution)),
+    attribution?.verification?.trajectoryWindow
   );
 
   // Environment toggles only apply while a spill is selected.
@@ -247,12 +277,13 @@ export function MaritimeMap() {
         trajectory,
         visiblePoints: backtrackActive ? timeline.visiblePoints : null,
         oilPlayhead: backtrackActive ? timeline.oilPosition : null,
+        backtrackOrigin: attribution?.backtrackOrigin,
         environment,
         showWind: windVisible,
         showCurrent: currentVisible,
-        vessels: attribution?.drawableVessels ?? [],
+        vessels: attribution?.vessels ?? [],
         vesselPositions: timeline.vesselPositions,
-        backtrackActive,
+        active: Boolean(selectedSpillId),
       }),
     });
   }, [
@@ -300,24 +331,51 @@ export function MaritimeMap() {
     flyToSpill(map, selectedSpill);
   }, [selectedSpill]);
 
-  // --- Second beat: frame the drift path once it arrives for this selection ---
+  // --- Second beat: frame the drift path and attribution candidates together ---
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !trajectory || !selectedSpillId) return;
-    if (framedDriftForRef.current === trajectory.spillId) return;
-    framedDriftForRef.current = trajectory.spillId;
-    frameDriftPath(map, trajectory.bounds);
-  }, [trajectory, selectedSpillId]);
+    if (!map || !selectedSpillId) return;
+    if (!trajectory && !attribution) return;
+
+    const dataKey = `${selectedSpillId}:${Boolean(trajectory)}:${Boolean(attribution)}`;
+    if (framedDriftForRef.current === dataKey) return;
+    framedDriftForRef.current = dataKey;
+
+    const spillBounds: GeoBounds | null = selectedSpill
+      ? {
+          minLon: selectedSpill.longitude,
+          maxLon: selectedSpill.longitude,
+          minLat: selectedSpill.latitude,
+          maxLat: selectedSpill.latitude,
+        }
+      : null;
+
+    const combined = combineBounds(spillBounds, trajectory?.bounds, attribution?.bounds);
+    if (combined) {
+      frameDriftPath(map, combined);
+    }
+  }, [trajectory, attribution, selectedSpillId, selectedSpill]);
 
   const handleRecenter = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (trajectory) {
-      frameDriftPath(map, trajectory.bounds);
+
+    const spillBounds: GeoBounds | null = selectedSpill
+      ? {
+          minLon: selectedSpill.longitude,
+          maxLon: selectedSpill.longitude,
+          minLat: selectedSpill.latitude,
+          maxLat: selectedSpill.latitude,
+        }
+      : null;
+
+    const combined = combineBounds(spillBounds, trajectory?.bounds, attribution?.bounds);
+    if (combined) {
+      frameDriftPath(map, combined);
       return;
     }
     if (selectedSpill) flyToSpill(map, selectedSpill);
-  }, [selectedSpill, trajectory]);
+  }, [selectedSpill, trajectory, attribution]);
 
   const handleResetView = useCallback(() => {
     const map = mapRef.current;
@@ -374,6 +432,7 @@ export function MaritimeMap() {
             trajectoryError={trajectoryError}
             attribution={attribution}
             isAttributionLoading={isAttributionLoading}
+            attributionError={attributionError}
             backtrackActive={backtrackActive}
             onToggleFocusMode={toggleFocusMode}
             onToggleBacktrack={handleToggleBacktrack}
@@ -393,7 +452,7 @@ export function MaritimeMap() {
           />
         )}
 
-        {selectedSpill && backtrackActive && trajectory && (
+        {selectedSpill && backtrackActive && (trajectory || attribution) && (
           <InvestigationTimeline
             progress={timeline.progress}
             isPlaying={timeline.isPlaying}

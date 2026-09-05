@@ -15,7 +15,16 @@ export interface UseInvestigationResult extends InvestigationState {
  * handlers without rebuilding layers on every render.
  */
 export function useInvestigation(): UseInvestigationResult {
-  const [state, setState] = useState<InvestigationState>(INITIAL_INVESTIGATION_STATE);
+  const [state, setState] = useState<InvestigationState>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlSpillId = params.get('spill') || params.get('id');
+      if (urlSpillId) {
+        return { selectedSpillId: urlSpillId, focusMode: false };
+      }
+    } catch {}
+    return INITIAL_INVESTIGATION_STATE;
+  });
 
   const selectSpill = useCallback((spillId: string) => {
     setState((previous) => ({ ...previous, selectedSpillId: spillId }));

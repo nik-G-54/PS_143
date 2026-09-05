@@ -7,7 +7,6 @@ import {
   AlertTriangle, 
   Sun, 
   Moon, 
-  ShieldAlert,
   Loader2
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
@@ -55,7 +54,6 @@ export const Header: React.FC = () => {
   const { title, icon } = getPageDetails();
 
   const incidentId = incidentContext?.spillId ?? incidentContext?.spillDetails?.spill_id ?? 'UNKNOWN';
-  const incidentStatus = incidentContext?.loading ? 'LOADING...' : (incidentContext?.spillDetails?.status ?? 'ACTIVE');
 
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 transition-colors duration-200 shrink-0">

@@ -6,6 +6,7 @@ import type { DriftOriginDatum } from '../layers/TrajectoryLayer';
 import type { EnvArrow } from '../layers/EnvironmentLayer';
 import type { AttributedVessel } from '../types/attributionTypes';
 import type { TimelineVesselPosition } from '../timeline/useInvestigationTimeline';
+import type { CulpritMarkerDatum } from '../layers/VesselLayer';
 import { LAYER_IDS } from '../layers/layerIds';
 import {
   formatArea,
@@ -104,23 +105,51 @@ function envArrowTooltip(arrow: EnvArrow) {
   ]);
 }
 
+function culpritMarkerTooltip(culprit: CulpritMarkerDatum) {
+  const timeStr = culprit.timestamp ? formatUtcTimestamp(culprit.timestampMs) : '—';
+  const distStr =
+    culprit.distanceFromBacktrackOriginKm != null
+      ? `${culprit.distanceFromBacktrackOriginKm.toFixed(2)} km`
+      : '—';
+  const speedStr = culprit.speed != null ? `${culprit.speed.toFixed(1)} kn` : null;
+  const courseStr = culprit.course != null ? `${culprit.course.toFixed(0)}°` : null;
+
+  const rows = [
+    title('★ Potential Source Position'),
+    row('Candidate', `#1 ${culprit.vesselName}`),
+    row('Position Time', timeStr),
+    row('Coordinates', formatLatLon(culprit.longitude, culprit.latitude)),
+    row('Distance to Origin', distStr),
+  ];
+  if (speedStr || courseStr) {
+    rows.push(row('Speed / Course', [speedStr, courseStr].filter(Boolean).join(' @ ')));
+  }
+  return tooltip(rows);
+}
+
 function vesselMarkerTooltip(vessel: TimelineVesselPosition) {
+  const label = vessel.rank === 1 ? `★ Potential Source (#1 ${vessel.vesselName})` : `#${vessel.rank} ${vessel.vesselName}`;
   return tooltip([
-    title(`#${vessel.rank} ${vessel.vesselName}`),
+    title(label),
     row('Position', formatLatLon(vessel.longitude, vessel.latitude)),
     row('Source', vessel.isMock ? 'Synthetic AIS' : 'Observed AIS'),
   ]);
 }
 
 function vesselTrackTooltip(vessel: AttributedVessel) {
+  const pointsCount = vessel.trajectory ? vessel.trajectory.length : vessel.track.length;
+  const dist =
+    vessel.distanceFromBacktrackOriginKm != null
+      ? `${vessel.distanceFromBacktrackOriginKm.toFixed(2)} km`
+      : vessel.distanceFromOriginKm != null
+        ? `${vessel.distanceFromOriginKm.toFixed(2)} km`
+        : '—';
   return tooltip([
-    title(`#${vessel.rank} ${vessel.vesselName}`),
+    title(vessel.rank === 1 ? `★ Potential Source (#1 ${vessel.vesselName})` : `#${vessel.rank} ${vessel.vesselName}`),
     row('Type', vessel.vesselType ?? '—'),
-    row('Track points', String(vessel.track.length)),
-    row(
-      'Origin dist.',
-      vessel.distanceFromOriginKm != null ? `${vessel.distanceFromOriginKm.toFixed(2)} km` : '—'
-    ),
+    row('Display points', String(pointsCount)),
+    row('Origin dist.', dist),
+    row('Source', vessel.isMock ? 'Synthetic Candidate' : 'Observed AIS Track'),
   ]);
 }
 
@@ -145,6 +174,8 @@ function getMaritimeTooltip(info: PickingInfo) {
     case LAYER_IDS.currentArrows:
     case `${LAYER_IDS.currentArrows}-head`:
       return envArrowTooltip(info.object as EnvArrow);
+    case LAYER_IDS.culpritMarker:
+      return culpritMarkerTooltip(info.object as CulpritMarkerDatum);
     case LAYER_IDS.vesselMarkers:
       return vesselMarkerTooltip(info.object as TimelineVesselPosition);
     case LAYER_IDS.vesselTracks:
@@ -156,14 +187,6 @@ function getMaritimeTooltip(info: PickingInfo) {
 
 export function createDeckOverlay(): MapboxOverlay {
   return new MapboxOverlay({
-    // Overlaid rather than interleaved: overlaid layers survive `map.setStyle()`,
-    // whereas interleaved custom layers are dropped when the style is swapped for
-    // a theme or basemap change.
-    //
-    // Projection is not a concern either way — MapboxOverlay mirrors MapLibre's
-    // own projection, handing layers a GlobeViewport while the globe is active and
-    // a WebMercatorViewport once MapLibre transitions to Mercator at high zoom.
-    // Verified against `map.project()` at zoom 1.8 and 13.25: 0 px difference.
     interleaved: false,
     layers: [],
     getTooltip: getMaritimeTooltip,

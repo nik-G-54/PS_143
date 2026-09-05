@@ -1,6 +1,7 @@
 import { PathLayer, ScatterplotLayer } from '@deck.gl/layers';
 import type { Layer } from '@deck.gl/core';
 import type { SpillTrajectory, TrajectoryPoint } from '../types/trajectoryTypes';
+import type { BacktrackOrigin } from '../types/attributionTypes';
 import { LAYER_IDS } from './layerIds';
 import {
   CASING_EXTRA_PX,
@@ -27,6 +28,8 @@ export interface TrajectoryLayerOptions {
   visiblePoints?: SpillTrajectory['points'] | null;
   /** Oil head at the playhead — drawn when backtrack timeline is active. */
   oilPlayhead?: { longitude: number; latitude: number } | null;
+  /** Authoritative backtrack origin from attribution API. */
+  backtrackOrigin?: BacktrackOrigin | null;
 }
 
 /** Everything the origin marker's tooltip needs, so it never reaches back into the trajectory. */
@@ -187,34 +190,46 @@ function createPlayheadLayer(
  * detections above all of it so the selected dot stays the anchor of its own path.
  */
 export function createTrajectoryLayers(options: TrajectoryLayerOptions): Layer[] {
-  const { trajectory, visiblePoints, oilPlayhead } = options;
-  if (!trajectory || trajectory.points.length < 2) return [];
-
-  const pointsForPath =
-    visiblePoints && visiblePoints.length >= 2 ? visiblePoints : trajectory.points;
+  const { trajectory, visiblePoints, oilPlayhead, backtrackOrigin } = options;
 
   const layers: Layer[] = [];
 
-  const origin: DriftOriginDatum | null = trajectory.source
+  const origin: DriftOriginDatum | null = backtrackOrigin
     ? {
-        longitude: trajectory.source.longitude,
-        latitude: trajectory.source.latitude,
-        radiusKm: trajectory.source.radiusKm,
-        windowStartMs: trajectory.points[0].timestampMs,
-        durationHours: trajectory.durationHours,
-        totalDistanceKm: trajectory.totalDistanceKm,
+        longitude: backtrackOrigin.longitude,
+        latitude: backtrackOrigin.latitude,
+        radiusKm: backtrackOrigin.radiusKm,
+        windowStartMs: backtrackOrigin.timestampMs || trajectory?.points[0]?.timestampMs || 0,
+        durationHours: trajectory?.durationHours ?? 0,
+        totalDistanceKm: trajectory?.totalDistanceKm ?? 0,
       }
-    : null;
+    : trajectory?.source
+      ? {
+          longitude: trajectory.source.longitude,
+          latitude: trajectory.source.latitude,
+          radiusKm: trajectory.source.radiusKm,
+          windowStartMs: trajectory.points[0]?.timestampMs || 0,
+          durationHours: trajectory.durationHours,
+          totalDistanceKm: trajectory.totalDistanceKm,
+        }
+      : null;
 
-  if (origin && origin.radiusKm != null) layers.push(createUncertaintyLayer(origin));
+  if (origin && origin.radiusKm != null && origin.radiusKm > 0) {
+    layers.push(createUncertaintyLayer(origin));
+  }
 
-  layers.push(...createPathLayers(trajectory, pointsForPath));
+  if (trajectory && trajectory.points.length >= 2) {
+    const pointsForPath =
+      visiblePoints && visiblePoints.length >= 2 ? visiblePoints : trajectory.points;
 
-  const ticks = selectTimeTicks(trajectory.points).filter((tick) =>
-    pointsForPath.some((p) => p.timestampMs >= tick.timestampMs)
-  );
-  if (ticks.length > 0) {
-    layers.push(createTimeTickLayer(ticks, trajectory.durationHours, trajectory.spillId));
+    layers.push(...createPathLayers(trajectory, pointsForPath));
+
+    const ticks = selectTimeTicks(trajectory.points).filter((tick) =>
+      pointsForPath.some((p) => p.timestampMs >= tick.timestampMs)
+    );
+    if (ticks.length > 0) {
+      layers.push(createTimeTickLayer(ticks, trajectory.durationHours, trajectory.spillId));
+    }
   }
 
   if (origin) layers.push(createOriginLayer(origin));

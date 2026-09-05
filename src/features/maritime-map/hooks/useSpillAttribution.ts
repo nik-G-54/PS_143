@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchSpillAttribution } from '../api/attributionApi';
-import { adaptSpillAttribution } from '../adapters/vesselAdapter';
+import { getAttributionTrajectory } from '../api/attributionTrajectoryApi';
+import { adaptAttributionTrajectory } from '../adapters/attributionTrajectoryAdapter';
 import type { SpillAttribution } from '../types/attributionTypes';
 
 export interface UseSpillAttributionResult {
@@ -18,12 +18,17 @@ interface AttributionState {
 const EMPTY_STATE: AttributionState = { spillId: null, attribution: null, error: null };
 
 /**
- * Load ranked vessel attribution for a spill when backtrack mode is active.
- * Pass null (or enabled=false) to skip the request.
+ * Load authoritative vessel attribution + AIS trajectories for the selected spill.
+ *
+ * Data lifecycle:
+ * - Automatically triggers when `spillId` changes
+ * - Aborts stale in-flight requests when spill selection changes
+ * - Clears attribution when `spillId` is null
+ * - Never falls back to fake/mock vessel data on API error
  */
 export function useSpillAttribution(
   spillId: string | null,
-  enabled: boolean
+  enabled = true
 ): UseSpillAttributionResult {
   const [state, setState] = useState<AttributionState>(EMPTY_STATE);
 
@@ -33,10 +38,26 @@ export function useSpillAttribution(
     const controller = new AbortController();
     let active = true;
 
-    fetchSpillAttribution(spillId, controller.signal)
+    getAttributionTrajectory(spillId, controller.signal)
       .then((raw) => {
         if (!active) return;
-        const attribution = adaptSpillAttribution(spillId, raw);
+        const attribution = adaptAttributionTrajectory(raw, spillId);
+
+        if (attribution) {
+          // Structured diagnostics log (MAP-07 Section 22)
+          console.log(
+            `[MAP-07] Attribution trajectory loaded\n` +
+              `spill: ${attribution.spillId}\n` +
+              `candidates: ${attribution.vessels.length}\n` +
+              attribution.vessels
+                .map(
+                  (v) =>
+                    `  rank ${v.rank}:\n    id: ${v.vesselId}\n    mock: ${v.isMock}\n    points: ${v.trajectory.length}`
+                )
+                .join('\n')
+          );
+        }
+
         setState({
           spillId,
           attribution,
@@ -52,7 +73,7 @@ export function useSpillAttribution(
         setState({
           spillId,
           attribution: null,
-          error: 'Could not load vessel attribution.',
+          error: 'Unable to load vessel attribution data.',
         });
       });
 

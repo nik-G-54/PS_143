@@ -61,6 +61,7 @@ export interface VesselsResponse {
   spill_id?: string;
   candidate_count?: number;
   vessels: VesselCandidate[];
+  candidates?: VesselCandidate[];
 }
 
 export interface VisualizationSpill {

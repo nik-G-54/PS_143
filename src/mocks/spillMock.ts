@@ -25,7 +25,7 @@ export const mockBacktrackResponse: BacktrackResponse = {
 export const mockVesselsResponse: VesselsResponse = {
   spill_id: 'spill_dba12b',
   candidate_count: 1,
-  candidates: [
+  vessels: [
     {
       vessel_id: 'SYNTH-Y2019-000144',
       is_mock: true,

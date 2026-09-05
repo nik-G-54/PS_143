@@ -4,7 +4,6 @@ import type { SpillTrajectory } from '../types/trajectoryTypes';
 import type { SpillAttribution } from '../types/attributionTypes';
 import {
   formatArea,
-  formatCandidates,
   formatConfidence,
   formatCoordinates,
   formatDetectedAt,
@@ -25,6 +24,7 @@ interface InvestigationPanelProps {
   trajectoryError: string | null;
   attribution: SpillAttribution | null;
   isAttributionLoading: boolean;
+  attributionError?: string | null;
   backtrackActive: boolean;
   onToggleFocusMode: () => void;
   onToggleBacktrack: () => void;
@@ -48,6 +48,16 @@ function SectionHeading({ children }: { children: string }) {
       {children}
     </p>
   );
+}
+
+function formatUtcTime(timestamp: string): string {
+  if (!timestamp) return '—';
+  try {
+    const d = new Date(timestamp);
+    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
+  } catch {
+    return timestamp;
+  }
 }
 
 /** Readout of the backend's backtrack solution for this detection. */
@@ -103,33 +113,57 @@ function DriftSection({
 function VesselSection({
   attribution,
   isLoading,
-  active,
+  error,
 }: {
   attribution: SpillAttribution | null;
   isLoading: boolean;
-  active: boolean;
+  error?: string | null;
 }) {
-  if (!active) return null;
-
   return (
     <div className="space-y-1.5 border-t border-border pt-2.5">
-      <SectionHeading>Ranked vessels</SectionHeading>
+      <SectionHeading>Ranked candidates</SectionHeading>
       {isLoading && (
-        <p className="text-[11px] text-muted-foreground">Loading AIS attribution…</p>
+        <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+          Loading AIS attribution…
+        </p>
       )}
+      {!isLoading && error && <p className="text-[11px] text-muted-foreground">{error}</p>}
       {!isLoading && attribution && (
         <>
           <Field label="Candidates" value={String(attribution.candidateCount)} />
-          {attribution.vessels.slice(0, 3).map((vessel) => (
-            <Field
-              key={vessel.vesselId}
-              label={`#${vessel.rank}`}
-              value={vessel.vesselName}
-            />
-          ))}
-          {attribution.drawableVessels.length === 0 && (
+          {attribution.vessels.map((vessel) => {
+            const isTop = vessel.rank === 1;
+            const dist =
+              vessel.distanceFromBacktrackOriginKm != null
+                ? `${vessel.distanceFromBacktrackOriginKm.toFixed(1)} km`
+                : null;
+            return (
+              <div key={vessel.vesselId} className="flex flex-col gap-0.5 pt-0.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span
+                    className={`font-mono text-[11px] font-semibold ${
+                      isTop ? 'text-amber-400' : 'text-foreground'
+                    }`}
+                  >
+                    {isTop ? '★ #1 Potential Source' : `#${vessel.rank}`}
+                  </span>
+                  <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[130px]">
+                    {vessel.vesselName}
+                  </span>
+                </div>
+                {isTop && vessel.culpritLocation && (
+                  <div className="text-[10px] text-muted-foreground flex justify-between">
+                    <span>Position: {formatUtcTime(vessel.culpritLocation.timestamp)}</span>
+                    {dist && <span>{dist} from origin</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {attribution.vessels.length === 0 && (
             <p className="text-[10px] leading-relaxed text-muted-foreground">
-              Ranked list loaded; no AIS track points in the attribution window for map animation.
+              No correlated vessels returned for this detection.
             </p>
           )}
         </>
@@ -147,6 +181,7 @@ export function InvestigationPanel({
   trajectoryError,
   attribution,
   isAttributionLoading,
+  attributionError,
   backtrackActive,
   onToggleFocusMode,
   onToggleBacktrack,
@@ -155,7 +190,7 @@ export function InvestigationPanel({
   onScrollToDetails,
 }: InvestigationPanelProps) {
   return (
-    <div className="absolute top-4 right-4 z-10 flex max-h-[calc(100%-2rem)] w-[268px] flex-col overflow-hidden rounded-lg border border-border bg-card/92 shadow-lg backdrop-blur-md">
+    <div className="absolute top-4 right-4 z-10 flex max-h-[calc(100%-2rem)] w-[278px] flex-col overflow-hidden rounded-lg border border-border bg-card/92 shadow-lg backdrop-blur-md">
       <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
         <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           Under investigation
@@ -187,7 +222,6 @@ export function InvestigationPanel({
           <Field label="Detected" value={formatDetectedAt(spill)} />
           <Field label="Area" value={formatArea(spill.areaKm2)} />
           <Field label="Detection conf." value={formatConfidence(spill.confidenceScore)} />
-          <Field label="Candidates" value={formatCandidates(spill.candidateCount)} />
           <Field label="Centroid" value={formatCoordinates(spill)} />
         </div>
 
@@ -200,7 +234,7 @@ export function InvestigationPanel({
         <VesselSection
           attribution={attribution}
           isLoading={isAttributionLoading}
-          active={backtrackActive}
+          error={attributionError}
         />
 
         <button
@@ -214,7 +248,7 @@ export function InvestigationPanel({
           }`}
         >
           <Rewind size={13} />
-          {backtrackActive ? 'Backtrack on' : 'Backtrack vessels'}
+          {backtrackActive ? 'Timeline active' : 'Play timeline'}
         </button>
 
         <button

@@ -33,6 +33,16 @@ function Meta({ label, value }: { label: string; value: string }) {
   );
 }
 
+function formatUtcTime(timestamp: string | null | undefined): string {
+  if (!timestamp) return '—';
+  try {
+    const d = new Date(timestamp);
+    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')} UTC`;
+  } catch {
+    return timestamp;
+  }
+}
+
 /** Scroll-down investigation evidence: metadata, satellite image, scientific chart, vessels. */
 export function SpillDetailsSection({
   spill,
@@ -42,7 +52,6 @@ export function SpillDetailsSection({
   isTrajectoryLoading,
   isAttributionLoading,
   currentTimeMs,
-  backtrackActive,
 }: SpillDetailsSectionProps) {
   return (
     <section
@@ -56,8 +65,8 @@ export function SpillDetailsSection({
           </p>
           <h2 className="font-mono text-xl font-semibold text-primary">{spill.spillId}</h2>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Satellite observation and the backend drift solution for this detection. Vessel ranking
-            and AIS tracks appear after Backtrack is started on the map.
+            Satellite observation, backtrack drift analysis, and correlated AIS candidate vessels
+            for this detection.
           </p>
         </header>
 
@@ -65,7 +74,10 @@ export function SpillDetailsSection({
           <Meta label="Detected" value={formatDetectedAt(spill)} />
           <Meta label="Area" value={formatArea(spill.areaKm2)} />
           <Meta label="Detection conf." value={formatConfidence(spill.confidenceScore)} />
-          <Meta label="Candidates" value={formatCandidates(spill.candidateCount)} />
+          <Meta
+            label="Candidates"
+            value={formatCandidates(attribution?.candidateCount ?? spill.candidateCount)}
+          />
           <Meta label="Centroid" value={formatCoordinates(spill)} />
         </div>
 
@@ -105,7 +117,9 @@ export function SpillDetailsSection({
                   <Meta label="Positions" value={String(trajectory.points.length)} />
                   <Meta
                     label="Origin uncertainty"
-                    value={formatUncertaintyRadius(trajectory.source?.radiusKm ?? null)}
+                    value={formatUncertaintyRadius(
+                      attribution?.backtrackOrigin?.radiusKm ?? trajectory.source?.radiusKm ?? null
+                    )}
                   />
                   {environment?.wind && (
                     <Meta
@@ -138,22 +152,22 @@ export function SpillDetailsSection({
         <div className="space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Ranked vessels
+              Ranked AIS candidates
             </p>
-            {!backtrackActive && (
+            {attribution && (
               <p className="text-[11px] text-muted-foreground">
-                Start Backtrack on the map to load AIS attribution.
+                {attribution.candidateCount} candidate{attribution.candidateCount === 1 ? '' : 's'} correlated with backtrack origin
               </p>
             )}
           </div>
 
-          {backtrackActive && isAttributionLoading && (
+          {isAttributionLoading && (
             <p className="text-sm text-muted-foreground">Loading ranked vessels…</p>
           )}
 
-          {backtrackActive && attribution && attribution.vessels.length > 0 && (
+          {!isAttributionLoading && attribution && attribution.vessels.length > 0 && (
             <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[560px] text-left text-sm">
+              <table className="w-full min-w-[620px] text-left text-sm">
                 <thead className="border-b border-border bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 font-semibold">Rank</th>
@@ -161,40 +175,74 @@ export function SpillDetailsSection({
                     <th className="px-3 py-2 font-semibold">Type</th>
                     <th className="px-3 py-2 font-semibold">Flag</th>
                     <th className="px-3 py-2 font-semibold">Origin dist.</th>
-                    <th className="px-3 py-2 font-semibold">AIS track</th>
+                    <th className="px-3 py-2 font-semibold">Attribution Position</th>
+                    <th className="px-3 py-2 font-semibold">AIS display track</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {attribution.vessels.map((vessel) => (
-                    <tr key={vessel.vesselId} className="border-b border-border/60 last:border-0">
-                      <td className="px-3 py-2 font-mono tabular-nums">#{vessel.rank}</td>
-                      <td className="px-3 py-2">
-                        <div className="font-mono text-xs font-semibold">{vessel.vesselName}</div>
-                        {vessel.mmsi && (
-                          <div className="text-[10px] text-muted-foreground">MMSI {vessel.mmsi}</div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {vessel.vesselType ?? '—'}
-                        {vessel.isMock ? ' · synth' : ''}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">{vessel.country ?? '—'}</td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
-                        {vessel.distanceFromOriginKm != null
-                          ? `${vessel.distanceFromOriginKm.toFixed(2)} km`
-                          : '—'}
-                      </td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
-                        {vessel.track.length > 0 ? `${vessel.track.length} pts` : 'No track'}
-                      </td>
-                    </tr>
-                  ))}
+                  {attribution.vessels.map((vessel) => {
+                    const isTop = vessel.rank === 1;
+                    const culpritTime = vessel.culpritLocation?.timestamp
+                      ? formatUtcTime(vessel.culpritLocation.timestamp)
+                      : '—';
+                    return (
+                      <tr
+                        key={vessel.vesselId}
+                        className={`border-b border-border/60 last:border-0 ${
+                          isTop ? 'bg-amber-500/10 font-medium' : ''
+                        }`}
+                      >
+                        <td className="px-3 py-2 font-mono tabular-nums">
+                          <span
+                            className={
+                              isTop
+                                ? 'rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-semibold text-amber-400'
+                                : ''
+                            }
+                          >
+                            #{vessel.rank}
+                            {isTop ? ' ★ Top Candidate' : ''}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="font-mono text-xs font-semibold">{vessel.vesselName}</div>
+                          {vessel.mmsi && (
+                            <div className="text-[10px] text-muted-foreground">MMSI {vessel.mmsi}</div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {vessel.vesselType ?? '—'}
+                          {vessel.isMock ? ' · synth' : ''}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">{vessel.country ?? '—'}</td>
+                        <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                          {vessel.distanceFromBacktrackOriginKm != null
+                            ? `${vessel.distanceFromBacktrackOriginKm.toFixed(2)} km`
+                            : vessel.distanceFromOriginKm != null
+                              ? `${vessel.distanceFromOriginKm.toFixed(2)} km`
+                              : '—'}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                          {isTop && vessel.culpritLocation
+                            ? `Potential Source Position (${culpritTime})`
+                            : culpritTime}
+                        </td>
+                        <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                          {vessel.trajectory.length > 0
+                            ? `${vessel.trajectory.length} pts`
+                            : vessel.track.length > 0
+                              ? `${vessel.track.length} pts`
+                              : 'No track'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
 
-          {backtrackActive && !isAttributionLoading && attribution?.vessels.length === 0 && (
+          {!isAttributionLoading && (!attribution || attribution.vessels.length === 0) && (
             <p className="text-sm text-muted-foreground">No ranked vessels returned for this spill.</p>
           )}
         </div>

@@ -24,6 +24,15 @@ export function formatShortUtc(iso: string) {
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 }
 
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Backend timestamp → "12 Jan 11:27" for sparse trajectory markers. */
+export function formatMilestoneUtc(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+
 export function formatOffsetLabel(hoursFromStart: number) {
   if (Math.abs(hoursFromStart) < 0.05) return 'T+0h';
   return `T+${hoursFromStart.toFixed(hoursFromStart < 10 ? 1 : 0)}h`;
@@ -88,13 +97,12 @@ export function computeTrajectoryStats(
 
   const count = Math.min(maxMilestones, points.length);
   const indices = new Set<number>();
-  for (let i = 0; i < count; i++) {
-    indices.add(Math.round((i / (count - 1)) * (points.length - 1)));
-  }
-  // Always include mid-ish points if path is long
-  if (points.length > 8) {
-    indices.add(Math.floor(points.length / 3));
-    indices.add(Math.floor((2 * points.length) / 3));
+  if (count <= 1) {
+    indices.add(0);
+  } else {
+    for (let i = 0; i < count; i++) {
+      indices.add(Math.round((i / (count - 1)) * (points.length - 1)));
+    }
   }
 
   const milestones: TrajectoryMilestone[] = [...indices]
@@ -111,7 +119,7 @@ export function computeTrajectoryStats(
         hoursFromStart,
         distanceFromStartKm: cumDist[index],
         label: formatOffsetLabel(hoursFromStart),
-        timeLabel: formatShortUtc(pt.timestamp),
+        timeLabel: formatMilestoneUtc(pt.timestamp),
         isStart: index === 0,
         isEnd: index === points.length - 1,
       };

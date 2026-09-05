@@ -14,6 +14,7 @@ import { useSceneLayers } from '../../../context/SceneLayersContext';
 import { SourceEstimate } from './SourceEstimate';
 import { OilTrajectory } from './OilTrajectory';
 import { EnvironmentIndicators } from './environment/EnvironmentIndicators';
+import { CulpritMarker } from './CulpritMarker';
 
 export const IncidentScene: React.FC = () => {
   const { spillDetails, backtrackData, vesselsData } = useIncident();
@@ -42,9 +43,16 @@ export const IncidentScene: React.FC = () => {
         />
       )}
 
+      {layers.ais && <CulpritMarker />}
+
       {layers.ais && vesselsData?.vessels?.map((candidate) => (
         <React.Fragment key={candidate.vessel_id}>
-          {candidate.track && <AISTrack track={candidate.track} />}
+          {candidate.track && (
+            <AISTrack
+              track={candidate.track}
+              priority={candidate.rank === 1 ? 'primary' : 'secondary'}
+            />
+          )}
           <VesselModel
             id={candidate.vessel_id}
             status="CANDIDATE"

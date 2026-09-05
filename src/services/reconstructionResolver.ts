@@ -23,7 +23,8 @@ export const resolveReconstruction = (
   spillDetails: any,
   backtrack: BacktrackResponse,
   vessels: VesselsResponse,
-  visRes?: any
+  visRes?: any,
+  attrTrajRes?: any
 ): NormalizedReconstruction => {
   const dataSources: DataSources = {
     observation: 'Backend',
@@ -84,35 +85,85 @@ export const resolveReconstruction = (
     }
   }
 
-  // Ensure the internal array is always present
-  if (!newVessels.vessels) {
-    newVessels.vessels = (newVessels as any).candidates || [];
-  }
-  delete (newVessels as any).candidates;
+  // AIS Track fallback and Attribution Trajectory merging
+  if (attrTrajRes && attrTrajRes.vessels) {
+    dataSources.vesselTracks = 'Backend';
+    dataSources.vessels = 'Backend';
+    newVessels.vessels = attrTrajRes.vessels.map((v: any) => {
+      const track = v.trajectory ? v.trajectory.map((p: any) => ({
+        timestamp: p.timestamp,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        speed: p.speed,
+        course: p.course,
+        heading: p.heading,
+      })) : [];
+      
+      // Sort track by timestamp just in case
+      track.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  // AIS Track fallback
-  let hasBackendTracks = true;
-  newVessels.vessels.forEach(candidate => {
-    if (!candidate.track || candidate.track.length === 0) {
-      hasBackendTracks = false;
-      if (src && relTime) {
-        candidate.track = generateDemoAISTrack(
-          src, 
-          obs, 
-          relTime, 
-          obs.timestamp, 
-          candidate.vessel_id,
-          candidate.rank || 1,
-          candidate.distance_to_origin_km || (candidate.rank || 1) * 5
-        );
-      } else {
-        candidate.track = [];
+      // Diagnostic check for unusually large segment distances
+      for (let i = 0; i < track.length - 1; i++) {
+        const p1 = track[i];
+        const p2 = track[i + 1];
+        // simple cartesian dist for diagnostic
+        const dx = p2.longitude - p1.longitude;
+        const dy = p2.latitude - p1.latitude;
+        const distDeg = Math.sqrt(dx*dx + dy*dy);
+        if (distDeg > 2) { // 2 degrees is huge, ~222km jump
+          console.warn(`Trajectory contains unusually large segment distance. Vessel: ${v.vessel_id}, P1: ${p1.timestamp}, P2: ${p2.timestamp}`);
+        }
       }
-    }
-  });
 
-  if (!hasBackendTracks) {
-    dataSources.vesselTracks = 'Simulated Demo';
+      return {
+        vessel_id: v.vessel_id,
+        is_mock: v.is_mock,
+        rank: v.rank,
+        score: v.score,
+        vessel_name: v.vessel_name,
+        mmsi: v.mmsi,
+        imo: v.imo,
+        distance_to_origin_km: v.distance_from_backtrack_origin_km,
+        track,
+        culprit_location: v.culprit_location,
+        culprit_position_timestamp: attrTrajRes.verification?.culprit_position_timestamp
+      };
+    });
+    // Set candidate count if available in attribution response
+    if (attrTrajRes.attribution && attrTrajRes.attribution.candidate_count) {
+      newVessels.candidate_count = attrTrajRes.attribution.candidate_count;
+    }
+  } else {
+    // Ensure the internal array is always present
+    if (!newVessels.vessels) {
+      newVessels.vessels = (newVessels as any).candidates || [];
+    }
+    delete (newVessels as any).candidates;
+
+    // Existing fallback
+    let hasBackendTracks = true;
+    newVessels.vessels.forEach(candidate => {
+      if (!candidate.track || candidate.track.length === 0) {
+        hasBackendTracks = false;
+        if (src && relTime) {
+          candidate.track = generateDemoAISTrack(
+            src, 
+            obs, 
+            relTime, 
+            obs.timestamp, 
+            candidate.vessel_id,
+            candidate.rank || 1,
+            candidate.distance_to_origin_km || (candidate.rank || 1) * 5
+          );
+        } else {
+          candidate.track = [];
+        }
+      }
+    });
+
+    if (!hasBackendTracks) {
+      dataSources.vesselTracks = 'Simulated Demo';
+    }
   }
 
   return {

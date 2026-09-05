@@ -6,11 +6,12 @@ export const SceneLighting: React.FC = () => {
   const { layers } = useSceneLayers();
   const night = layers.night;
 
+  // Sun positions aligned with OceanSurface uSunDir (day / night).
   if (night) {
     return (
       <>
         <ambientLight intensity={0.22} color="#6b7c9c" />
-        <directionalLight position={[-30, 25, -40]} intensity={0.35} color="#c5d4ff" />
+        <directionalLight position={[-35, 28, -40]} intensity={0.35} color="#c5d4ff" />
         <hemisphereLight color="#1a2740" groundColor="#020810" intensity={0.35} />
         <pointLight position={[20, 8, 15]} intensity={0.45} color="#4ea8ff" distance={200} />
       </>
@@ -20,7 +21,7 @@ export const SceneLighting: React.FC = () => {
   return (
     <>
       <ambientLight intensity={0.85} color="#8ec8ea" />
-      <directionalLight position={[40, 70, 30]} intensity={1.6} color="#fff4d6" castShadow />
+      <directionalLight position={[45, 85, 35]} intensity={1.6} color="#fff4d6" castShadow />
       <hemisphereLight color="#d7f0ff" groundColor="#0a4f86" intensity={0.55} />
     </>
   );

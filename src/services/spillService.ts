@@ -61,5 +61,18 @@ export const spillService = {
       return null; // Mock doesn't have visualization data currently, we fallback to demo generator
     }
     return apiClient.get(`/api/v1/visualization/spills/${spillId}`);
+  },
+
+  async getAttributionTrajectory(spillId: string): Promise<any> {
+    // If we're mocking, we'll try to fetch it to see if backend exists, otherwise let it fail gracefully
+    // But since the task says: "If backend request fails: use existing mock fallback." we should always attempt real fetch first, or at least bypass mock if we are explicitly instructed to use backend.
+    // The instructions say: "If backend attribution trajectory request succeeds: use backend attribution trajectory. If backend request fails: use existing mock fallback."
+    try {
+      const result = await apiClient.get(`/api/v1/demo/spills/${spillId}/attribution/trajectory`);
+      return result;
+    } catch (error) {
+      console.warn("Failed to fetch attribution trajectory, falling back to mock", error);
+      return null;
+    }
   }
 };

@@ -8,6 +8,7 @@ import { IncidentAnalysisDock } from '../components/incident/IncidentAnalysisDoc
 import { SimulationProvider } from '../context/SimulationContext';
 import { IncidentProvider, useIncident } from '../context/IncidentContext';
 import { SceneLayersProvider } from '../context/SceneLayersContext';
+import { OceanControlsProvider } from '../context/OceanControlsContext';
 import { ViewportCameraProvider } from '../context/ViewportCameraContext';
 import { Maximize2, Minimize2, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { SlideInDrawer } from '../components/ui/SlideInDrawer';
@@ -211,9 +212,11 @@ export const IncidentReconstructionPage: React.FC = () => {
     <IncidentProvider>
       <SimulationProvider>
         <SceneLayersProvider>
-          <ViewportCameraProvider>
-            <ReconstructionWorkspace />
-          </ViewportCameraProvider>
+          <OceanControlsProvider>
+            <ViewportCameraProvider>
+              <ReconstructionWorkspace />
+            </ViewportCameraProvider>
+          </OceanControlsProvider>
         </SceneLayersProvider>
       </SimulationProvider>
     </IncidentProvider>

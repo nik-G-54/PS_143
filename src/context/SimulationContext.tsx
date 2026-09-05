@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useIncident } from './IncidentContext';
+import { RECONSTRUCTION_PLAYBACK_DURATION_MS } from '../config/reconstructionViz';
 
 interface SimulationContextProps {
   isPlaying: boolean;
@@ -30,8 +31,6 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     lastTimeRef.current = 0;
   }, [spillId]);
 
-  const SIMULATION_DURATION_MS = 20000; // 20 seconds for a full loop
-
   // Update the DOM/Context at 15 FPS for UI, while refs run at 60 FPS for 3D
   useEffect(() => {
     let animationFrameId: number;
@@ -43,7 +42,7 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       lastTimeRef.current = time;
 
       if (isPlaying) {
-        let newProgress = progressRef.current + dt / SIMULATION_DURATION_MS;
+        let newProgress = progressRef.current + dt / RECONSTRUCTION_PLAYBACK_DURATION_MS;
         if (newProgress >= 1) {
           newProgress = 1;
           setIsPlaying(false);

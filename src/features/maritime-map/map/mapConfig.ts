@@ -1,5 +1,5 @@
 export type MapTheme = 'dark' | 'light';
-export type BasemapMode = 'standard' | 'satellite' | 'hybrid';
+export type BasemapMode = 'standard' | 'satellite';
 
 // Free development satellite provider (Esri World Imagery)
 // No API key required for prototype/development usage.
@@ -34,7 +34,7 @@ const ESRI_SATELLITE_STYLE = {
   ]
 };
 
-const HYBRID_STYLE = {
+const SATELLITE_STYLE = {
   version: 8,
   sprite: cartoLabels.sprite,
   glyphs: cartoLabels.glyphs,
@@ -55,12 +55,8 @@ export const MAP_CONFIG = {
       light: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
     },
     satellite: {
-      dark: ESRI_SATELLITE_STYLE as any,
-      light: ESRI_SATELLITE_STYLE as any,
-    },
-    hybrid: {
-      dark: HYBRID_STYLE as any,
-      light: HYBRID_STYLE as any,
+      dark: SATELLITE_STYLE as any,
+      light: SATELLITE_STYLE as any,
     }
   },
   initialCamera: {

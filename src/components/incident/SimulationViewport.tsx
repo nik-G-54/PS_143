@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SimulationHUD } from './SimulationHUD';
 import { ViewportControls } from './scene/ViewportControls';
+import { OceanControlsPanel } from './scene/OceanControlsPanel';
 import { ZoomIn, ZoomOut, Navigation2 } from 'lucide-react';
 import { IncidentScene } from './scene/IncidentScene';
 import { useSceneLayers } from '../../context/SceneLayersContext';
@@ -40,6 +41,7 @@ export const SimulationViewport: React.FC = () => {
       <div className="absolute inset-0 z-10 pointer-events-none">
         <SimulationHUD />
         <ViewportControls />
+        <OceanControlsPanel />
 
         <div className="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
           <button

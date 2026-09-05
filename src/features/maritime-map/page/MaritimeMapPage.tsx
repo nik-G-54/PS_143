@@ -10,7 +10,7 @@ export function MaritimeMapPage() {
       <Sidebar />
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         <Header />
-        <div className="maritime-map-page-content flex-1 w-full h-full relative bg-background">
+        <div className="maritime-map-page-content flex-1 w-full min-h-0 overflow-y-auto relative bg-background">
           <MaritimeMap />
         </div>
       </main>

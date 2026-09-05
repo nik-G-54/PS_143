@@ -1,11 +1,26 @@
-import { useRef, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-import { MAP_CONFIG, BasemapMode } from './mapConfig';
+import { MAP_CONFIG } from './mapConfig';
+import type { BasemapMode } from './mapConfig';
+import { flyToSpill, frameDriftPath, resetToGlobe, revealSpillRegion } from './cameraController';
 import { useTheme } from '../../../hooks/useTheme';
 import { BasemapSelector } from '../controls/BasemapSelector';
+import { EnvironmentToggles } from '../controls/EnvironmentToggles';
+import { InvestigationPanel } from '../controls/InvestigationPanel';
+import { InvestigationTimeline } from '../controls/InvestigationTimeline';
+import { SpillDetailsSection } from '../drawers/SpillDetailsSection';
+import { SpillLegend } from '../controls/SpillLegend';
+import { SpillStatusBadge } from '../controls/SpillStatusBadge';
 import { createDeckOverlay } from '../deck/DeckOverlay';
+import { buildMaritimeLayers } from '../deck/deckLayers';
+import { getSpillBounds } from '../adapters/spillAdapter';
+import { useSpills } from '../hooks/useSpills';
+import { useSpillTrajectory } from '../hooks/useSpillTrajectory';
+import { useSpillAttribution } from '../hooks/useSpillAttribution';
+import { useInvestigation } from '../investigation/useInvestigation';
+import { useInvestigationTimeline } from '../timeline/useInvestigationTimeline';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 
 // Explicitly set the worker URL using Vite's ?worker&url syntax
@@ -16,6 +31,7 @@ export function MaritimeMap() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const deckOverlayRef = useRef<MapboxOverlay | null>(null);
+  const framedDriftForRef = useRef<string | null>(null);
   const { theme } = useTheme();
 
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +39,43 @@ export function MaritimeMap() {
   const [basemapMode, setBasemapMode] = useState<BasemapMode>('standard');
   const [isStyleLoading, setIsStyleLoading] = useState(false);
   const [isTilesLoading, setIsTilesLoading] = useState(false);
+  const [showWind, setShowWind] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  /** Spill id for which backtrack mode is armed — auto-clears when selection changes. */
+  const [backtrackSpillId, setBacktrackSpillId] = useState<string | null>(null);
+
+  const { spills, isLoading: isSpillsLoading, error: spillsError, reload } = useSpills();
+  const { selectedSpillId, focusMode, selectSpill, clearInvestigation, toggleFocusMode } =
+    useInvestigation();
+
+  const backtrackActive = backtrackSpillId != null && backtrackSpillId === selectedSpillId;
+
+  const selectedSpill = useMemo(
+    () => spills.find((spill) => spill.spillId === selectedSpillId) ?? null,
+    [spills, selectedSpillId]
+  );
+
+  const {
+    trajectory,
+    environment,
+    isLoading: isTrajectoryLoading,
+    error: trajectoryError,
+  } = useSpillTrajectory(selectedSpillId);
+
+  const {
+    attribution,
+    isLoading: isAttributionLoading,
+  } = useSpillAttribution(selectedSpillId, backtrackActive);
+
+  const timeline = useInvestigationTimeline(
+    trajectory,
+    attribution?.drawableVessels ?? [],
+    backtrackActive && Boolean(trajectory)
+  );
+
+  // Environment toggles only apply while a spill is selected.
+  const windVisible = Boolean(selectedSpill && showWind);
+  const currentVisible = Boolean(selectedSpill && showCurrent);
 
   // Helper: apply globe projection to a map instance.
   // Must be called AFTER the style has finished loading (inside style.load).
@@ -62,7 +115,7 @@ export function MaritimeMap() {
 
       map.on('load', () => {
         setIsLoading(false);
-        
+
         // Add Deck.gl overlay once map is loaded
         if (!deckOverlayRef.current) {
           const deckOverlay = createDeckOverlay();
@@ -120,27 +173,41 @@ export function MaritimeMap() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Style switching (theme or basemap change) ---
+  // Seeded with the style handed to the constructor so the first run is a no-op.
+  const appliedStyleKeyRef = useRef(`${basemapMode}:${theme}`);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || isLoading) return;
 
+    const styleKey = `${basemapMode}:${theme}`;
+    if (styleKey === appliedStyleKeyRef.current) return;
+    appliedStyleKeyRef.current = styleKey;
+
     setIsStyleLoading(true);
-    // When switching styles, we wait for new tiles to load
+    // A style swap invalidates every tile, so wait for imagery too.
     setIsTilesLoading(true);
-    
-    const newStyle = MAP_CONFIG.styles[basemapMode][theme];
-    map.setStyle(newStyle);
+
+    // `diff: false` forces a full reload. MapLibre's default diffing path applies
+    // the new style through Style.setState(), which never re-fires `style.load` —
+    // that would strand the loader and skip re-applying the globe projection.
+    // Vector Carto ↔ raster Esri is not meaningfully diffable anyway.
+    map.setStyle(MAP_CONFIG.styles[basemapMode][theme], { diff: false });
 
     // style.load fires when the style JSON is fully parsed
     const onStyleLoad = () => {
       setIsStyleLoading(false);
-      // We must check if tiles are magically already loaded (e.g. from cache)
+      // Tiles may already be in cache from a previous visit to this style.
       if (map.areTilesLoaded()) {
         setIsTilesLoading(false);
       }
     };
 
     map.once('style.load', onStyleLoad);
+
+    return () => {
+      map.off('style.load', onStyleLoad);
+    };
   }, [theme, basemapMode, isLoading]);
 
   // --- Tile loading tracker ---
@@ -166,26 +233,211 @@ export function MaritimeMap() {
     };
   }, [isLoading]); // Attach after initial map load
 
+  // --- Push the deck.gl layer stack whenever map state changes ---
+  useEffect(() => {
+    const overlay = deckOverlayRef.current;
+    if (!overlay || isLoading) return;
+
+    overlay.setProps({
+      layers: buildMaritimeLayers({
+        spills,
+        selectedSpillId,
+        focusMode,
+        onSelectSpill: selectSpill,
+        trajectory,
+        visiblePoints: backtrackActive ? timeline.visiblePoints : null,
+        oilPlayhead: backtrackActive ? timeline.oilPosition : null,
+        environment,
+        showWind: windVisible,
+        showCurrent: currentVisible,
+        vessels: attribution?.drawableVessels ?? [],
+        vesselPositions: timeline.vesselPositions,
+        backtrackActive,
+      }),
+    });
+  }, [
+    spills,
+    selectedSpillId,
+    focusMode,
+    selectSpill,
+    isLoading,
+    trajectory,
+    backtrackActive,
+    timeline.visiblePoints,
+    timeline.oilPosition,
+    timeline.vesselPositions,
+    environment,
+    windVisible,
+    currentVisible,
+    attribution,
+  ]);
+
+  // Clear framed-drift lock when the selection changes so the next path can reframe.
+  useEffect(() => {
+    framedDriftForRef.current = null;
+  }, [selectedSpillId]);
+
+  // --- Reveal the detection region once, after the first successful load ---
+  // Every detection in the archive sits inside a box a few km across, which is
+  // sub-pixel at the globe's opening zoom. Flying in is what makes the data visible.
+  const hasRevealedRef = useRef(false);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || isLoading || hasRevealedRef.current) return;
+    if (isSpillsLoading || spills.length === 0) return;
+
+    const bounds = getSpillBounds(spills);
+    if (!bounds) return;
+
+    hasRevealedRef.current = true;
+    revealSpillRegion(map, bounds);
+  }, [spills, isSpillsLoading, isLoading]);
+
+  // --- Camera follows the selection ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selectedSpill) return;
+    flyToSpill(map, selectedSpill);
+  }, [selectedSpill]);
+
+  // --- Second beat: frame the drift path once it arrives for this selection ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !trajectory || !selectedSpillId) return;
+    if (framedDriftForRef.current === trajectory.spillId) return;
+    framedDriftForRef.current = trajectory.spillId;
+    frameDriftPath(map, trajectory.bounds);
+  }, [trajectory, selectedSpillId]);
+
+  const handleRecenter = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (trajectory) {
+      frameDriftPath(map, trajectory.bounds);
+      return;
+    }
+    if (selectedSpill) flyToSpill(map, selectedSpill);
+  }, [selectedSpill, trajectory]);
+
+  const handleResetView = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    clearInvestigation();
+    setBacktrackSpillId(null);
+    setShowWind(false);
+    setShowCurrent(false);
+    resetToGlobe(map);
+    // Let the next successful load frame the region again.
+    hasRevealedRef.current = false;
+    framedDriftForRef.current = null;
+  }, [clearInvestigation]);
+
+  const handleToggleBacktrack = useCallback(() => {
+    if (!selectedSpillId) return;
+    setBacktrackSpillId((prev) => (prev === selectedSpillId ? null : selectedSpillId));
+  }, [selectedSpillId]);
+
+  const handleClearInvestigation = useCallback(() => {
+    clearInvestigation();
+    setBacktrackSpillId(null);
+    setShowWind(false);
+    setShowCurrent(false);
+    framedDriftForRef.current = null;
+  }, [clearInvestigation]);
+
+  const handleScrollToDetails = useCallback(() => {
+    document.getElementById('spill-investigation-details')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, []);
+
   return (
-    <div className="maritime-map-wrapper h-full w-full relative">
-      <BasemapSelector currentMode={basemapMode} onSelectMode={setBasemapMode} />
+    <div className="maritime-map-shell flex h-full min-h-0 w-full flex-col">
+      <div className="maritime-map-wrapper relative min-h-[70vh] w-full flex-1">
+        <BasemapSelector currentMode={basemapMode} onSelectMode={setBasemapMode} />
 
-      {(isLoading || isStyleLoading || isTilesLoading) && !error && (
-        <div className="maritime-map-loading">
-          <span>{isLoading ? 'Initializing map…' : isStyleLoading ? 'Loading style…' : 'Loading imagery…'}</span>
-        </div>
+        <SpillStatusBadge
+          spillCount={spills.length}
+          isLoading={isSpillsLoading}
+          error={spillsError}
+          onRetry={reload}
+          onResetView={handleResetView}
+        />
+
+        {selectedSpill && (
+          <InvestigationPanel
+            spill={selectedSpill}
+            focusMode={focusMode}
+            trajectory={trajectory}
+            isTrajectoryLoading={isTrajectoryLoading}
+            trajectoryError={trajectoryError}
+            attribution={attribution}
+            isAttributionLoading={isAttributionLoading}
+            backtrackActive={backtrackActive}
+            onToggleFocusMode={toggleFocusMode}
+            onToggleBacktrack={handleToggleBacktrack}
+            onClear={handleClearInvestigation}
+            onRecenter={handleRecenter}
+            onScrollToDetails={handleScrollToDetails}
+          />
+        )}
+
+        {selectedSpill && environment && (
+          <EnvironmentToggles
+            environment={environment}
+            showWind={windVisible}
+            showCurrent={currentVisible}
+            onToggleWind={() => setShowWind((v) => !v)}
+            onToggleCurrent={() => setShowCurrent((v) => !v)}
+          />
+        )}
+
+        {selectedSpill && backtrackActive && trajectory && (
+          <InvestigationTimeline
+            progress={timeline.progress}
+            isPlaying={timeline.isPlaying}
+            windowLabel={timeline.windowLabel}
+            onTogglePlay={timeline.togglePlay}
+            onSeek={timeline.setProgress}
+          />
+        )}
+
+        <SpillLegend />
+
+        {(isLoading || isStyleLoading || isTilesLoading) && !error && (
+          <div className="maritime-map-loading">
+            <span>
+              {isLoading
+                ? 'Initializing map…'
+                : isStyleLoading
+                  ? 'Loading style…'
+                  : 'Loading imagery…'}
+            </span>
+          </div>
+        )}
+
+        {error && (
+          <div className="maritime-map-error">
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div ref={mapContainerRef} className="maritime-map-container" />
+      </div>
+
+      {selectedSpill && (
+        <SpillDetailsSection
+          spill={selectedSpill}
+          trajectory={trajectory}
+          environment={environment}
+          attribution={attribution}
+          isTrajectoryLoading={isTrajectoryLoading}
+          isAttributionLoading={isAttributionLoading}
+          currentTimeMs={timeline.currentTimeMs}
+          backtrackActive={backtrackActive}
+        />
       )}
-
-      {error && (
-        <div className="maritime-map-error">
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div
-        ref={mapContainerRef}
-        className="maritime-map-container"
-      />
     </div>
   );
 }

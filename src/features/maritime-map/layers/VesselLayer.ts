@@ -1,17 +1,106 @@
-import { ScatterplotLayer } from '@deck.gl/layers';
-import { MockVessel } from '../deck/layerTypes';
+import { PathLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
+import type { Layer } from '@deck.gl/core';
+import type { AttributedVessel } from '../types/attributionTypes';
+import type { TimelineVesselPosition } from '../timeline/useInvestigationTimeline';
+import { LAYER_IDS } from './layerIds';
 
-export function createVesselLayer(data: MockVessel[]) {
-  return new ScatterplotLayer<MockVessel>({
-    id: 'vessel-layer',
-    data,
-    getPosition: (d: MockVessel) => [d.longitude, d.latitude],
-    getFillColor: [59, 130, 246, 200], // Blue-500
-    getRadius: 30000, // 30km radius
-    radiusUnits: 'meters',
-    stroked: true,
-    getLineColor: [255, 255, 255, 255],
-    lineWidthMinPixels: 2,
-    pickable: true,
-  });
+export interface VesselLayerOptions {
+  /** Full ranked vessels (for track polylines). */
+  vessels: AttributedVessel[];
+  /** Playhead-interpolated positions (markers). */
+  vesselPositions: TimelineVesselPosition[];
+  /** When false, no vessel geometry is drawn. */
+  backtrackActive: boolean;
+}
+
+/** Rank → colour: #1 gold, #2 silver-blue, #3+ muted. */
+function rankColor(rank: number): [number, number, number, number] {
+  if (rank === 1) return [250, 204, 21, 230];
+  if (rank === 2) return [148, 163, 184, 220];
+  if (rank === 3) return [251, 146, 60, 210];
+  return [100, 116, 139, 200];
+}
+
+function trackColor(rank: number): [number, number, number, number] {
+  const [r, g, b] = rankColor(rank);
+  return [r, g, b, 140];
+}
+
+/**
+ * Ranked AIS vessels for the backtrack investigation.
+ * Tracks are static polylines from the backend; markers move with the timeline playhead.
+ */
+export function createVesselLayers(options: VesselLayerOptions): Layer[] {
+  const { vessels, vesselPositions, backtrackActive } = options;
+  if (!backtrackActive) return [];
+
+  const layers: Layer[] = [];
+  const withTracks = vessels.filter((v) => v.track.length >= 2);
+
+  if (withTracks.length > 0) {
+    layers.push(
+      new PathLayer<AttributedVessel>({
+        id: LAYER_IDS.vesselTracks,
+        data: withTracks,
+        getPath: (d) => d.track.map((p) => [p.longitude, p.latitude] as [number, number]),
+        getColor: (d) => trackColor(d.rank),
+        getWidth: 2,
+        widthUnits: 'pixels',
+        widthMinPixels: 1.5,
+        jointRounded: true,
+        capRounded: true,
+        pickable: true,
+        updateTriggers: {
+          getPath: withTracks.map((v) => v.vesselId).join(','),
+          getColor: withTracks.map((v) => v.rank).join(','),
+        },
+      })
+    );
+  }
+
+  if (vesselPositions.length > 0) {
+    layers.push(
+      new ScatterplotLayer<TimelineVesselPosition>({
+        id: LAYER_IDS.vesselMarkers,
+        data: vesselPositions,
+        getPosition: (d) => [d.longitude, d.latitude],
+        getRadius: (d) => (d.rank === 1 ? 8 : 6),
+        radiusUnits: 'pixels',
+        radiusMinPixels: 5,
+        filled: true,
+        stroked: true,
+        getFillColor: (d) => rankColor(d.rank),
+        getLineColor: [255, 255, 255, 230],
+        lineWidthUnits: 'pixels',
+        getLineWidth: 1.5,
+        pickable: true,
+        updateTriggers: {
+          getPosition: vesselPositions.map((v) => `${v.vesselId}:${v.longitude}:${v.latitude}`).join('|'),
+          getFillColor: vesselPositions.map((v) => v.rank).join(','),
+        },
+      })
+    );
+
+    layers.push(
+      new TextLayer<TimelineVesselPosition>({
+        id: `${LAYER_IDS.vesselMarkers}-labels`,
+        data: vesselPositions,
+        getPosition: (d) => [d.longitude, d.latitude],
+        getText: (d) => `#${d.rank}`,
+        getSize: 11,
+        getColor: [255, 255, 255, 240],
+        getTextAnchor: 'middle',
+        getAlignmentBaseline: 'center',
+        getPixelOffset: [0, -14],
+        outlineWidth: 2,
+        outlineColor: [15, 23, 42, 220],
+        pickable: false,
+        updateTriggers: {
+          getPosition: vesselPositions.map((v) => `${v.vesselId}:${v.longitude}:${v.latitude}`).join('|'),
+        },
+      })
+    );
+  }
+
+  return layers;
 }

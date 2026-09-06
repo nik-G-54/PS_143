@@ -94,11 +94,12 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setSelectedVesselId(null);
     
     try {
-      const [detailsRes, backtrackRes, vesselsRes, visRes] = await Promise.all([
+      const [detailsRes, backtrackRes, vesselsRes, visRes, attrTrajRes] = await Promise.all([
         spillService.getSpill(requestId),
         spillService.backtrackSpill(requestId),
         spillService.getSpillVessels(requestId),
-        spillService.getVisualization(requestId).catch(() => null) // Optional
+        spillService.getVisualization(requestId).catch(() => null), // Optional
+        spillService.getAttributionTrajectory(requestId).catch(() => null)
       ]);
       
       // STALE DATA GUARD: Check against the ref to see if the user selected a different incident while we were awaiting
@@ -108,7 +109,7 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       validateBacktrack(backtrackRes);
 
-      const resolved = resolveReconstruction(detailsRes, backtrackRes, vesselsRes, visRes);
+      const resolved = resolveReconstruction(detailsRes, backtrackRes, vesselsRes, visRes, attrTrajRes);
 
       setSpillDetails(resolved.spillDetails);
       setBacktrackData(resolved.backtrackData);

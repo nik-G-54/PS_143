@@ -56,23 +56,38 @@ export const EnvironmentPanel: React.FC = () => {
         </button>
       </div>
       
-      <div className="p-3 grid grid-cols-2 gap-2">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
-            <Wind size={12} className="text-blue-400" />
+      <div className="p-3 flex flex-col gap-2.5">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
+              <Wind size={12} className="text-blue-400" />
+            </div>
+            <div>
+              <span className="block text-muted-foreground text-[9px] tracking-wider font-sans">WIND</span>
+              <span className="text-foreground font-mono text-xs">{wind.speed.toFixed(2)} m/s</span>
+            </div>
           </div>
-          <div>
-            <span className="block text-muted-foreground text-[9px] tracking-wider font-sans">WIND</span>
-            <span className="text-foreground font-mono text-xs">{wind.speed.toFixed(2)} m/s</span>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded bg-teal-500/10 flex items-center justify-center shrink-0">
+              <Waves size={12} className="text-teal-400" />
+            </div>
+            <div>
+              <span className="block text-muted-foreground text-[9px] tracking-wider font-sans">CURRENT</span>
+              <span className="text-foreground font-mono text-xs">{current.speed.toFixed(2)} m/s</span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-teal-500/10 flex items-center justify-center shrink-0">
-            <Waves size={12} className="text-teal-400" />
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60 text-[10px] font-mono">
+          <div>
+            <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5">WIND DIR</span>
+            <span className="text-foreground">{wind.direction?.toFixed(0) ?? '—'}°</span>
           </div>
           <div>
-            <span className="block text-muted-foreground text-[9px] tracking-wider font-sans">CURRENT</span>
-            <span className="text-foreground font-mono text-xs">{current.speed.toFixed(2)} m/s</span>
+            <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5">CURR DIR</span>
+            <span className="text-foreground">{current.direction?.toFixed(0) ?? '—'}°</span>
+          </div>
+          <div className="col-span-2 text-muted-foreground text-[9px] tracking-wide pt-1">
+            Models: HYCOM currents · ECMWF wind
           </div>
         </div>
       </div>

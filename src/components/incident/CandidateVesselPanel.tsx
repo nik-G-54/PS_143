@@ -61,17 +61,39 @@ export const CandidateVesselPanel: React.FC = () => {
         </button>
       </div>
       
-      <div className="p-3 flex flex-col gap-1">
-        <div className="flex items-center justify-between">
-          <span className="text-foreground font-mono text-sm font-bold truncate">{topCandidate.vessel_id}</span>
+      <div className="p-3 flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-foreground font-mono text-sm font-bold truncate">
+            {topCandidate.vessel_name || topCandidate.vessel_id}
+          </span>
           {topCandidate.is_mock && (
-            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border bg-amber-500/20 text-amber-300 border-amber-500/30">DEMO</span>
+            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border bg-amber-500/20 text-amber-300 border-amber-500/30 shrink-0">
+              DEMO
+            </span>
           )}
         </div>
-        <div className="flex justify-between items-center text-xs mt-1">
-          <span className="text-muted-foreground capitalize">{topCandidate.vessel_name || 'Unknown'}</span>
-          {topCandidate.score != null && (
-            <span className="text-primary font-mono font-bold">{(topCandidate.score * 100).toFixed(1)}% Match</span>
+        <div className="grid grid-cols-2 gap-2 text-[10px]">
+          <div>
+            <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5">IMO / MMSI</span>
+            <span className="font-mono text-foreground">
+              {topCandidate.imo || '—'} / {topCandidate.mmsi || '—'}
+            </span>
+          </div>
+          <div>
+            <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5">MATCH</span>
+            <span className="font-mono text-primary font-bold">
+              {topCandidate.score != null ? `${(topCandidate.score * 100).toFixed(1)}%` : 'N/A'}
+            </span>
+          </div>
+          {topCandidate.distance_to_origin_km != null && (
+            <div className="col-span-2">
+              <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5">
+                DIST. TO SOURCE
+              </span>
+              <span className="font-mono text-foreground">
+                {topCandidate.distance_to_origin_km.toFixed(2)} km
+              </span>
+            </div>
           )}
         </div>
       </div>

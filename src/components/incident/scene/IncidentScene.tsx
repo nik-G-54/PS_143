@@ -1,6 +1,6 @@
 import React from 'react';
 import { SceneCamera } from './SceneCamera';
-import { SceneLighting } from './SceneLighting';
+import { SceneLighting, SceneAtmosphere } from './SceneLighting';
 import { SceneGrid } from './SceneGrid';
 import { OceanSurface } from './OceanSurface';
 import { AISTrack } from './AISTrack';
@@ -10,57 +10,58 @@ import { OrientationIndicator } from './OrientationIndicator';
 import { VesselModel } from './VesselModel';
 import { latLonToWorld } from '../../../utils/coordinates';
 import { useIncident } from '../../../context/IncidentContext';
+import { useSceneLayers } from '../../../context/SceneLayersContext';
 import { SourceEstimate } from './SourceEstimate';
 import { OilTrajectory } from './OilTrajectory';
 import { EnvironmentIndicators } from './environment/EnvironmentIndicators';
-import { Sky } from '@react-three/drei';
+import { CulpritMarker } from './CulpritMarker';
 
 export const IncidentScene: React.FC = () => {
   const { spillDetails, backtrackData, vesselsData } = useIncident();
+  const { layers } = useSceneLayers();
 
   const originLat = backtrackData?.backtrack.observation.latitude ?? spillDetails?.centroid?.latitude ?? 0;
   const originLon = backtrackData?.backtrack.observation.longitude ?? spillDetails?.centroid?.longitude ?? 0;
 
-  // Incident origin
   const incidentPos = latLonToWorld(originLat, originLon, originLat, originLon);
 
   return (
     <>
-      <Sky 
-        distance={450000} 
-        sunPosition={[30, 40, 60]} 
-        inclination={0.49} 
-        azimuth={0.25} 
-        turbidity={6}
-        rayleigh={4}
-        mieCoefficient={0.005}
-        mieDirectionalG={0.8}
-      />
+      <SceneAtmosphere />
       <SceneCamera />
       <SceneLighting />
       <OceanSurface />
       <EnvironmentIndicators />
-      <OilSpill />
-      <OilTrajectory />
-      <SourceEstimate />
+      {layers.oil && <OilSpill />}
+      {layers.oil && <OilTrajectory />}
+      {layers.source && <SourceEstimate />}
 
-      <SceneGrid visible={false} />
-      <IncidentMarker position={[incidentPos.x, incidentPos.y, incidentPos.z]} />
+      {layers.grid && <SceneGrid />}
+      {layers.oil && (
+        <IncidentMarker
+          position={[incidentPos.x, incidentPos.y + 0.15, incidentPos.z]}
+        />
+      )}
 
-      {/* Candidate Vessels and Tracks */}
-      {vesselsData?.vessels?.map(candidate => (
+      {layers.ais && <CulpritMarker />}
+
+      {layers.ais && vesselsData?.vessels?.map((candidate) => (
         <React.Fragment key={candidate.vessel_id}>
-          {candidate.track && <AISTrack track={candidate.track} />}
-          <VesselModel 
+          {candidate.track && (
+            <AISTrack
+              track={candidate.track}
+              priority={candidate.rank === 1 ? 'primary' : 'secondary'}
+            />
+          )}
+          <VesselModel
             id={candidate.vessel_id}
             status="CANDIDATE"
             candidate={candidate}
           />
         </React.Fragment>
       ))}
-      
+
       <OrientationIndicator />
     </>
   );
 };
-

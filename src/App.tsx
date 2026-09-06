@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { LiveMapPage } from './pages/LiveMapPage';
+import { MaritimeMapPage } from './features/maritime-map/page/MaritimeMapPage';
 import { IncidentReconstructionPage } from './pages/IncidentReconstructionPage';
 import { DashboardPage } from './pages/DashboardPage';
 
@@ -24,7 +24,7 @@ function App() {
       {/* Active Navigation Routes */}
       <Route path="/" element={<DashboardPage />} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
-      <Route path="/live-map" element={<LiveMapPage />} />
+      <Route path="/maritime-map" element={<MaritimeMapPage />} />
       <Route 
         path="/incidents" 
         element={

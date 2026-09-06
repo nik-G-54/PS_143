@@ -1,1478 +1,1306 @@
-# SIH 2026 — 3D Oil Spill Incident Reconstruction
-## Phase-wise Prototype Development Plan
+Bilkul. Main tumhe complete project context + current progress + plan change + backend APIs + future implementation plan ek aise format me de raha hoon jo tum directly new ChatGPT chat me paste kar sakte ho. Isse new chat ko almost पूरा context mil jayega.
 
-> **Scope:** This plan is only for the 3D Incident Reconstruction / Simulation module.
-> The rest of the SIH application (normal maps, dashboard, analytics, etc.) will be handled separately.
->
-> **Development rule:** Complete one phase → share output/code/screenshot → review/validate → then start the next phase.
+OCEAN SENTINEL — COMPLETE PROJECT CONTEXT
+1. Project ka basic objective
 
----
+Project SIH 2026 Problem Statement #143 — Oil Spill Detection and AIS Correlation / Vessel Attribution ke liye hai.
 
-# 1. Final Target
+Initial approach tha:
 
-The module will be an interactive **3D Incident Reconstruction** view for a selected oil-spill incident in the Bay of Bengal.
+Satellite se oil spill detect → nearby/historical AIS ships dekho → ship ko backtrack karo → identify karo kis ship se oil spill hua.
 
-It should visually show:
+Lekin project discussion ke baad visualization ka main focus change hua hai.
 
-- 3D ocean surface
-- One selected 3D vessel
-- Vessel's historical AIS track
-- Oil-spill detection point/area
-- Wind direction
-- Ocean-current direction
-- Oil drift/predicted trajectory
-- Time-based incident replay
-- 2D geographic overview map
-- Globe/large-scale geographic context
-- Investigation/sidebar UI
-- Information panel
-- Timeline
+NEW CORE APPROACH
 
-The goal is **not** to build a real fluid-dynamics simulation.
+Ab frontend ka primary objective ship ko backtrack karna nahi, balki:
 
-The goal is:
+Detected oil spill ko uski observed location se backward track karna hai, taaki estimate kiya ja sake ki oil kis direction/path se drift hokar current observed location tak aaya.
 
-> **Interactive 3D reconstruction of an oil-spill incident using AIS vessel trajectory, detected spill location, environmental conditions, and predicted oil drift.**
+Backend already physics/environmental calculations karta hai.
 
----
+Concept:
 
-# 2. High-level Architecture
+Satellite Observation
+        ↓
+Oil Spill Detection
+        ↓
+Environmental / Physics Calculation
+        ↓
+Oil Drift / Backtracking
+        ↓
+Estimated Source Location
+        ↓
+Nearby / Candidate Vessels
+        ↓
+Possible Vessel Attribution
 
-```text
-                 BACKEND / ML
-                       │
-       ┌───────────────┼────────────────┐
-       ↓               ↓                ↓
-     AIS data       Oil data        Forecast data
-       │               │                │
-       └───────────────┼────────────────┘
-                       ↓
-                  FRONTEND
-                       │
-             ┌─────────┴─────────┐
-             ↓                   ↓
-        Three.js / R3F        MapLibre
-             │                   │
-             ↓                   ↓
-       3D Incident Scene     2D / Globe
-             │
-       ┌─────┼─────┬─────┐
-       ↓     ↓     ↓     ↓
-    Ocean  Ship   Oil  Wind/Current
-                       │
-                       ↓
-                  Drift Replay
-```
+Frontend ka kaam primarily backend ke calculated results ko powerful 3D visualization me present karna hai.
 
----
+2. Geographic area
 
-# 3. Recommended Technology Stack
+Initially project ko Bay of Bengal ke around design kiya gaya tha.
 
-## Core
+Lekin ab final decision:
 
-- React
-- TypeScript
+❌ Bay of Bengal nahi
+✅ Mediterranean Sea dataset use karna hai
 
-## 3D
-
-- Three.js
-- React Three Fiber (R3F)
-- `@react-three/drei`
-
-## Geographic map
-
-- MapLibre GL JS
-
-## Styling
-
-- Existing project styling system / Tailwind CSS if already used
-- CSS for custom HUD/glass/holographic effects
-
-## 3D model format
-
-- `.glb` / `.gltf`
-
-## Data during prototype
-
-- Local `.json` files
-
-## Later
-
-- Replace local JSON with real backend APIs.
-
----
-
-# 4. Why R3F + Three.js?
-
-React is already the application framework.
-
-React Three Fiber allows the 3D scene to be managed using React components.
-
-Architecture:
-
-```text
-React
- │
- ├── Dashboard
- ├── Live Map
- ├── Incidents
- ├── Vessels
- └── Incident Reconstruction
-          │
-          ↓
-      React Three Fiber
-          │
-          ↓
-        Three.js
-```
-
-Three.js handles:
-
-- Scene
-- Camera
-- Renderer
-- Meshes
-- Materials
-- Lights
-- Animation
-- 3D models
-
-R3F makes these manageable inside the React application.
-
----
-
-# 5. Important Scope Decision
-
-## Geographic scope
-
-### Main application
-
-The normal application can cover:
-
-- India
-- Arabian Sea
-- Bay of Bengal
-- Relevant Indian Ocean region
-
-### 3D Incident Reconstruction
-
-Keep the first prototype restricted to:
-
-> **Bay of Bengal + one selected incident + one selected vessel.**
-
-This drastically reduces risk.
-
-Later, the same architecture can be expanded to:
-
-```text
-Bay of Bengal
-    ↓
-Arabian Sea
-    ↓
-Indian Ocean
-    ↓
-Global
-```
-
----
-
-# 6. Why Not Global 3D Simulation Initially?
-
-| Scope | Difficulty | Recommendation |
-|---|---:|---|
-| One Bay of Bengal incident | ⭐⭐ | Best for POC |
-| India surrounding waters | ⭐⭐⭐ | Good for main application |
-| Indian Ocean | ⭐⭐⭐⭐ | Later |
-| Whole world | ⭐⭐⭐⭐⭐ | Do not attempt initially |
-
-The 3D module should demonstrate the concept, not attempt global maritime simulation.
-
----
-
-# 7. Final UI Concept
-
-Approximate layout:
-
-```text
-┌───────────────────────────────────────────────────────────────┐
-│  OCEAN SENTINEL                              Incident #OS-001 │
-├──────────────┬────────────────────────────────────────────────┤
-│              │                                                │
-│  SIDEBAR     │              3D INCIDENT SCENE                 │
-│              │                                                │
-│ Dashboard    │                    🚢                          │
-│ Live Map     │                   ╱                            │
-│ Incidents    │                  ╱                             │
-│ Vessels      │                 🔴 Oil Spill                   │
-│ Analytics    │        ~~~~~~~~~~~~~~~~~~~~~                   │
-│ Reports      │       ~~~~~~~ OCEAN ~~~~~~~~~                 │
-│              │                                                │
-│              │             WIND → → →                         │
-│              │                                                │
-│              │  ┌──────────┐       ┌──────────┐              │
-│              │  │ 2D MAP   │       │ GLOBE    │              │
-│              │  │    ↗     │       │    🌎    │              │
-│              │  └──────────┘       └──────────┘              │
-│              │                                                │
-├──────────────┴────────────────────────────────────────────────┤
-│ Timeline: T-30m ─ T-15m ─ SPILL ─ T+6h ─ T+24h         ▶    │
-└───────────────────────────────────────────────────────────────┘
-```
-
-## Sidebar
-
-Create the tabs visually, but do not implement their actual functionality yet.
+Current backend demo data Mediterranean Sea ka hai.
 
 Example:
 
-- Dashboard
-- Live Map
-- Incidents
-- Vessels
-- Analytics
-- Reports
+Observation:
+Latitude: 35.0494
+Longitude: 24.0517
 
-These can simply show a placeholder such as:
+Estimated source:
+Latitude: 35.0292075
+Longitude: 24.0945721
 
-> Coming soon
+Isliye frontend me Bay of Bengal ke hardcoded coordinates/data ko future implementation me remove/replace karna hai.
 
-Only the **3D Incident Reconstruction** page is in scope for this work.
+3. UI ka desired final look
 
----
+User ko final UI roughly is type ka chahiye:
 
-# 8. Development Roadmap
+realistic 3D ocean
+realistic 3D vessel
+visible oil spill/oil slick
+oil movement/backtracking
+oil trajectory
+environmental flow
+wind/current indicators
+timeline
+day/night possibility
+satellite observation
+incident information
+nearby vessels
+suspected source vessel
+2D map / forecast
+professional maritime intelligence dashboard
 
-```text
-PHASE 0
-Project Foundation
+Reference UI ka important visual idea:
+
+                    INCIDENT / INFORMATION
+ ┌──────────────────────────────────────────────────────────┐
+ │                    3D OCEAN VIEW                         │
+ │                                                          │
+ │       🚢 Vessel                                           │
+ │          \                                               │
+ │           \ cyan vessel track                            │
+ │            \                                             │
+ │             🔴 oil source                                │
+ │                ~~~~~ oil slick                           │
+ │                   ~~~~~~~~                               │
+ │                       → wind/current                      │
+ │                                                          │
+ │             realistic ocean waves                        │
+ │                                                          │
+ └──────────────────────────────────────────────────────────┘
+                     Timeline
+
+Reference screenshots specifically show:
+
+realistic water surface
+large realistic ship
+oil slick floating on water
+glowing oil area
+wind arrows
+current arrows
+vessel track
+oil movement forecast
+day/night control
+timeline
+environmental information
+2D forecast/map
+3D ocean as primary visualization
+
+Important: Existing zip/repository examples can be used as implementation references if they contain suitable R3F/WebGL ocean/ship/wind/day-night code.
+
+4. Current technology stack
+
+Current frontend:
+
+React
+Vite
+TypeScript
+Tailwind CSS
+Three.js
+React Three Fiber
+@react-three/drei
+
+3D visualization:
+
+Three.js
+        ↓
+React Three Fiber
+        ↓
+Drei
+
+Backend:
+
+REST APIs already available.
+
+Frontend should consume backend APIs instead of continuing to expand mock data.
+
+5. What has ACTUALLY been completed
+
+Important: Earlier generated summaries sometimes mentioned Phase 6/7/8/9/10 as completed.
+
+Do NOT treat those as authoritative.
+
+Based on the confirmed implementation discussions, the reliable completed state is:
+
+✅ Phase 1 — UI Shell
+
+Completed.
+
+Existing page:
+
+/incident-reconstruction
+
+Contains:
+
+sidebar
+header
+incident information
+environmental panel
+timeline
+simulation viewport
+HUD
+2D map placeholder
+globe placeholder
+
+The existing UI should be preserved wherever possible.
+
+✅ Phase 2 — 3D Scene + Camera Foundation
+
+Completed.
+
+Implemented:
+
+src/utils/coordinates.ts
+
+src/components/incident/scene/
+    IncidentScene.tsx
+    SceneCamera.tsx
+    SceneLighting.tsx
+    SceneGrid.tsx
+    IncidentMarker.tsx
+    TestPointMarker.tsx
+    OrientationIndicator.tsx
+
+Coordinate system:
+
+Origin:
+13.18° N
+80.32° E
+
+(0,0,0)
+
+Axes:
+
+X → East
+-X → West
+
+-Z → North
++Z → South
+
+Y → Up
+
+Scale:
+
+METERS_PER_WORLD_UNIT = 100
+
+Utility:
+
+latLonToWorld(...)
+
+This was successfully validated.
+
+✅ Phase 3 — 3D Ocean Foundation
+
+Completed.
+
+File:
+
+OceanSurface.tsx
+
+Used:
+
+MeshDistortMaterial
+
+Ocean is placed on XZ plane.
+
+Current ocean is functional but not yet the final realistic ocean.
+
+Current implementation is a lightweight procedural foundation.
+
+This is important:
+
+Phase 3 ocean should NOT simply be considered final.
+
+It will later need to be upgraded toward the realistic ocean shown in the reference screenshots.
+
+✅ Phase 4 — Static 3D Vessel
+
+Completed.
+
+File:
+
+VesselModel.tsx
+
+Current vessel is procedural geometry:
+
+BoxGeometry
+ConeGeometry
+CylinderGeometry
+
+It is a lightweight ship.
+
+Current implementation is useful for architecture/testing but:
+
+It is NOT the final realistic ship visual.
+
+Future plan may replace/improve it using:
+
+GLTF/GLB
+existing public GitHub 3D ship asset
+suitable repository code
+optimized Three.js model
+✅ Phase 5A — Historical AIS Track
+
+Completed.
+
+Files:
+
+src/data/mockAIS.ts
+
+src/components/incident/scene/AISTrack.tsx
+
+Current implementation:
+
+AIS coordinates
       ↓
-PHASE 1
-Page + Sidebar + HUD
+latLonToWorld()
       ↓
-PHASE 2
-3D Scene + Camera
-      ↓
-PHASE 3
-Ocean
-      ↓
-PHASE 4
-3D Ship + Movement
-      ↓
-PHASE 5
-AIS Track
-      ↓
-PHASE 6
-Oil Spill
-      ↓
-PHASE 7
-Wind + Current
-      ↓
-PHASE 8
-Oil Drift Simulation
-      ↓
-PHASE 9
-2D Map + Globe Synchronization
-      ↓
-PHASE 10
-Timeline + Replay + Polish
-      ↓
-FINAL
-Mock JSON → Real Backend API
-```
+3D line
 
----
+The track was originally designed around a mock vessel route.
 
-# PHASE 0 — Project Foundation
+Important:
 
-## Goal
+This is where project direction changed.
 
-Prepare the technical environment only.
+Previously:
 
-Install/configure:
+Ship route → backtrack ship → identify polluter
 
-- React
-- TypeScript
-- Three.js
-- React Three Fiber
-- `@react-three/drei`
-- MapLibre
+Now:
 
-## Do NOT build yet
+Oil location → oil backtrack → source estimate
+                         ↓
+                    nearby vessels
+                         ↓
+                 possible attribution
 
-- Ocean
-- Ship
-- Oil
-- Wind
-- Current
-- Animation
+Therefore AISTrack should not blindly remain the central visualization.
 
-## Expected output
+It can still be useful for:
 
-```text
-React project
-+
-R3F working
-+
-Three.js working
-+
-MapLibre installed
-```
+suspect vessel track
+nearby vessel movement
+attribution evidence
 
-## Acceptance criteria
+but oil trajectory becomes the primary track.
 
-- Project starts successfully
-- No dependency errors
-- R3F can render a basic scene
-- MapLibre can be imported
-- No unnecessary libraries are added
+✅ Phase 5B — Timeline + Vessel Movement
 
-## Output to review
+Completed.
 
-Share:
+Created:
 
-- `package.json`
-- relevant folder structure
-- terminal output
-- screenshot if useful
+src/context/SimulationContext.tsx
 
----
+Modified:
 
-# PHASE 1 — Page Shell / UI
+IncidentReconstructionPage.tsx
+Timeline.tsx
+VesselModel.tsx
+IncidentScene.tsx
 
-## Goal
+Current system:
 
-Build the final page structure before implementing 3D.
+Timeline
+   ↓
+SimulationContext
+   ↓
+progress
+   ↓
+3D vessel
+
+Vessel moves according to AIS track.
+
+Timeline supports:
+
+play
+pause
+scrub
+interpolation
+vessel rotation
+
+Later bug fix:
+
+Automatic looping was removed.
+
+When:
+
+progress = 1
+
+simulation stops.
+
+User must scrub backwards before playing again.
+
+This behavior should remain unless future oil simulation requires different behavior.
+
+6. CURRENT ARCHITECTURE
+
+Current 3D scene approximately:
+
+IncidentReconstructionPage
+        │
+        ├── SimulationProvider
+        │
+        ├── Timeline
+        │
+        └── SimulationViewport
+                │
+                └── Canvas
+                     │
+                     └── IncidentScene
+                          │
+                          ├── SceneLighting
+                          ├── SceneGrid
+                          ├── OceanSurface
+                          ├── IncidentMarker
+                          ├── TestPointMarker
+                          ├── OrientationIndicator
+                          ├── VesselModel
+                          └── AISTrack
+
+This architecture is reusable.
+
+We should extend it, not rewrite the entire project from scratch.
+
+7. BACKEND APIs AVAILABLE
+
+Backend already calculates most important things.
+
+API 1 — Oil Backtrack
+POST /api/v1/demo/spills/{spill_id}/backtrack
+
+Example:
+
+{
+  "spill_id": "spill_dba12b",
+
+  "backtrack": {
+    "observation": {
+      "latitude": 35.0494,
+      "longitude": 24.0517,
+      "timestamp": "2019-01-13T03:42:35+00:00"
+    },
+
+    "estimated_release_time": "2019-01-12T11:18:35+00:00",
+
+    "source_estimate": {
+      "latitude": 35.02920753859703,
+      "longitude": 24.094572171576818,
+      "radius_km": 0.5515652743393171
+    }
+  },
+
+  "attribution": {
+    "candidate_count": 1,
+    "top_vessel": "SYNTH-Y2019-000144",
+    "top_score": null
+  }
+}
+
+Backend is already doing:
+
+source estimation
+release time estimation
+physics calculations
+attribution information
+
+Frontend should visualize these results.
+
+8. API 2 — Nearby Vessels
+GET /api/v1/demo/spills/spill_dba12b/vessels
+
+Returns ranked vessels.
+
+Example:
+
+{
+  "spill_id": "spill_dba12b",
+
+  "vessels": [
+    {
+      "vessel_id": "SYNTH-Y2019-000144",
+      "is_mock": false,
+      "rank": 1,
+      "score": null,
+      "vessel_name": null,
+      "mmsi": null,
+      "imo": null,
+      "distance_to_origin_km": null
+    },
+
+    {
+      "vessel_id": "TEST-VESSEL-01",
+      "is_mock": true,
+      "rank": 2,
+      "score": null,
+      "vessel_name": "Demo Cargo ShipAlpha",
+      "mmsi": "000000001",
+      "imo": "IMO0000001",
+      "distance_to_origin_km": 12.5
+    },
+
+    {
+      "vessel_id": "TEST-VESSEL-02",
+      "is_mock": true,
+      "rank": 3,
+      "vessel_name": "Demo Tanker Beta",
+      "mmsi": "000000002",
+      "imo": "IMO0000002",
+      "distance_to_origin_km": 15.3
+    },
+
+    {
+      "vessel_id": "TEST-VESSEL-03",
+      "is_mock": true,
+      "rank": 4,
+      "vessel_name": "Demo Fishing Vessel Gamma",
+      "mmsi": "000000003",
+      "imo": "IMO0000003",
+      "distance_to_origin_km": 19.8
+    }
+  ]
+}
+
+This is useful for:
+
+Oil backtrack
+       ↓
+nearby vessels
+       ↓
+show them around oil trajectory
+       ↓
+rank candidate vessels
+9. API 3 — All Detected Spills
+GET /api/v1/demo/spills
+
+Example:
+
+{
+  "total": 97,
+  "page": 1,
+  "page_size": 20,
+
+  "items": [
+    {
+      "spill_id": "spill_dba12b",
+      "detected_at": "2019-01-13T03:42:35Z",
+
+      "centroid": {
+        "lon": 24.0517,
+        "lat": 35.0494
+      },
+
+      "area_km2": 2.37,
+      "confidence_score": 0.88,
+      "candidate_count": 1,
+
+      "image_url":
+      "https://res.cloudinary.com/bro6lw9c/image/upload/oc-0010.jpg"
+    }
+  ]
+}
+
+Useful for:
+
+incident list
+selecting an incident
+satellite observation list
+map markers
+historical incidents
+10. API 4 — Detailed Spill
+GET /api/v1/demo/spills/spill_dba12b
+
+Provides:
+
+spill_id
+source_type
+source_file
+detected_at
+estimated_age_hours
+estimated_release_time
+
+observation latitude/longitude
+
+centroid
+
+polygon
+
+area
+confidence
+
+satellite image
+
+estimated source latitude
+estimated source longitude
+source radius
+
+candidate count
+ranked top vessel
+
+This is extremely useful for the incident reconstruction UI.
+
+11. One IMPORTANT missing API
+
+For:
+
+"Why did oil move this way?"
+
+frontend needs environmental summary.
+
+Recommended backend response:
+
+{
+  "environment": {
+    "wind_speed": 12.4,
+    "wind_direction": 285,
+    "current_speed": 0.7,
+    "current_direction": 310
+  }
+}
+
+Could later include:
+
+{
+  "wave_height": 1.2,
+  "temperature": 18.4,
+  "rainfall": 0.0
+}
+
+But raw environmental data is NOT required.
+
+Summary values are enough for frontend visualization.
+
+12. Another recommended backend requirement
+
+The current backtrack API gives:
+
+Observation point
+       ↓
+Source estimate
+
+But it does NOT currently give intermediate oil positions.
+
+Example:
+
+P0 → P1 → P2 → P3 → P4 → Observation
+
+For a convincing 3D animation, intermediate trajectory data is highly recommended.
+
+Recommended structure:
+
+{
+  "trajectory": [
+    {
+      "latitude": 35.0292,
+      "longitude": 24.0945,
+      "timestamp": "..."
+    },
+    {
+      "latitude": 35.0330,
+      "longitude": 24.0850,
+      "timestamp": "..."
+    },
+    {
+      "latitude": 35.0370,
+      "longitude": 24.0750,
+      "timestamp": "..."
+    },
+    {
+      "latitude": 35.0430,
+      "longitude": 24.0640,
+      "timestamp": "..."
+    },
+    {
+      "latitude": 35.0494,
+      "longitude": 24.0517,
+      "timestamp": "..."
+    }
+  ]
+}
+
+This is much better than frontend inventing the path.
+
+Backend already performs physics calculations, so backend-generated trajectory points should be treated as authoritative.
+
+13. Core conceptual difference: Ship vs Oil
+
+This is the most important change.
+
+OLD
+AIS
+ ↓
+Ship route
+ ↓
+Ship backtrack
+ ↓
+Suspected ship
+NEW
+Satellite
+ ↓
+Detected oil
+ ↓
+Observed oil location
+ ↓
+Physics + wind + current
+ ↓
+Oil backward trajectory
+ ↓
+Estimated source region
+ ↓
+Nearby vessels
+ ↓
+Candidate attribution
+
+Therefore:
+
+PRIMARY 3D OBJECT
+
+🛢️ Oil
+
+SECONDARY OBJECT
+
+🚢 Vessels
+
+SUPPORTING OBJECTS
+
+🌬️ Wind
+🌊 Current
+🛰️ Satellite observation
+🗺️ Map
+⏱️ Timeline
+
+14. How oil should be visualized
+
+Oil cannot be visualized like a normal ship moving through space.
+
+It should appear as an oil slick floating on the ocean surface.
+
+Recommended visual:
+
+Ocean surface
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+       dark/translucent oil
+          ███████
+       ███████████
+     ███████████████
+       ███████████
+          █████
+
+       glowing boundary
+
+Use:
+
+semi-transparent dark oil material
+irregular polygon/blob
+multiple overlapping patches
+subtle animated distortion
+surface-level positioning
+red/orange edge highlight
+low-height floating layer
+
+As timeline changes:
+
+t0 → source area
+t1 → oil patch
+t2 → oil patch
+t3 → oil patch
+t4 → observed spill
+
+The oil should drift across the water surface, not move through the air.
+
+15. Do we need Day/Night?
+Day/night is NOT necessary for the core PS-143 functionality.
+
+But it is a useful presentation feature.
+
+Priority:
+
+Oil trajectory       HIGH
+Realistic ocean      HIGH
+Vessel visualization HIGH
+Wind/current         HIGH
+Timeline             HIGH
+
+Day/night            MEDIUM
+
+So don't block the core implementation waiting for day/night.
+
+It can be added later.
+
+16. Wind + Current visualization
+
+Should appear directly inside 3D ocean.
+
+Example:
+
+→ → → → → → → → → 
+→ → → → → → → → → 
+
+Wind:
+
+yellow/orange arrows
+
+Current:
+
+cyan/blue arrows
+
+And UI:
+
+WIND
+12.4 km/h
+285°
+
+CURRENT
+0.7 m/s
+310°
+
+These explain why the oil trajectory bends.
+
+17. Realistic ocean requirement
+
+Current MeshDistortMaterial ocean is only a foundation.
+
+Final desired ocean should be closer to reference:
+
+visible waves
+reflective water
+foam/highlights
+depth feeling
+large ocean surface
+realistic lighting
+oil sitting visibly on water
+ship sitting naturally on waves
+
+Possible implementation:
+
+R3F
+ +
+Three.js
+ +
+custom shader / improved water material
+ +
+normal/displacement textures
+ +
+environment lighting
+ +
+GLTF ship
+
+We should avoid unnecessary physics engines.
+
+18. GitHub/public repository reuse
+
+Yes, this is absolutely acceptable for the prototype.
+
+Instead of building every visual element from scratch, we can reuse suitable public examples for:
+
+realistic ocean
+water shader
+GLTF ships
+ocean waves
+day/night lighting
+wind particles
+current visualization
+
+But:
+
+Don't blindly copy an entire repository.
+
+When a suitable ZIP is provided:
+
+GitHub repo
+     ↓
+inspect
+     ↓
+identify useful components/shaders/assets
+     ↓
+adapt to current R3F architecture
+     ↓
+keep our backend/data architecture
+
+The existing Ocean Sentinel project architecture should remain the source of truth.
+
+19. What should happen to the OLD .md plan?
+
+Do NOT keep modifying the old plan indefinitely.
+
+Because the original plan was based on:
+
+Ship backtracking
+
+while the project is now based on:
+
+Oil backtracking + vessel attribution
+
+Best approach:
+
+old plan
+   ↓
+archive / keep as historical reference
+
+NEW MASTER PLAN
+   ↓
+current architecture + new direction
+
+Recommended structure:
+
+docs/
+│
+├── SIH_2026_3D_Incident_Reconstruction_Plan.md
+│      ← OLD / historical plan
+│
+└── SIH_2026_Oil_Drift_3D_Visualization_Plan.md
+       ← NEW authoritative plan
+
+The new file should clearly say:
+
+This document supersedes the previous ship-centric reconstruction plan.
+
+This avoids Antigravity/AI agent confusion.
+
+20. NEW PHASE STRUCTURE
+
+The previous phases should NOT simply continue as if nothing changed.
+
+Recommended new roadmap:
+
+Phase 6 — Backend API Integration Foundation
+
+Connect:
+
+GET /spills
+GET /spills/{spill_id}
+POST /spills/{spill_id}/backtrack
+GET /spills/{spill_id}/vessels
+
+Create clean API service layer.
+
+Example:
+
+src/services/
+    spillApi.ts
+
+and types:
+
+src/types/
+    spill.ts
+    backtrack.ts
+    vessel.ts
+
+No direct fetch calls scattered throughout components.
+
+Phase 7 — Oil Backtrack Data Model
+
+Create frontend model:
+
+OilObservation
+OilSourceEstimate
+OilTrajectoryPoint
+OilTrajectory
+
+Example:
+
+Observation
+    ↓
+Trajectory[]
+    ↓
+Source Estimate
+
+Backend trajectory data becomes the source of truth.
+
+Phase 8 — 3D Oil Slick Visualization
 
 Create:
 
-- Sidebar
-- Header
-- Main simulation container
-- Right-side incident information panel
-- Bottom timeline
-- 2D map placeholder
-- Globe placeholder
+OilSpill3D.tsx
+OilTrajectory.tsx
+OilSourceMarker.tsx
 
-## Sidebar
+Visual:
 
-```text
-Dashboard
-Live Map
-Incidents
-Vessels
-Analytics
-Reports
-```
+source
+  ↓
+oil trajectory
+  ↓
+oil slick
+  ↓
+observed spill
 
-These are only UI placeholders.
+This becomes the main 3D reconstruction.
 
-## Incident panel
+Phase 9 — Oil Timeline Synchronization
 
-Example:
+Reuse existing:
 
-```text
-INCIDENT
-OS-001
+SimulationContext
+Timeline
 
-VESSEL
-MT Example
+But change primary animation from:
 
-STATUS
-UNDER INVESTIGATION
+Vessel progress
 
-CONFIDENCE
-92%
-```
+to:
 
-## Timeline
+Oil progress
 
-Static initially:
+At time t:
 
-```text
-T-30m ─ T-15m ─ SPILL ─ T+6h ─ T+24h
-```
+oilPosition = trajectory[t]
 
-## Acceptance criteria
+Vessel can independently move according to its AIS data if available.
 
-- UI matches intended structure
-- Sidebar works visually
-- Main 3D area exists as a container
-- No backend dependency
-- Responsive enough for the intended demo screen
+Phase 10 — Vessel Context Around Oil
 
-## Output to review
+Show:
 
-Provide screenshot/video of the page.
+candidate vessels
+nearby vessels
+vessel rank
+vessel ID
+vessel movement
+suspect vessel
 
----
+Important:
 
-# PHASE 2 — 3D Scene Foundation
+Ship should support the oil investigation.
 
-## Goal
+Ship is no longer the main animation.
 
-Create a working interactive 3D world.
+Phase 11 — Wind + Current 3D Visualization
 
-Structure:
+Create:
 
-```text
-Scene
- ├── Camera
- ├── Lights
- ├── Controls
- └── Ocean Placeholder
-```
+WindField.tsx
+CurrentField.tsx
 
-Initially, a simple plane is enough.
+Use arrows/particles/flow lines.
 
-## Required controls
+These should visually explain:
 
-- Rotate
-- Zoom
-- Pan
-- Reset camera
+Why oil moved this way
+Phase 12 — Realistic Ocean Upgrade
 
-## Acceptance criteria
+Upgrade:
 
-- 3D scene renders
-- Camera works
-- No severe performance issue
-- Scene is correctly positioned inside the page
-- 3D module is isolated from the rest of the application
+OceanSurface.tsx
 
-## Output
+from basic procedural surface to a more realistic WebGL/R3F ocean.
 
-Working 3D scene screenshot/video.
+Possible reuse from provided GitHub ZIP.
 
----
+Also upgrade:
 
-# PHASE 3 — 3D Ocean
+VesselModel.tsx
 
-## Goal
+to a realistic GLTF/GLB vessel if a suitable model is available.
 
-Turn the simple plane into a visually convincing animated ocean.
+Phase 13 — 2D Map + Globe
 
-## Important
+Only after core 3D reconstruction works.
 
-Do NOT build real fluid dynamics.
+Possible:
 
-Do:
+MapLibre
 
-```text
-3D plane
-+
-wave displacement/shader
-+
-water material
-+
-subtle animation
-```
+for 2D.
 
-## Desired visual direction
+Globe can be:
 
-- Dark background
-- Dark blue/cyan ocean
-- Subtle glow
-- Holographic/wireframe feel
-- Animated surface
-- Scientific/technical appearance
+Three.js / R3F
 
-Avoid excessive neon effects.
+or another appropriate globe library.
 
-## Acceptance criteria
+Both should synchronize with:
 
-- Ocean surface is visibly 3D
-- Subtle wave motion works
-- Camera movement still works
-- FPS remains acceptable
-- No complex physics simulation
+spill location
+source location
+oil trajectory
+vessels
+timeline
+Phase 14 — Day/Night + Environment Polish
 
-## Output
+Optional but valuable:
 
-Ocean-only scene screenshot/video.
+Day
+Night
+Sun position
+Moon
+Ambient lighting
 
----
+Timeline can control lighting if historical time is available.
 
-# PHASE 4 — 3D Ship
+Phase 15 — Final Investigation UI
 
-## Goal
+Final UI should answer visually:
 
-Load ONE ship model.
+What happened?
 
-Use a `.glb` or `.gltf` model.
+Oil spill detected.
 
-Do NOT create different 3D models for every vessel.
+Where is it now?
 
-The same model can later be reused as multiple instances.
+Observed spill location.
 
-## Architecture
+Where did it come from?
 
-```text
-ShipModel.glb
-      ↓
-React Three Fiber
-      ↓
-Ship component
-```
+Backtracked trajectory + source estimate.
 
-Ship state:
+Why did it move this way?
 
-```ts
-{
-  position,
-  rotation,
-  scale
-}
-```
+Wind + current.
 
-## Step 1
+Which ships were nearby?
 
-Static ship:
+Vessel layer.
 
-```text
-~~~~~~~~~~~~~~~~~~~~
-        🚢
-~~~~~~~~~~~~~~~~~~~~
-```
+Which vessel is the strongest candidate?
 
-## Step 2
+Ranked attribution.
 
-Move between hardcoded positions:
+What evidence supports it?
 
-```text
-P1 → P2 → P3 → P4
-```
+Satellite + trajectory + AIS + environmental data.
 
-## Step 3
+21. Final desired 3D scene
 
-Rotate according to heading.
+The ideal final scene:
 
-## Acceptance criteria
+                    WIND → → → →
 
-- GLB loads successfully
-- Correct scale relative to ocean
-- Ship can move
-- Ship can rotate
-- No major loading/performance issue
 
-## Output
+                  🚢
+                 /│\
+                / │ \
+       AIS ────/  │  \
 
-Ocean + one moving ship.
 
----
-
-# PHASE 5 — AIS Historical Track
-
-## Goal
-
-Show where the vessel came from.
-
-Mock data:
-
-```json
-{
-  "vessel": {
-    "id": "IMO1234567",
-    "name": "MT Example"
-  },
-  "track": [
-    {
-      "time": "08:00",
-      "lat": 13.10,
-      "lng": 80.20,
-      "speed": 11.2,
-      "heading": 87
-    },
-    {
-      "time": "08:10",
-      "lat": 13.12,
-      "lng": 80.24,
-      "speed": 11.5,
-      "heading": 88
-    },
-    {
-      "time": "08:20",
-      "lat": 13.15,
-      "lng": 80.28,
-      "speed": 11.3,
-      "heading": 90
-    }
-  ]
-}
-```
-
-## Processing
-
-```text
-AIS coordinates
-       ↓
-Coordinate conversion
-       ↓
-3D positions
-       ↓
-Track line
-       ↓
-Ship movement
-```
-
-## Visual
-
-```text
-START
-  🚢
-   \
-    \
-     🚢
+             •
+          •
+       •
+    •
+  🔴 SOURCE
       \
-       🔴
-```
+       \   ~~~~~~~~~
+        \ ~~~~~~~~~~~
+         ~~~ OIL ~~~~~
+           ~~~~~~~~~~~~~
+                 🔴
+             OBSERVATION
 
-## Acceptance criteria
 
-- Historical track visible
-- Ship follows track
-- Ship heading changes correctly
-- Track and ship remain synchronized
+        ← CURRENT FLOW
 
----
-
-# PHASE 6 — Oil Spill
-
-## Goal
-
-Introduce the incident.
-
-Mock data:
-
-```json
-{
-  "spill": {
-    "lat": 13.18,
-    "lng": 80.32,
-    "area": 2.8,
-    "confidence": 0.91,
-    "detectedAt": "08:30"
-  }
-}
-```
-
-## Visual
-
-```text
-                 🚢
-                /
-               /
-              /
-             🔴
-        OIL SPILL
-~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~~~~~~~~~~~~~~~
-```
-
-## Initial oil implementation
-
-Use:
-
-- Irregular polygon
-- Transparent material
-- Red/orange edge
-- Slight animated distortion
-
-Do NOT build fluid dynamics.
-
-## Acceptance criteria
-
-- Spill appears at correct location
-- Spill has visible area
-- Ship track reaches/relates to spill location
-- Spill styling fits the visual theme
-
----
-
-# PHASE 7 — Wind + Ocean Current
-
-## Goal
-
-Show environmental forces.
-
-Mock data:
-
-```json
-{
-  "environment": {
-    "wind": {
-      "direction": 120,
-      "speed": 14
-    },
-    "current": {
-      "direction": 105,
-      "speed": 1.8
-    }
-  }
-}
-```
-
-## Visual
-
-```text
-                 → → → → →
-              WIND
-
-                    ↗
-                  ↗
-                ↗
-             🔴
-```
-
-Current can be shown using:
-
-```text
-↗ ↗ ↗ ↗ ↗
-↗ ↗ ↗ ↗ ↗
-↗ ↗ ↗ ↗ ↗
-```
-
-Use a clear visual distinction between wind and current.
-
-## Acceptance criteria
-
-- Wind direction is visible
-- Wind speed can be shown in UI
-- Current direction is visible
-- Current speed can be shown
-- Direction indicators are synchronized with data
-
----
-
-# PHASE 8 — Oil Drift Simulation
-
-## Goal
-
-Make oil move according to predicted trajectory.
-
-This is the core simulation visualization.
-
-## Important architectural rule
-
-Initially, the frontend should NOT calculate complex oil physics.
-
-Backend/ML should eventually provide the predicted trajectory.
-
-Frontend should visualize it.
-
-## Mock prediction
-
-```json
-{
-  "drift": {
-    "trajectory": [
-      {
-        "time": "08:30",
-        "lat": 13.18,
-        "lng": 80.32
-      },
-      {
-        "time": "14:30",
-        "lat": 13.22,
-        "lng": 80.37
-      },
-      {
-        "time": "20:30",
-        "lat": 13.27,
-        "lng": 80.43
-      }
-    ]
-  }
-}
-```
-
-## Visual concept
-
-```text
-T0
-
-🔴
-
-
-T+6h
-
-  🟠
- 🔴🟠
-  🟠
-
-
-T+12h
-
-    🟠🟠
-  🟠🟠🟠
- 🔴🟠🟠
-
-
-T+24h
-
-       🟠🟠
-     🟠🟠🟠
-   🟠🟠🟠
-```
-
-The exact visual can be implemented with particles, polygons, animated textures, or a combination.
-
-## Acceptance criteria
-
-- Oil moves over time
-- Direction matches mock prediction
-- Oil position is synchronized with timeline
-- Animation is smooth
-- No claim of real fluid physics
-
----
-
-# PHASE 9 — 2D Map + Globe Synchronization
-
-## Goal
-
-Connect the 3D incident scene with geographic context.
-
-The same incident should appear in:
-
-1. 3D Incident Scene
-2. 2D Map
-3. Globe/large-scale view
-
-Architecture:
-
-```text
-              3D SCENE
-                  │
-             Incident 🔴
-                  │
-        ┌─────────┴─────────┐
-        ↓                   ↓
-      2D MAP              GLOBE
-```
-
-For example, if the incident is:
-
-```text
-13.18 N
-80.32 E
-```
-
-then:
-
-- 3D scene → oil location
-- 2D map → Bay of Bengal location
-- Globe → India/world context
-
-## Acceptance criteria
-
-- Same incident coordinates are used
-- Maps are geographically consistent
-- Selecting incident updates all views
-- 3D view and geographic overview tell the same story
-
----
-
-# PHASE 10 — Timeline + Replay + Polish
-
-## Goal
-
-Create the final incident replay experience.
+With realistic ocean underneath.
 
 Timeline:
 
-```text
-T-30m
-  ↓
-T-15m
-  ↓
-SPILL
-  ↓
-T+6h
-  ↓
-T+12h
-  ↓
-T+24h
-```
+SOURCE ──────── BACKTRACK ───────── OBSERVATION
+  -8h             -4h                    NOW
+22. MOST IMPORTANT IMPLEMENTATION RULE
 
-Play button:
+Do not make frontend calculate physics.
 
-```text
-▶ PLAY
-```
+Frontend should NOT decide:
 
-## Expected behavior
+wind drift
+current drift
+source position
+oil trajectory
+release time
 
-### T-30m
+Backend already calculates these.
 
-Ship is moving along AIS route.
+Frontend responsibility:
 
-### T-15m
+Backend
+   ↓
+JSON
+   ↓
+normalize/adapt
+   ↓
+3D visualization
+   ↓
+Timeline
+   ↓
+UI
 
-Ship approaches incident area.
+This keeps the system scientifically and architecturally clean.
 
-### Spill
+23. Current project status in one line
+Abhi tak:
+UI Shell
+   ✅
+3D Scene
+   ✅
+Ocean Foundation
+   ✅
+Procedural Ship
+   ✅
+AIS Track
+   ✅
+Timeline
+   ✅
+Vessel Movement
+   ✅
+But project direction has changed.
 
-Oil detection appears.
+Now:
 
-### T+6h
+Ship-centric reconstruction
+          ❌ OLD
 
-Oil begins drifting.
+Oil-centric reconstruction
+          ✅ NEW
 
-### T+12h
+So existing work waste nahi hua.
 
-Oil spreads further.
+It becomes supporting infrastructure.
 
-### T+24h
+24. What should NOT be deleted
 
-Predicted/observed drift is visible.
+Do not immediately delete:
 
-## Final polish
+SimulationContext
+Timeline
+latLonToWorld
+IncidentScene
+OceanSurface
+VesselModel
+AISTrack
+IncidentMarker
+SceneCamera
+SceneLighting
 
-Only after all core functionality works:
+Instead:
 
-- Camera transitions
-- Hover effects
-- HUD
-- Glow
-- Loading states
-- Smooth transitions
-- Labels
-- Tooltips
-- Incident information
-- Better materials
-- Performance optimization
+existing infrastructure
+        ↓
+adapt
+        ↓
+oil-centric visualization
 
----
+Especially:
 
-# 9. Backend Requirements
+latLonToWorld
 
-Backend is not ready yet, so the prototype will use JSON files.
+This remains extremely important.
 
-The JSON structure should be designed to match the future API response.
+SimulationContext
 
-Recommended APIs:
+Can become the global simulation clock.
 
----
+Timeline
 
-## API 1 — Incident
+Can become oil backtrack/replay timeline.
 
-```http
-GET /api/incidents/:incidentId
-```
+VesselModel
 
-Example response:
+Can become supporting vessel visualization.
 
-```json
-{
-  "id": "OS-001",
-  "status": "UNDER_INVESTIGATION",
-  "detectedAt": "2026-08-26T08:30:00Z",
-  "location": {
-    "lat": 13.18,
-    "lng": 80.32
-  },
-  "confidence": 0.91
-}
-```
+25. What should eventually be changed
 
----
+Most important changes:
 
-## API 2 — Vessel
+OLD:
+AIS Track = main track
 
-```http
-GET /api/incidents/:incidentId/vessel
-```
-
-Example:
-
-```json
-{
-  "id": "IMO1234567",
-  "name": "MT Example",
-  "type": "TANKER",
-  "speed": 11.3,
-  "heading": 90
-}
-```
-
----
-
-## API 3 — AIS Track
-
-```http
-GET /api/incidents/:incidentId/track
-```
-
-Example:
-
-```json
-{
-  "points": [
-    {
-      "time": "08:00",
-      "lat": 13.10,
-      "lng": 80.20,
-      "speed": 11.2,
-      "heading": 87
-    },
-    {
-      "time": "08:10",
-      "lat": 13.12,
-      "lng": 80.24,
-      "speed": 11.5,
-      "heading": 88
-    }
-  ]
-}
-```
-
----
-
-# API 4 — Oil Spill
-
-```http
-GET /api/incidents/:incidentId/spill
-```
-
-Example:
-
-```json
-{
-  "location": {
-    "lat": 13.18,
-    "lng": 80.32
-  },
-  "area": 2.8,
-  "confidence": 0.91,
-  "polygon": []
-}
-```
-
----
-
-# API 5 — Environment
-
-```http
-GET /api/incidents/:incidentId/environment
-```
-
-Example:
-
-```json
-{
-  "wind": {
-    "direction": 120,
-    "speed": 14
-  },
-  "current": {
-    "direction": 105,
-    "speed": 1.8
-  }
-}
-```
-
----
-
-# API 6 — Predicted Drift
-
-```http
-GET /api/incidents/:incidentId/drift
-```
-
-Example:
-
-```json
-{
-  "prediction": [
-    {
-      "time": "08:30",
-      "lat": 13.18,
-      "lng": 80.32
-    },
-    {
-      "time": "14:30",
-      "lat": 13.22,
-      "lng": 80.37
-    },
-    {
-      "time": "20:30",
-      "lat": 13.27,
-      "lng": 80.43
-    }
-  ]
-}
-```
-
----
-
-# 10. Mock JSON Structure
-
-Until backend is ready:
-
-```text
-simulation/
-│
-├── data/
-│   ├── incident.json
-│   ├── vessel.json
-│   ├── track.json
-│   ├── spill.json
-│   ├── environment.json
-│   └── drift.json
-│
-├── components/
-│   ├── Scene/
-│   ├── Ocean/
-│   ├── Ship/
-│   ├── OilSpill/
-│   ├── Wind/
-│   ├── Current/
-│   ├── Track/
-│   ├── Timeline/
-│   ├── MiniMap/
-│   └── Globe/
-│
-├── hooks/
-│   ├── useIncident.ts
-│   ├── useVessel.ts
-│   ├── useTrack.ts
-│   └── useDrift.ts
-│
-└── services/
-    └── incidentApi.ts
-```
-
----
-
-# 11. Mock JSON → Real Backend
-
-The frontend should not directly depend on the JSON files.
-
-Use a service layer.
-
-Initially:
-
-```text
-incidentApi.ts
-      ↓
-mock JSON
-```
-
-Later:
-
-```text
-incidentApi.ts
-      ↓
-REAL BACKEND API
-```
-
-The 3D components should not care whether data comes from:
-
-- JSON
-- REST API
-- ML service
-- Database
-
-They should only receive structured data.
-
-This makes backend integration much easier.
-
----
-
-# 12. Example Data Flow
-
-```text
-Mock JSON
-    ↓
-Service Layer
-    ↓
-React Hook / State
-    ↓
-Simulation State
-    ↓
-┌──────────┬──────────┬──────────┬──────────┐
-↓          ↓          ↓          ↓
-Ship      Track      Oil       Wind/Current
-↓          ↓          ↓          ↓
-──────────── 3D Scene ─────────────────────
-                     ↓
-                  Timeline
-```
-
-Later:
-
-```text
-Backend API
-    ↓
-Same Service Layer
-    ↓
-Same Components
-```
-
-Ideally, the visualization components should not need major changes.
-
----
+NEW:
+Oil Trajectory = main track
+OLD:
+Vessel = primary animated object
 
-# 13. Risk Management
+NEW:
+Oil = primary animated object
+Vessel = contextual evidence
+OLD:
+Mock AIS-centric data
 
-## Risk 1 — 3D simulation fails
+NEW:
+Backend spill/backtrack/environment APIs
+OLD:
+Simple ocean
 
-The main application must continue working.
+NEW:
+Realistic WebGL/R3F ocean
+OLD:
+Bay of Bengal assumptions
 
-Keep the simulation module isolated.
+NEW:
+Mediterranean dataset
+26. Next immediate step
 
-Example:
+Abhi Phase 6 ka coding prompt dena immediately sahi nahi hoga.
 
-```text
-Simulation Available?
-       │
-    ┌──┴──┐
-   YES    NO
-    ↓      ↓
-3D Tab   Hide Tab
-```
+Pehle new architecture ko freeze karna better hai:
 
-The rest of the prototype should never depend on the 3D module.
+1. Backend API contract finalize
+2. Oil trajectory response finalize
+3. Environment response finalize
+4. Vessel track response finalize
+5. New master .md create
+6. Existing code audit
+7. Then Phase 6 implementation
 
----
+Backend se especially ye 3 cheezein confirm karni hain:
 
-# Risk 2 — Realistic ocean becomes too difficult
-
-Do not attempt:
-
-- Real fluid dynamics
-- CFD
-- Real oil-water interaction
-- Physically accurate wave simulation
-
-Use:
-
-- Shader/displacement
-- Animated surface
-- Particles/polygons
-- Data-driven movement
-
----
-
-# Risk 3 — Too many ships
-
-For the detailed 3D reconstruction:
-
-> Use one selected vessel.
+A. Oil intermediate trajectory points
+B. Wind/current summary
+C. Vessel historical track
 
-The same 3D model can be reused for other vessels if needed.
+Tumne already kaha hai ki backend team ye APIs provide kar sakti hai, so frontend ko mock assumptions banane ki zaroorat nahi hai.
 
-Do not create a separate 3D model for every vessel.
+🚨 NEW CHAT KO YE SHORT CONTEXT BHI DE SAKTE HO
 
----
+Agar tumhe poora upar wala context paste nahi karna hai, to new chat me minimum ye bolna:
 
-# Risk 4 — Performance
+Ocean Sentinel SIH 2026 PS #143 project hai. Frontend React + Vite + TypeScript + Tailwind + Three.js + R3F + Drei par bana hai. Phase 1, 2, 3, 4, 5A and 5B complete hain. Current architecture me SimulationContext, Timeline, IncidentScene, OceanSurface, VesselModel, AISTrack aur coordinate conversion already implemented hain.
 
-Do not render:
+Project direction ab change ho chuki hai: old ship-centric backtracking ko primary visualization nahi banana. New goal oil-centric reconstruction hai. Backend physics calculations already karta hai. Frontend ko backend ke oil observation, estimated source, intermediate oil trajectory, release time, wind/current aur nearby/candidate vessel data ko 3D realistic ocean scene me visualize karna hai. Dataset Mediterranean Sea ka hai, Bay of Bengal ka nahi.
 
-- Thousands of detailed 3D ships
-- Heavy particles everywhere
-- Complex fluid simulation
-- High-poly assets
+Available APIs:
+GET /api/v1/demo/spills
+GET /api/v1/demo/spills/{spill_id}
+POST /api/v1/demo/spills/{spill_id}/backtrack
+GET /api/v1/demo/spills/{spill_id}/vessels
 
-For the SIH prototype:
+Need additional backend data: intermediate oil trajectory points, environmental summary (wind speed/direction + current speed/direction), and ideally historical vessel tracks.
 
-```text
-Selected vessel = detailed
-Other vessels = simple representation
-```
+Final 3D UI should show: realistic R3F/WebGL ocean, floating oil slick, oil backtrack trajectory, estimated source area, observed spill, nearby moving vessels, candidate/suspect vessel, wind/current flow, timeline, satellite image/info, and optionally day/night. Oil is the primary animated object; vessels are supporting evidence.
 
----
+Do not delete existing architecture. Reuse/adapt it. The current MeshDistortMaterial ocean and procedural ship are foundations, not final visuals. Public GitHub R3F/WebGL ocean/ship/wind/day-night repositories can be reused if suitable.
 
-# Risk 5 — Scope creep
+Create a new authoritative master plan .md instead of continuously modifying the old ship-centric plan. Archive the old plan.
 
-Do not add these until the core simulation works:
 
-- Photorealistic ocean
-- Complex physics
-- Global real-time AIS
-- Thousands of ships
-- Real-time satellite streaming
-- Advanced fluid simulation
 
----
-
-# 14. Suggested 3D Simulation Concept
-
-The 3D scene should communicate:
-
-> **What happened at this incident?**
-
-The 2D map should communicate:
-
-> **Where did it happen geographically?**
-
-The timeline should communicate:
-
-> **When did it happen?**
-
-The wind/current visualization should communicate:
-
-> **Why did the oil move in that direction?**
-
-The predicted trajectory should communicate:
-
-> **Where is the oil expected to go next?**
-
----
-
-# 15. Final Architecture
-
-```text
-                 OCEAN SENTINEL
-                       │
-          ┌────────────┴────────────┐
-          ↓                         ↓
-     MAIN APPLICATION          3D INCIDENT
-     (other teammate)          RECONSTRUCTION
-          │                         │
-    ┌─────┼─────┐              R3F / Three.js
-    ↓     ↓     ↓                    │
-  2D Map Globe deck.gl               │
-                                    │
-                       ┌────────────┼────────────┐
-                       ↓            ↓            ↓
-                    Ocean         Ship         Oil
-                       │            │            │
-                       └────────────┼────────────┘
-                                    ↓
-                              Wind / Current
-                                    ↓
-                              Drift Prediction
-                                    ↓
-                                 Timeline
-```
-
----
-
-# 16. Development Rules
-
-## Rule 1
-
-Do not build all phases at once.
-
-## Rule 2
-
-Every phase must produce a visible output.
-
-## Rule 3
-
-Do not move to the next phase until the current phase is reviewed.
-
-## Rule 4
-
-If a phase becomes unexpectedly difficult, stop and evaluate before adding more code.
-
-## Rule 5
-
-Keep the 3D module isolated from the main application.
-
-## Rule 6
-
-Use mock data until backend APIs are ready.
-
-## Rule 7
-
-Keep mock JSON structures compatible with future backend responses.
-
-## Rule 8
-
-Prefer simple, convincing visualization over unrealistic physics.
-
-## Rule 9
-
-One selected vessel is enough for the first 3D incident.
-
-## Rule 10
-
-The 3D module is a high-value visualization layer, not the entire project.
-
----
-
-# 17. Immediate Next Step
-
-Do **only Phase 0** first.
-
-Target:
-
-```text
-React
-+
-TypeScript
-+
-Three.js
-+
-React Three Fiber
-+
-Drei
-+
-MapLibre
-```
-
-After Phase 0 is complete, provide:
-
-- `package.json`
-- relevant folder structure
-- terminal output
-- screenshot if available
-
-Then review the result before starting Phase 1.
-
----
-
-# 18. One-line Roadmap
-
-```text
-SETUP
-  ↓
-PAGE UI
-  ↓
-3D SCENE
-  ↓
-OCEAN
-  ↓
-SHIP
-  ↓
-AIS TRACK
-  ↓
-OIL SPILL
-  ↓
-WIND + CURRENT
-  ↓
-DRIFT
-  ↓
-2D MAP + GLOBE
-  ↓
-TIMELINE
-  ↓
-POLISH
-  ↓
-MOCK JSON → REAL API
-```
-
-## Final Goal
-
-A judge should be able to see:
-
-```text
-Ship started here
-       ↓
-Ship followed AIS route
-       ↓
-Oil spill detected here
-       ↓
-Wind/current affected movement
-       ↓
-Oil drifted this way
-       ↓
-Future trajectory was predicted
-       ↓
-Incident can be replayed in 3D
-```
-
-This is the core of the 3D Incident Reconstruction module.

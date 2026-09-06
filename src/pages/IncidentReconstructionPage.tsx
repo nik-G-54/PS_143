@@ -172,9 +172,8 @@ const ReconstructionWorkspace: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setFullscreen(true)}
-                  className={`absolute z-30 p-2 bg-black/40 hover:bg-black/60 text-white rounded-md backdrop-blur border border-white/10 transition-colors top-3 ${
-                    intelOpen ? 'right-3 lg:right-[9.5rem]' : 'right-3 lg:right-[5.75rem]'
-                  }`}
+                  className={`absolute z-30 p-2 bg-black/40 hover:bg-black/60 text-white rounded-md backdrop-blur border border-white/10 transition-colors top-3 ${intelOpen ? 'right-3 lg:right-[9.5rem]' : 'right-3 lg:right-[5.75rem]'
+                    }`}
                   title="Fullscreen"
                 >
                   <Maximize2 size={16} />
@@ -222,3 +221,5 @@ export const IncidentReconstructionPage: React.FC = () => {
     </IncidentProvider>
   );
 };
+
+export default IncidentReconstructionPage;

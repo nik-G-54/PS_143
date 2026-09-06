@@ -33,7 +33,7 @@ const IncidentsPage: React.FC = () => {
       setLoading(false);
     });
   }, []);
-  
+
   const {
     filteredIncidents,
     searchQuery,
@@ -57,7 +57,7 @@ const IncidentsPage: React.FC = () => {
       <Sidebar />
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         <Header />
-        
+
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto pt-6 pb-6 px-10 space-y-6">
 

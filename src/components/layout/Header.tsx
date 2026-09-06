@@ -7,17 +7,20 @@ import {
   AlertTriangle, 
   Sun, 
   Moon, 
-  ShieldAlert,
-  Loader2
+  Loader2,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useIncidentOptional } from '../../context/IncidentContext';
+import { useSidebar } from '../../context/SidebarContext';
 
 import { IncidentSelector } from '../incident/IncidentSelector';
 
 export const Header: React.FC = () => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { isCollapsed, toggleSidebar } = useSidebar();
   const incidentContext = useIncidentOptional();
 
   // Determine page title and icon based on current path
@@ -55,12 +58,21 @@ export const Header: React.FC = () => {
   const { title, icon } = getPageDetails();
 
   const incidentId = incidentContext?.spillId ?? incidentContext?.spillDetails?.spill_id ?? 'UNKNOWN';
-  const incidentStatus = incidentContext?.loading ? 'LOADING...' : (incidentContext?.spillDetails?.status ?? 'ACTIVE');
 
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 transition-colors duration-200 shrink-0">
-      {/* Left: Route Title */}
-      <div className="flex items-center gap-4">
+      {/* Left: Route Title & Sidebar Toggle */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="p-1.5 -ml-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center justify-center cursor-pointer"
+          title={isCollapsed ? "Open sidebar (Ctrl+B)" : "Close sidebar (Ctrl+B)"}
+          aria-label={isCollapsed ? "Open sidebar" : "Close sidebar"}
+        >
+          {isCollapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
+        </button>
+        <div className="h-4 w-px bg-border"></div>
         <h2 className="font-semibold text-foreground flex items-center gap-2 text-sm tracking-wide uppercase font-sans">
           {icon}
           {title}

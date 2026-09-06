@@ -21,6 +21,7 @@ import { useSpillTrajectory } from '../hooks/useSpillTrajectory';
 import { useSpillAttribution } from '../hooks/useSpillAttribution';
 import { useInvestigation } from '../investigation/useInvestigation';
 import { useInvestigationTimeline } from '../timeline/useInvestigationTimeline';
+import type { PlaybackMode } from '../timeline/useInvestigationTimeline';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 
 // Explicitly set the worker URL using Vite's ?worker&url syntax
@@ -43,6 +44,8 @@ export function MaritimeMap() {
   const [showCurrent, setShowCurrent] = useState(false);
   /** Spill id for which backtrack mode is armed — auto-clears when selection changes. */
   const [backtrackSpillId, setBacktrackSpillId] = useState<string | null>(null);
+  /** Active playback direction — resets to forward whenever investigation is toggled or spill changes. */
+  const [playbackMode, setPlaybackMode] = useState<PlaybackMode>('forward');
 
   const { spills, isLoading: isSpillsLoading, error: spillsError, reload } = useSpills();
   const { selectedSpillId, focusMode, selectSpill, clearInvestigation, toggleFocusMode } =
@@ -70,7 +73,8 @@ export function MaritimeMap() {
   const timeline = useInvestigationTimeline(
     trajectory,
     attribution?.drawableVessels ?? [],
-    backtrackActive && Boolean(trajectory)
+    backtrackActive && Boolean(trajectory),
+    playbackMode
   );
 
   // Environment toggles only apply while a spill is selected.
@@ -253,6 +257,7 @@ export function MaritimeMap() {
         vessels: attribution?.drawableVessels ?? [],
         vesselPositions: timeline.vesselPositions,
         backtrackActive,
+        playbackMode,
       }),
     });
   }, [
@@ -263,6 +268,7 @@ export function MaritimeMap() {
     isLoading,
     trajectory,
     backtrackActive,
+    playbackMode,
     timeline.visiblePoints,
     timeline.oilPosition,
     timeline.vesselPositions,
@@ -324,6 +330,7 @@ export function MaritimeMap() {
     if (!map) return;
     clearInvestigation();
     setBacktrackSpillId(null);
+    setPlaybackMode('forward');
     setShowWind(false);
     setShowCurrent(false);
     resetToGlobe(map);
@@ -334,12 +341,18 @@ export function MaritimeMap() {
 
   const handleToggleBacktrack = useCallback(() => {
     if (!selectedSpillId) return;
-    setBacktrackSpillId((prev) => (prev === selectedSpillId ? null : selectedSpillId));
+    setBacktrackSpillId((prev) => {
+      const next = prev === selectedSpillId ? null : selectedSpillId;
+      // Reset mode to forward whenever we arm or disarm.
+      setPlaybackMode('forward');
+      return next;
+    });
   }, [selectedSpillId]);
 
   const handleClearInvestigation = useCallback(() => {
     clearInvestigation();
     setBacktrackSpillId(null);
+    setPlaybackMode('forward');
     setShowWind(false);
     setShowCurrent(false);
     framedDriftForRef.current = null;
@@ -375,6 +388,8 @@ export function MaritimeMap() {
             attribution={attribution}
             isAttributionLoading={isAttributionLoading}
             backtrackActive={backtrackActive}
+            playbackMode={playbackMode}
+            onSetPlaybackMode={setPlaybackMode}
             onToggleFocusMode={toggleFocusMode}
             onToggleBacktrack={handleToggleBacktrack}
             onClear={handleClearInvestigation}
@@ -400,6 +415,8 @@ export function MaritimeMap() {
             windowLabel={timeline.windowLabel}
             onTogglePlay={timeline.togglePlay}
             onSeek={timeline.setProgress}
+            playbackMode={playbackMode}
+            atSource={timeline.atSource}
           />
         )}
 

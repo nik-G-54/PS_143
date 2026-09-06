@@ -1,4 +1,4 @@
-import { Crosshair, Eye, EyeOff, Rewind, X } from 'lucide-react';
+﻿import { Crosshair, Eye, EyeOff, Rewind, X } from 'lucide-react';
 import type { MapSpill } from '../types/spillTypes';
 import type { SpillTrajectory } from '../types/trajectoryTypes';
 import type { SpillAttribution } from '../types/attributionTypes';
@@ -26,6 +26,8 @@ interface InvestigationPanelProps {
   attribution: SpillAttribution | null;
   isAttributionLoading: boolean;
   backtrackActive: boolean;
+  playbackMode: 'forward' | 'backtrack';
+  onSetPlaybackMode: (mode: 'forward' | 'backtrack') => void;
   onToggleFocusMode: () => void;
   onToggleBacktrack: () => void;
   onClear: () => void;
@@ -50,7 +52,7 @@ function SectionHeading({ children }: { children: string }) {
   );
 }
 
-/** Readout of the backend's backtrack solution for this detection. */
+/** Readout of the backend backtrack solution for this detection. */
 function DriftSection({
   trajectory,
   isLoading,
@@ -120,25 +122,15 @@ function VesselSection({
       {!isLoading && attribution && (
         <>
           <Field label="Candidates" value={String(attribution.candidateCount)} />
-          {attribution.vessels.slice(0, 3).map((vessel) => (
-            <Field
-              key={vessel.vesselId}
-              label={`#${vessel.rank}`}
-              value={vessel.vesselName}
-            />
+          {attribution.vessels.slice(0, 3).map((v) => (
+            <Field key={v.vesselId} label={`#${v.rank} ${v.vesselName}`} value={v.vesselType ?? '—'} />
           ))}
-          {attribution.drawableVessels.length === 0 && (
-            <p className="text-[10px] leading-relaxed text-muted-foreground">
-              Ranked list loaded; no AIS track points in the attribution window for map animation.
-            </p>
-          )}
         </>
       )}
     </div>
   );
 }
 
-/** Readout for the spill currently under investigation. */
 export function InvestigationPanel({
   spill,
   focusMode,
@@ -148,6 +140,8 @@ export function InvestigationPanel({
   attribution,
   isAttributionLoading,
   backtrackActive,
+  playbackMode,
+  onSetPlaybackMode,
   onToggleFocusMode,
   onToggleBacktrack,
   onClear,
@@ -203,19 +197,50 @@ export function InvestigationPanel({
           active={backtrackActive}
         />
 
+        {/* Arm / disarm investigation timeline */}
         <button
           type="button"
           onClick={onToggleBacktrack}
           disabled={!trajectory && !isTrajectoryLoading}
           className={`flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors disabled:opacity-40 ${
             backtrackActive
-              ? 'border-amber-500/70 bg-amber-500 text-amber-950'
+              ? 'border-amber-500/70 bg-amber-500/20 text-amber-300'
               : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
           }`}
         >
           <Rewind size={13} />
-          {backtrackActive ? 'Backtrack on' : 'Backtrack vessels'}
+          {backtrackActive ? 'Investigation on' : 'Investigate vessels'}
         </button>
+
+        {/* Playback mode selector — only shown when armed */}
+        {backtrackActive && (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => onSetPlaybackMode('forward')}
+              title="Forward Reconstruction: Origin → Detection"
+              className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                playbackMode === 'forward'
+                  ? 'border-cyan-500/70 bg-cyan-500/15 text-cyan-300'
+                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+              }`}
+            >
+              ▶ Forward
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetPlaybackMode('backtrack')}
+              title="Backtrack to Source: Detection → Origin"
+              className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                playbackMode === 'backtrack'
+                  ? 'border-amber-500/70 bg-amber-500/15 text-amber-300'
+                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+              }`}
+            >
+              ◀ Backtrack
+            </button>
+          </div>
+        )}
 
         <button
           type="button"

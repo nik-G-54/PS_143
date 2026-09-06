@@ -9,6 +9,8 @@ export const LAYER_IDS = {
   spillDots: 'spill-dots',
   spillSelectionRing: 'spill-selection-ring',
   driftOriginUncertainty: 'drift-origin-uncertainty',
+  driftPathGhostCasing: 'drift-path-ghost-casing',
+  driftPathGhost: 'drift-path-ghost',
   driftPathCasing: 'drift-path-casing',
   driftPath: 'drift-path',
   driftTimeTicks: 'drift-time-ticks',

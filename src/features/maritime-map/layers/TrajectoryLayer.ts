@@ -27,6 +27,12 @@ export interface TrajectoryLayerOptions {
   visiblePoints?: SpillTrajectory['points'] | null;
   /** Oil head at the playhead — drawn when backtrack timeline is active. */
   oilPlayhead?: { longitude: number; latitude: number } | null;
+  /**
+   * Active playback direction.
+   * In 'backtrack' mode a dim ghost of the full trajectory is rendered underneath
+   * the clipped active path so the judge can always see the complete reference track.
+   */
+  playbackMode?: 'forward' | 'backtrack';
 }
 
 /** Everything the origin marker's tooltip needs, so it never reaches back into the trajectory. */
@@ -62,6 +68,38 @@ function createUncertaintyLayer(origin: DriftOriginDatum): ScatterplotLayer<Drif
     getLineWidth: 1.25,
     pickable: false,
   });
+}
+
+/**
+ * Ghost path layers: the full trajectory rendered dim (alpha ~40) in backtrack mode.
+ * Gives the judge a reference of the complete drift path while the active playhead rewinds.
+ */
+function createGhostPathLayers(trajectory: SpillTrajectory): PathLayer<SpillTrajectory>[] {
+  const fullPath = trajectory.points.map((p) => [p.longitude, p.latitude] as [number, number]);
+  const shared = {
+    data: [trajectory],
+    getPath: () => fullPath,
+    widthUnits: 'pixels' as const,
+    widthMinPixels: 1,
+    jointRounded: true,
+    capRounded: true,
+    pickable: false,
+    updateTriggers: { getPath: [trajectory.spillId] },
+  };
+  return [
+    new PathLayer<SpillTrajectory>({
+      ...shared,
+      id: LAYER_IDS.driftPathGhostCasing,
+      getColor: [4, 14, 22, 60],
+      getWidth: () => 4 + 2.6, // casing width
+    }),
+    new PathLayer<SpillTrajectory>({
+      ...shared,
+      id: LAYER_IDS.driftPathGhost,
+      getColor: [56, 180, 200, 45],
+      getWidth: () => 2.5,
+    }),
+  ];
 }
 
 /**
@@ -187,7 +225,7 @@ function createPlayheadLayer(
  * detections above all of it so the selected dot stays the anchor of its own path.
  */
 export function createTrajectoryLayers(options: TrajectoryLayerOptions): Layer[] {
-  const { trajectory, visiblePoints, oilPlayhead } = options;
+  const { trajectory, visiblePoints, oilPlayhead, playbackMode = 'forward' } = options;
   if (!trajectory || trajectory.points.length < 2) return [];
 
   const pointsForPath =
@@ -207,6 +245,12 @@ export function createTrajectoryLayers(options: TrajectoryLayerOptions): Layer[]
     : null;
 
   if (origin && origin.radiusKm != null) layers.push(createUncertaintyLayer(origin));
+
+  // In backtrack mode, draw the full ghost path first (bottommost) as a dim reference,
+  // then the clipped active path on top so the rewinding playhead is always visible.
+  if (playbackMode === 'backtrack' && visiblePoints && visiblePoints.length >= 2) {
+    layers.push(...createGhostPathLayers(trajectory));
+  }
 
   layers.push(...createPathLayers(trajectory, pointsForPath));
 

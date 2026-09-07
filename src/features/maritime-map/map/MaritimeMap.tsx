@@ -19,6 +19,7 @@ import { getSpillBounds } from '../adapters/spillAdapter';
 import { useSpills } from '../hooks/useSpills';
 import { useSpillTrajectory } from '../hooks/useSpillTrajectory';
 import { useSpillAttribution } from '../hooks/useSpillAttribution';
+import { useSpillDetails } from '../hooks/useSpillDetails';
 import { useInvestigation } from '../investigation/useInvestigation';
 import { useInvestigationTimeline } from '../timeline/useInvestigationTimeline';
 import type { PlaybackMode } from '../timeline/useInvestigationTimeline';
@@ -53,10 +54,12 @@ export function MaritimeMap() {
 
   const backtrackActive = backtrackSpillId != null && backtrackSpillId === selectedSpillId;
 
-  const selectedSpill = useMemo(
+  const baseSelectedSpill = useMemo(
     () => spills.find((spill) => spill.spillId === selectedSpillId) ?? null,
     [spills, selectedSpillId]
   );
+
+  const { spill: selectedSpill } = useSpillDetails(baseSelectedSpill);
 
   const {
     trajectory,
@@ -246,6 +249,7 @@ export function MaritimeMap() {
       layers: buildMaritimeLayers({
         spills,
         selectedSpillId,
+        selectedSpill,
         focusMode,
         onSelectSpill: selectSpill,
         trajectory,
@@ -263,6 +267,7 @@ export function MaritimeMap() {
   }, [
     spills,
     selectedSpillId,
+    selectedSpill,
     focusMode,
     selectSpill,
     isLoading,

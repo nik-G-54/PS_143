@@ -64,14 +64,20 @@ const tooltip = (rows: string[]) => ({
 });
 
 function spillTooltip(spill: MapSpill) {
-  return tooltip([
-    title(spill.spillId),
+  const rows = [
+    title(`OIL SPILL — ${spill.spillId}`),
     row('Detected', formatDetectedAt(spill)),
     row('Area', formatArea(spill.areaKm2)),
-    row('Detection conf.', formatConfidence(spill.confidenceScore)),
-    row('Candidates', formatCandidates(spill.candidateCount)),
-    row('Centroid', formatCoordinates(spill)),
-  ]);
+    row('Confidence', formatConfidence(spill.confidenceScore)),
+  ];
+  if (spill.sourceType) {
+    row('Source type', spill.sourceType);
+  }
+  if (spill.candidateCount != null) {
+    row('Candidates', formatCandidates(spill.candidateCount));
+  }
+  row('Centroid', formatCoordinates(spill));
+  return tooltip(rows);
 }
 
 function driftPositionTooltip(point: TrajectoryPoint) {
@@ -86,7 +92,7 @@ function driftPositionTooltip(point: TrajectoryPoint) {
 
 function driftOriginTooltip(origin: DriftOriginDatum) {
   return tooltip([
-    title('Estimated origin'),
+    title('PROBABLE SOURCE'),
     row('Position', formatLatLon(origin.longitude, origin.latitude)),
     row('Uncertainty', formatUncertaintyRadius(origin.radiusKm)),
     row('Window start', formatUtcTimestamp(origin.windowStartMs)),

@@ -6,6 +6,7 @@
  * switch a tooltip off.
  */
 export const LAYER_IDS = {
+  spillPolygon: 'spill-polygon',
   spillDots: 'spill-dots',
   spillSelectionRing: 'spill-selection-ring',
   driftOriginUncertainty: 'drift-origin-uncertainty',

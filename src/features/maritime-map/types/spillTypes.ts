@@ -16,6 +16,23 @@ export interface RawSpillListItem {
   image_url?: string | null;
 }
 
+/** Response from `GET /api/v1/demo/spills/{spill_id}`. */
+export interface RawSpillDetail extends RawSpillListItem {
+  source_type?: string | null;
+  source_file?: string | null;
+  estimated_age_hours?: number | null;
+  estimated_release_time?: string | null;
+  observation_latitude?: number | null;
+  observation_longitude?: number | null;
+  polygon?: [number, number][] | null;
+  estimated_source_latitude?: number | null;
+  estimated_source_longitude?: number | null;
+  estimated_source_radius_km?: number | null;
+  ranked_top_vessel?: string | null;
+  ranked_top_score?: number | null;
+  runtime_seconds?: number | null;
+}
+
 /** Paginated envelope of `GET /api/v1/demo/spills`. */
 export interface RawSpillListResponse {
   total?: number;
@@ -43,6 +60,18 @@ export interface MapSpill {
   candidateCount: number | null;
   /** Satellite observation image, already a fully-qualified URL. */
   imageUrl: string | null;
+
+  // Incident & source details (populated on detail fetch / selection)
+  sourceType: string | null;
+  estimatedAgeHours: number | null;
+  estimatedReleaseTime: string | null;
+  /** Authoritative polygon geometry [[lon, lat], ...] */
+  polygon: [number, number][] | null;
+  estimatedSourceLatitude: number | null;
+  estimatedSourceLongitude: number | null;
+  estimatedSourceRadiusKm: number | null;
+  rankedTopVessel: string | null;
+  rankedTopScore: number | null;
 }
 
 /** Geographic bounding box in degrees. */

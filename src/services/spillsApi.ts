@@ -8,6 +8,7 @@ import {
   VisualizationResponse,
   FullVisualizationData,
 } from '../types/spill';
+import { fetchDiagnosticPlotUrl } from './diagnosticPlotService';
 
 const BASE_URL = 'https://naavss.duckdns.org/api/v1/demo/spills';
 const VISUALIZATION_URL = 'https://naavss.duckdns.org/api/v1/visualization/spills';
@@ -58,23 +59,31 @@ export async function getAllSpills(): Promise<NormalizedSpill[]> {
 }
 
 export async function getSpillById(id: string, signal?: AbortSignal): Promise<SpillDetailRaw> {
-  const response = await fetch(`${BASE_URL}/${encodeURIComponent(id)}`, { signal });
+  const [response, diagUrl] = await Promise.all([
+    fetch(`${BASE_URL}/${encodeURIComponent(id)}`, { signal }),
+    fetchDiagnosticPlotUrl(id, signal).catch(() => null),
+  ]);
   if (!response.ok) {
     throw new Error(`Failed to fetch spill detail for ${id}: ${response.status} ${response.statusText}`);
   }
-  return response.json();
+  const data: SpillDetailRaw = await response.json();
+  if (diagUrl) {
+    data.image_url = diagUrl;
+  }
+  return data;
 }
 
 export async function getSpillVisualization(
   id: string,
   signal?: AbortSignal
 ): Promise<FullVisualizationData> {
-  const [vizRes, detailRes] = await Promise.all([
+  const [vizRes, detailRes, diagUrl] = await Promise.all([
     fetch(`${VISUALIZATION_URL}/${encodeURIComponent(id)}`, { signal }).then((r) => {
       if (!r.ok) throw new Error(`Visualization fetch failed for ${id}`);
       return r.json() as Promise<VisualizationResponse>;
     }),
     getSpillById(id, signal).catch(() => null), // Graceful fallback if detail endpoint fails
+    fetchDiagnosticPlotUrl(id, signal).catch(() => null),
   ]);
 
   return {
@@ -84,7 +93,7 @@ export async function getSpillVisualization(
     longitude: vizRes.spill.longitude,
     area: detailRes?.area_km2 ?? 0,
     confidence: detailRes?.confidence_score ?? 0,
-    imageUrl: detailRes?.image_url ?? null,
+    imageUrl: diagUrl || detailRes?.image_url || null,
     candidateCount: detailRes?.candidate_count ?? 0,
     rankedTopVessel: detailRes?.ranked_top_vessel ?? null,
     estimatedAgeHours: detailRes?.estimated_age_hours ?? null,

@@ -10,8 +10,10 @@ import {
 } from '../types/spill';
 import { fetchDiagnosticPlotUrl } from './diagnosticPlotService';
 
-const BASE_URL = 'https://naavss.duckdns.org/api/v1/demo/spills';
-const VISUALIZATION_URL = 'https://naavss.duckdns.org/api/v1/visualization/spills';
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = RAW_BASE.replace(/\/$/, '');
+const BASE_URL = `${API_BASE}/api/v1/demo/spills`;
+const VISUALIZATION_URL = `${API_BASE}/api/v1/visualization/spills`;
 
 export function normalizeSpill(item: SpillItemRaw): NormalizedSpill {
   return {

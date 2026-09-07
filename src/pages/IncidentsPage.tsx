@@ -6,8 +6,8 @@ import { IncidentsTable } from '../components/incidents/IncidentsTable';
 import { IncidentFilters } from '../components/incidents/IncidentFilters';
 import { useIncidentFilters } from '../hooks/useIncidentFilters';
 import { spillService } from '../services/spillService';
-import { AlertTriangle } from 'lucide-react';
 import { Incident } from '../types/incident';
+
 
 const IncidentsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,24 +15,31 @@ const IncidentsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    spillService.getSpills().then(data => {
-      const items = Array.isArray(data) ? data : data.items || [];
-      const mapped = items.map((d: any) => ({
-        id: d.spill_id,
-        date: d.detected_at ? new Date(d.detected_at).toISOString().split('T')[0] : 'N/A',
-        latitude: d.centroid?.latitude ?? d.centroid?.lat ?? 0,
-        longitude: d.centroid?.longitude ?? d.centroid?.lon ?? 0,
-        locationName: d.location_name || 'Mediterranean Sea',
-        status: d.status || 'ACTIVE',
-        confidence: d.confidence_score,
-        vesselInvolved: `${d.candidate_count ?? 0} Candidates`,
-        spillArea: d.area_km2,
-        severity: d.area_km2 > 10 ? 'CRITICAL' : (d.area_km2 > 5 ? 'HIGH' : 'MEDIUM')
-      }));
-      setIncidents(mapped);
-      setLoading(false);
-    });
+    spillService.getSpills()
+      .then(data => {
+        const items = Array.isArray(data) ? data : data.items || [];
+        const mapped = items.map((d: any) => ({
+          id: d.spill_id,
+          date: d.detected_at ? new Date(d.detected_at).toISOString().split('T')[0] : 'N/A',
+          latitude: d.centroid?.latitude ?? d.centroid?.lat ?? 0,
+          longitude: d.centroid?.longitude ?? d.centroid?.lon ?? 0,
+          locationName: d.location_name || 'Mediterranean Sea',
+          status: d.status || 'ACTIVE',
+          confidence: d.confidence_score,
+          vesselInvolved: `${d.candidate_count ?? 0} Candidates`,
+          spillArea: d.area_km2,
+          severity: d.area_km2 > 10 ? 'CRITICAL' : (d.area_km2 > 5 ? 'HIGH' : 'MEDIUM')
+        }));
+        setIncidents(mapped);
+      })
+      .catch(err => {
+        console.error('Failed to load incidents:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
+
 
   const {
     filteredIncidents,
@@ -72,14 +79,25 @@ const IncidentsPage: React.FC = () => {
           />
 
           {/* Incidents Table */}
-          <IncidentsTable
-            incidents={filteredIncidents}
-            onViewIncident={handleViewIncident}
-          />
+          {loading ? (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
+              <span className="relative flex h-3 w-3 mr-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+              </span>
+              Loading incident records...
+            </div>
+          ) : (
+            <IncidentsTable
+              incidents={filteredIncidents}
+              onViewIncident={handleViewIncident}
+            />
+          )}
         </div>
       </main>
     </div>
   );
 };
+
 
 export default IncidentsPage;

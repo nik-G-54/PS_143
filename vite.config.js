@@ -7,4 +7,23 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['maplibre-gl'],
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://naavss.duckdns.org',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
+  preview: {
+    proxy: {
+      '/api': {
+        target: 'https://naavss.duckdns.org',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })
+

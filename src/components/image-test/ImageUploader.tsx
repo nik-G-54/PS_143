@@ -43,6 +43,11 @@ export function ImageUploader({ onFileSelect, disabled }: Props) {
 
   function handleFile(file: File) {
     try {
+      console.log('%c[ImageUploader] File selected/dropped:', 'color: #3b82f6; font-weight: bold;', {
+        name: file.name,
+        size: `${(file.size / 1024).toFixed(1)} KB`,
+        type: file.type
+      });
       if (validate(file)) {
         onFileSelect(file);
       }

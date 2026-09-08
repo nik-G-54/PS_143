@@ -39,6 +39,15 @@ export function useImageAnalysis() {
   const abortRef = useRef<AbortController | null>(null);
 
   const analyze = useCallback(async (file: File, metadata: ImageMetadata) => {
+    console.group('%c[NAUKA ML Pipeline] Starting Image Analysis Workflow', 'color: #00d2ff; font-weight: bold; font-size: 12px;');
+    console.log('%c[Step 1/6] Selected File Received', 'color: #e2b714; font-weight: bold;', {
+      fileName: file.name,
+      fileSize: `${(file.size / 1024).toFixed(1)} KB`,
+      type: file.type,
+      lastModified: new Date(file.lastModified).toISOString()
+    });
+    console.log('%c[Step 2/6] Image Metadata Provided', 'color: #e2b714; font-weight: bold;', metadata);
+
     let url = '';
 
     // Step 1: Preview URL Creation
@@ -51,8 +60,10 @@ export function useImageAnalysis() {
       setStatus('uploading');
       setError(null);
       setResult(null);
+      console.log('%c[Step 3/6] Created Preview Blob URL:', 'color: #e2b714; font-weight: bold;', url);
     } catch (err) {
-      console.error('[useImageAnalysis] Failed to create object URL for file preview:', err);
+      console.error('[Step 3/6 Error] Failed to create object URL for preview:', err);
+      console.groupEnd();
       setError(`[Preview Error] Could not read preview for file "${file.name}": ${err instanceof Error ? err.message : String(err)}`);
       setStatus('error');
       return;
@@ -62,8 +73,10 @@ export function useImageAnalysis() {
     try {
       await new Promise(r => setTimeout(r, 1000));
       setStatus('scanning');
+      console.log('%c[Step 4/6] Upload complete. Transitioning to SCANNING animation...', 'color: #e2b714; font-weight: bold;');
     } catch (err) {
-      console.error('[useImageAnalysis] Upload phase interrupted:', err);
+      console.error('[Step 4/6 Error] Upload stage interrupted:', err);
+      console.groupEnd();
       setError('[Upload Error] Upload stage was interrupted.');
       setStatus('error');
       return;
@@ -74,6 +87,7 @@ export function useImageAnalysis() {
     const scanDelay = new Promise(r => setTimeout(r, 2000));
 
     try {
+      console.log('%c[Step 5/6] Dispatching Request to ML Backend Service...', 'color: #00ffaa; font-weight: bold;');
       const [response] = await Promise.all([
         analyzeImage(file, metadata),
         scanDelay, // ensure scanning animation is visible
@@ -90,8 +104,9 @@ export function useImageAnalysis() {
         };
         setResult(analysisResult);
         setStatus('result');
+        console.log('%c[Step 6/6] Pipeline Finished Successfully! Result Card Rendered:', 'color: #00ffaa; font-weight: bold;', analysisResult);
       } catch (err) {
-        console.error('[useImageAnalysis] Failed to process analysis response:', err);
+        console.error('[Result Assembly Error] Failed to structure result:', err);
         throw new Error(`[Result Processing Error] Could not structure result card: ${err instanceof Error ? err.message : String(err)}`);
       }
 
@@ -108,12 +123,16 @@ export function useImageAnalysis() {
         const updated = [historyItem, ...history].slice(0, MAX_HISTORY);
         setHistory(updated);
         saveHistory(updated);
+        console.log('%c[History] Saved scan item to localStorage:', 'color: #a0a0a0;', historyItem);
       } catch (err) {
-        console.warn('[useImageAnalysis] History save failed silently:', err);
+        console.warn('[History Warning] History save failed silently:', err);
       }
 
+      console.groupEnd();
+
     } catch (err) {
-      console.error('[useImageAnalysis] Error during image analysis workflow:', err);
+      console.error('[Pipeline Failed] Error during image analysis workflow:', err);
+      console.groupEnd();
       const msg = err instanceof Error ? err.message : 'Analysis failed due to an unknown error';
       setError(msg);
       setStatus('error');

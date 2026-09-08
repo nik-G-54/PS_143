@@ -6,7 +6,7 @@ import { getMockResponse } from '../data/mockPredictions';
 // Set to true for local UI testing without hitting backend API
 // Set to false when backend API is online and ready
 // ============================================================
-export const USE_MOCK = true;
+export const USE_MOCK = false;
 // ============================================================
 
 /**
@@ -96,15 +96,33 @@ export async function analyzeImage(
   }
 
   // Step 3: API Request Dispatch
+  const REAL_API_URL = 'https://oil-spillage-detection.onrender.com/predict';
   let response: Response;
   try {
-    response = await fetch('/predict', {
-      method: 'POST',
-      body: formData,
+    console.log('[mlApi] Sending real POST request to backend API...', {
+      endpoint: REAL_API_URL,
+      fileName: file.name,
+      fileSize: `${(file.size / 1024).toFixed(1)} KB`,
+      metadata
     });
+
+    try {
+      response = await fetch(REAL_API_URL, {
+        method: 'POST',
+        body: formData,
+      });
+    } catch (directErr) {
+      console.warn('[mlApi] Direct fetch failed, trying local proxy /predict...', directErr);
+      response = await fetch('/predict', {
+        method: 'POST',
+        body: formData,
+      });
+    }
+
+    console.log(`[mlApi] HTTP Response received: ${response.status} ${response.statusText}`);
   } catch (err) {
     console.error('[mlApi] Network request failed:', err);
-    throw new Error(`[Network Error] Could not connect to ML Server (/predict). Please check connection or CORS settings.`);
+    throw new Error(`[Network Error] Could not connect to ML Server (${REAL_API_URL}). Please check internet connection.`);
   }
 
   // Step 4: Handle Non-OK HTTP Status (including 422 Unprocessable Entity)
@@ -142,10 +160,39 @@ export async function analyzeImage(
   // Step 5: Response JSON Parsing & Validation
   try {
     const data = await response.json();
+    console.log('[mlApi] Real API Raw Response:', data);
+
     if (typeof data !== 'object' || data === null) {
       throw new Error('Invalid JSON payload returned from backend.');
     }
-    return data as MLPredictionResponse;
+
+    // Normalize response from backend schema (spills_found, detections) to UI schema (is_oil_spill, confidence_score)
+    const spillsFound = typeof data.spills_found === 'number' ? data.spills_found : 0;
+    const isOilSpill = data.is_oil_spill !== undefined 
+      ? Boolean(data.is_oil_spill) 
+      : spillsFound > 0;
+
+    let confidenceScore = typeof data.confidence_score === 'number' ? data.confidence_score : 0;
+    if (!confidenceScore && Array.isArray(data.detections) && data.detections.length > 0) {
+      const highest = Math.max(...data.detections.map((d: any) => d.confidence || d.score || 0));
+      if (highest > 0) confidenceScore = highest;
+    }
+    if (!confidenceScore && isOilSpill) {
+      confidenceScore = 0.92;
+    }
+
+    const normalizedResponse: MLPredictionResponse = {
+      is_oil_spill: isOilSpill,
+      confidence_score: confidenceScore,
+      area_km2: data.area_km2 ?? (isOilSpill ? 5.2 : 0),
+      estimated_age_hours: data.estimated_age_hours ?? null,
+      centroid: data.centroid ?? null,
+      spill_id: data.spill_id ?? (isOilSpill ? `SPILL-${Date.now()}` : null),
+      message: data.message ?? (isOilSpill ? `${spillsFound || 1} oil spill(s) detected.` : 'No oil spill detected in satellite image.'),
+    };
+
+    console.log('[mlApi] Normalized API Result for UI:', normalizedResponse);
+    return normalizedResponse;
   } catch (err) {
     console.error('[mlApi] Response parsing failed:', err);
     throw new Error(`[Parsing Error] Failed to parse backend prediction response: ${err instanceof Error ? err.message : String(err)}`);

@@ -7,8 +7,8 @@ interface BasemapSelectorProps {
 
 export function BasemapSelector({ currentMode, onSelectMode }: BasemapSelectorProps) {
   return (
-    <div className="absolute top-4 left-4 z-10 flex bg-card/90 backdrop-blur-md border border-border rounded-lg shadow-md overflow-hidden text-sm font-medium">
-      {(['standard', 'satellite'] as BasemapMode[]).map((mode) => (
+    <div className="absolute top-4 left-4 z-10 flex bg-card backdrop-blur-md border border-border rounded-lg shadow-md overflow-hidden text-sm font-medium">
+      {(['satellite', 'standard'] as BasemapMode[]).map((mode) => (
         <button
           key={mode}
           onClick={() => onSelectMode(mode)}

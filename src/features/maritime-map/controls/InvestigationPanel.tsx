@@ -158,7 +158,7 @@ export function InvestigationPanel({
     : '—';
 
   return (
-    <div className="absolute top-4 right-4 z-10 flex max-h-[calc(100%-2rem)] w-[276px] flex-col overflow-hidden rounded-lg border border-border bg-card/92 shadow-lg backdrop-blur-md">
+    <div className="absolute top-4 right-4 z-10 flex max-h-[calc(100%-2rem)] w-[276px] flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg backdrop-blur-md">
       <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
         <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           Under investigation
@@ -243,7 +243,7 @@ export function InvestigationPanel({
           disabled={!trajectory && !isTrajectoryLoading}
           className={`flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors disabled:opacity-40 ${
             backtrackActive
-              ? 'border-amber-500/70 bg-amber-500/20 text-amber-300'
+              ? 'border-amber-500/70 bg-amber-500/20 text-amber-700 dark:text-amber-300'
               : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
           }`}
         >
@@ -256,27 +256,27 @@ export function InvestigationPanel({
           <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
-              onClick={() => onSetPlaybackMode('forward')}
-              title="Forward Reconstruction: Origin → Detection"
-              className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-                playbackMode === 'forward'
-                  ? 'border-cyan-500/70 bg-cyan-500/15 text-cyan-300'
-                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
-              }`}
-            >
-              ▶ Forward
-            </button>
-            <button
-              type="button"
               onClick={() => onSetPlaybackMode('backtrack')}
               title="Backtrack to Source: Detection → Origin"
               className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
                 playbackMode === 'backtrack'
-                  ? 'border-amber-500/70 bg-amber-500/15 text-amber-300'
+                  ? 'border-amber-500/70 bg-amber-500/15 text-amber-700 dark:text-amber-300'
                   : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
               }`}
             >
               ◀ Backtrack
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetPlaybackMode('forward')}
+              title="Forward Reconstruction: Origin → Detection"
+              className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                playbackMode === 'forward'
+                  ? 'border-cyan-500/70 bg-cyan-500/15 text-cyan-700 dark:text-cyan-300'
+                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+              }`}
+            >
+              ▶ Forward
             </button>
           </div>
         )}

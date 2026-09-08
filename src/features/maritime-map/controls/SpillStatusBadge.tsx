@@ -18,7 +18,7 @@ export function SpillStatusBadge({
 }: SpillStatusBadgeProps) {
   return (
     <div className="absolute top-16 left-4 z-10 flex items-center gap-2">
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-card/90 px-3 py-2 text-xs font-medium shadow-md backdrop-blur-md">
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium shadow-md backdrop-blur-md">
         {isLoading && (
           <>
             <Loader2 size={13} className="animate-spin text-primary" />
@@ -53,7 +53,7 @@ export function SpillStatusBadge({
         type="button"
         onClick={onResetView}
         title="Back to globe view"
-        className="flex items-center gap-1.5 rounded-lg border border-border bg-card/90 px-2.5 py-2 text-xs font-medium text-foreground shadow-md backdrop-blur-md transition-colors hover:bg-accent"
+        className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-medium text-foreground shadow-md backdrop-blur-md transition-colors hover:bg-accent"
       >
         <Globe2 size={13} />
         <span className="hidden sm:inline">Globe</span>
@@ -64,7 +64,7 @@ export function SpillStatusBadge({
           type="button"
           onClick={onRetry}
           title="Reload detections"
-          className="flex items-center rounded-lg border border-border bg-card/90 p-2 text-muted-foreground shadow-md backdrop-blur-md transition-colors hover:bg-accent hover:text-foreground"
+          className="flex items-center rounded-lg border border-border bg-card p-2 text-muted-foreground shadow-md backdrop-blur-md transition-colors hover:bg-accent hover:text-foreground"
         >
           <RotateCcw size={13} />
         </button>

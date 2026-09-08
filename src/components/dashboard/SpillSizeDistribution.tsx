@@ -7,8 +7,14 @@ import { useDashboardContext } from '../../context/DashboardContext';
 import { buildSizeDistribution } from '../../utils/spillAnalytics';
 import { SizeBucket } from '../../types/spill';
 
-// Terracotta ramp — size badhe toh color gehra (dark = bigger spill)
-const RAMP = ['#f2c6a8', '#e79f7d', '#d97b52', '#c45536', '#7a2e18'];
+// OKLCH theme ramp — size badhe toh color gehra
+const RAMP = [
+  'oklch(0.9214 0.0248 257.65)',
+  'oklch(0.7597 0.0804 267.01)',
+  'oklch(0.6083 0.1247 272.72)',
+  'oklch(0.5144 0.1605 267.44)',
+  'oklch(0.2571 0.1161 272.24)',
+];
 
 export const SpillSizeDistribution: React.FC = () => {
   const { filteredSpills, filters, setFilters } = useDashboardContext();

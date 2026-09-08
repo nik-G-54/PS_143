@@ -3,7 +3,7 @@
 import React from 'react';
 
 interface ChartCardProps {
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
   headerAction?: React.ReactNode;
   children: React.ReactNode;
@@ -23,7 +23,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
     >
       <div className="flex items-start justify-between gap-2 mb-4 shrink-0">
         <div>
-          <h3 className="text-base font-bold text-foreground font-sans tracking-tight">{title}</h3>
+          <div className="text-base font-bold text-foreground font-sans tracking-tight">{title}</div>
           {subtitle && <p className="text-xs text-muted-foreground font-medium font-sans mt-0.5">{subtitle}</p>}
         </div>
         {headerAction && <div className="shrink-0">{headerAction}</div>}

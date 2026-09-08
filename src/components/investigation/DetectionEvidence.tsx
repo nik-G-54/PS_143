@@ -1,5 +1,3 @@
-// src/components/investigation/DetectionEvidence.tsx
-
 import React, { useState } from 'react';
 import { Camera, ImageOff } from 'lucide-react';
 
@@ -8,7 +6,7 @@ interface DetectionEvidenceProps {
   spillId: string;
 }
 
-export const DetectionEvidence: React.FC<DetectionEvidenceProps> = ({ imageUrl, spillId }) => {
+export const DetectionEvidence: React.FC<DetectionEvidenceProps> = ({ imageUrl }) => {
   const [imageError, setImageError] = useState<boolean>(false);
 
   return (
@@ -17,7 +15,7 @@ export const DetectionEvidence: React.FC<DetectionEvidenceProps> = ({ imageUrl, 
         <div className="flex items-center gap-2">
           <Camera size={15} className="text-primary" />
           <span className="text-xs font-bold text-foreground uppercase tracking-wider">
-            Detection Evidence
+            SAR Detection Imagery
           </span>
         </div>
         <span className="text-[10px] font-mono font-bold text-muted-foreground bg-background px-2 py-0.5 rounded border border-border">
@@ -25,19 +23,19 @@ export const DetectionEvidence: React.FC<DetectionEvidenceProps> = ({ imageUrl, 
         </span>
       </div>
 
-      <div className="relative w-full h-44 rounded-xl bg-background border border-border overflow-hidden flex items-center justify-center">
+      <div className="relative w-full h-52 rounded-xl bg-background border border-border overflow-hidden flex items-center justify-center">
         {imageUrl && !imageError ? (
           <img
             src={imageUrl}
-            alt={`Satellite detection evidence for ${spillId}`}
+            alt="Oil Spill SAR Detection Imagery"
             loading="lazy"
             onError={() => setImageError(true)}
             className="w-full h-full object-cover transition-opacity duration-200"
           />
         ) : (
-          <div className="flex flex-col items-center gap-1.5 text-muted-foreground text-xs">
+          <div className="flex flex-col items-center gap-1.5 text-muted-foreground text-xs font-mono">
             <ImageOff size={22} className="text-muted-foreground/60" />
-            <span>Satellite imagery unavailable</span>
+            <span>SAR detection imagery unavailable</span>
           </div>
         )}
       </div>

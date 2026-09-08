@@ -28,9 +28,9 @@ export type SeverityKey = 'minor' | 'severe' | 'critical';
 // CONSTANTS
 // ============================================
 const COLORS: Record<SeverityKey, string> = {
-  minor: '#eab308',
-  severe: '#f97316',
-  critical: '#ef4444',
+  minor: 'oklch(0.7597 0.0804 267.01)',
+  severe: 'oklch(0.6083 0.1247 272.72)',
+  critical: 'oklch(0.5144 0.1605 267.44)',
 };
 
 const THRESHOLD_LEVEL = 15; // Alert when spills > 15
@@ -55,7 +55,7 @@ const CustomTooltip = ({ active, payload }: any) => {
       <div className="flex items-center gap-2 mb-1">
         <span className="font-bold text-foreground">{data.displayDate}</span>
         {isOverThreshold && (
-          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-red-500/20 text-red-400 rounded">
+          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-destructive/15 text-destructive border border-destructive/30 rounded">
             ⚠️ ALERT
           </span>
         )}
@@ -75,7 +75,7 @@ const CustomTooltip = ({ active, payload }: any) => {
         </div>
         <div className="flex justify-between gap-4 pt-1 border-t border-border/40">
           <span className="text-muted-foreground">Total:</span>
-          <span className={`font-bold ${isOverThreshold ? 'text-red-400' : 'text-foreground'}`}>
+          <span className={`font-bold ${isOverThreshold ? 'text-destructive' : 'text-foreground'}`}>
             {total}
           </span>
         </div>
@@ -94,47 +94,6 @@ const CustomTooltip = ({ active, payload }: any) => {
     </div>
   );
 };
-
-// ============================================
-// CUSTOM LEGEND (with opacity toggle)
-// ============================================
-const CustomLegend = ({ payload, hiddenSeries, onToggle }: any) => (
-  <div className="flex items-center gap-4 justify-between px-1 mb-2">
-    {/* Severity toggles */}
-    <div className="flex gap-3">
-      {payload?.map((entry: any) => {
-        const key = entry.dataKey as SeverityKey;
-        const hidden = hiddenSeries.has(key);
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onToggle(key)}
-            className="flex items-center gap-1.5 text-xs transition-opacity duration-200 select-none hover:opacity-100"
-            style={{ opacity: hidden ? 0.35 : 1 }}
-          >
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-sm transition-all duration-200"
-              style={{
-                backgroundColor: hidden ? 'transparent' : entry.color,
-                border: `2px solid ${entry.color}`,
-              }}
-            />
-            <span style={{ color: entry.color }}>
-              {key.charAt(0).toUpperCase() + key.slice(1)}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-
-    {/* Threshold indicator */}
-    <div className="flex items-center gap-1.5 text-xs">
-      <span className="h-0 w-4 border-t-2 border-dashed border-red-500" />
-      <span className="text-red-400 font-medium">Alert ({THRESHOLD_LEVEL})</span>
-    </div>
-  </div>
-);
 
 // ============================================
 // MAIN COMPONENT
@@ -230,7 +189,43 @@ export const SpillDetectionTrend: React.FC = () => {
   };
 
   return (
-    <ChartCard title="Spill Detection Trend" subtitle="Daily satellite detection volume over time">
+    <ChartCard
+      title={
+        <div className="flex items-center gap-3 flex-wrap">
+          <span>Spill Detection Trend</span>
+          <div className="flex items-center gap-2.5 font-mono text-xs border-l border-border pl-3">
+            <button
+              type="button"
+              onClick={() => handleToggle('minor')}
+              className="flex items-center gap-1.5 transition-opacity hover:opacity-100 font-semibold"
+              style={{ opacity: hiddenSeries.has('minor') ? 0.35 : 1, color: COLORS.minor }}
+            >
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: COLORS.minor }} />
+              <span>Minor</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggle('severe')}
+              className="flex items-center gap-1.5 transition-opacity hover:opacity-100 font-semibold"
+              style={{ opacity: hiddenSeries.has('severe') ? 0.35 : 1, color: COLORS.severe }}
+            >
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: COLORS.severe }} />
+              <span>Severe</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggle('critical')}
+              className="flex items-center gap-1.5 transition-opacity hover:opacity-100 font-semibold"
+              style={{ opacity: hiddenSeries.has('critical') ? 0.35 : 1, color: COLORS.critical }}
+            >
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: COLORS.critical }} />
+              <span>Critical</span>
+            </button>
+          </div>
+        </div>
+      }
+      subtitle="Daily satellite detection volume over time"
+    >
       {trendData.length === 0 ? (
         <div className="py-12 text-center text-xs text-muted-foreground font-mono">
           No data for selected filters
@@ -274,10 +269,6 @@ export const SpillDetectionTrend: React.FC = () => {
               />
 
               <Tooltip content={<CustomTooltip />} />
-
-              <Legend
-                content={<CustomLegend hiddenSeries={hiddenSeries} onToggle={handleToggle} />}
-              />
 
               {/* ============================================
                   THRESHOLD LINE — Alert at 15 spills

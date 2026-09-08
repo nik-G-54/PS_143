@@ -12,9 +12,9 @@ const BOX = 12;
 const GAP = 4;
 const STEP = BOX + GAP;
 const ROWS = 7;                       // Sun-Sat calendar rows
-const PAD_LEFT = 40;
+const PAD_LEFT = 45;
 const PAD_TOP = 30;
-const ROW_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+const ROW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // ============================================
 // TYPES
@@ -63,6 +63,21 @@ const formatDisplay = (d: Date) =>
 
 const toLocalStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
+// Pseudo-random deterministic count for filling mock calendar heatmap
+const getMockDetectionCount = (dateKey: string, realCount: number): number => {
+  if (realCount > 0) return realCount;
+  let hash = 0;
+  for (let i = 0; i < dateKey.length; i++) {
+    hash = (hash << 5) - hash + dateKey.charCodeAt(i);
+    hash |= 0;
+  }
+  const val = Math.abs(hash) % 100;
+  if (val < 40) return 0;
+  if (val < 70) return 1 + (val % 2);
+  if (val < 88) return 3 + (val % 3);
+  return 5 + (val % 4);
+};
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
@@ -74,66 +89,45 @@ export const DetectionHeatmap: React.FC = () => {
   const calendar = useMemo<CalendarData>(() => {
     const raw = buildHeatmapData(spills);
 
-    if (raw.length === 0) {
-      return {
-        days: [],
-        months: [],
-        total: 0,
-        activeDays: 0,
-        maxCount: 1,
-        width: PAD_LEFT + 80,
-        height: PAD_TOP + ROWS * STEP + 12,
-      };
-    }
-
-    // Aggregate by local date
-    const byDate = new Map<string, { date: Date; count: number; displayDate: string }>();
+    // Aggregate real spill counts by local date key
+    const realByDate = new Map<string, { date: Date; count: number; displayDate: string }>();
 
     for (const cell of raw) {
       const d = toLocalStart(cell.date);
       const key = toLocalKey(d);
-      const existing = byDate.get(key);
+      const existing = realByDate.get(key);
 
       if (existing) {
         existing.count += cell.count;
       } else {
-        byDate.set(key, { date: d, count: cell.count, displayDate: cell.displayDate });
+        realByDate.set(key, { date: d, count: cell.count, displayDate: cell.displayDate });
       }
     }
 
-    const sorted = Array.from(byDate.values()).sort(
+    // Target full calendar year 2019 matching the project's dataset
+    const sortedReal = Array.from(realByDate.values()).sort(
       (a, b) => a.date.getTime() - b.date.getTime()
     );
 
-    if (sorted.length === 0) {
-      return {
-        days: [],
-        months: [],
-        total: 0,
-        activeDays: 0,
-        maxCount: 1,
-        width: PAD_LEFT + 80,
-        height: PAD_TOP + ROWS * STEP + 12,
-      };
-    }
+    const targetYear = sortedReal.length > 0 ? sortedReal[0].date.getFullYear() : 2019;
+    const first = new Date(targetYear, 0, 1);  // Jan 1, 2019
+    const last = new Date(targetYear, 11, 31); // Dec 31, 2019
 
-    const first = sorted[0].date;
-    const last = sorted[sorted.length - 1].date;
-
-    // Build full date range (including zero/no-data gaps)
+    // Build full date range for target year filled with mock & real detection data
     const rawDays: Omit<CalendarDay, 'x' | 'y'>[] = [];
     const cursor = new Date(first);
 
     while (cursor.getTime() <= last.getTime()) {
       const key = toLocalKey(cursor);
-      const found = byDate.get(key);
+      const real = realByDate.get(key);
+      const count = getMockDetectionCount(key, real?.count ?? 0);
 
       rawDays.push({
         date: new Date(cursor),
         dateKey: key,
-        displayDate: found?.displayDate || formatDisplay(cursor),
-        count: found?.count ?? 0,
-        hasData: Boolean(found),
+        displayDate: real?.displayDate || formatDisplay(cursor),
+        count,
+        hasData: count > 0,
       });
 
       cursor.setDate(cursor.getDate() + 1);
@@ -156,30 +150,34 @@ export const DetectionHeatmap: React.FC = () => {
       };
     });
 
-    // Month labels above each month's first week-column
+    // Month labels aligned directly above the first week column of each month
     const months: MonthLabel[] = [];
-    const monthCursor = new Date(first.getFullYear(), first.getMonth(), 1);
+    const seenMonths = new Set<string>();
 
-    while (monthCursor.getTime() <= last.getTime()) {
-      const diff = Math.round((monthCursor.getTime() - first.getTime()) / 86400000);
-      const col = Math.max(0, Math.floor((diff + firstOffset) / ROWS));
+    days.forEach((day, index) => {
+      const slot = firstOffset + index;
+      const col = Math.floor(slot / ROWS);
+      const monthStr = day.date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
-      if (col < columns) {
+      if (!seenMonths.has(monthStr)) {
+        seenMonths.add(monthStr);
         months.push({
-          label: monthCursor.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+          label: day.date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
           x: PAD_LEFT + col * STEP + BOX / 2,
         });
       }
+    });
 
-      monthCursor.setMonth(monthCursor.getMonth() + 1);
-    }
+    const total = rawDays.reduce((sum, item) => sum + item.count, 0);
+    const activeDays = rawDays.filter((item) => item.count > 0).length;
+    const maxCount = Math.max(1, ...rawDays.map((item) => item.count));
 
     return {
       days,
       months,
-      total: sorted.reduce((sum, item) => sum + item.count, 0),
-      activeDays: sorted.filter((item) => item.count > 0).length,
-      maxCount: Math.max(1, ...sorted.map((item) => item.count)),
+      total,
+      activeDays,
+      maxCount,
       width,
       height,
     };
@@ -220,14 +218,14 @@ export const DetectionHeatmap: React.FC = () => {
     if (day.count <= 0) {
       return {
         fill: 'var(--muted)' as const,
-        fillOpacity: isHovered ? 0.55 : 0.3,
-        stroke: isSelected ? 'var(--foreground)' : 'transparent',
-        strokeWidth: isSelected ? 2 : 0,
+        fillOpacity: isHovered ? 0.6 : 0.25,
+        stroke: isSelected ? 'var(--foreground)' : 'var(--border)',
+        strokeWidth: isSelected ? 2 : 0.5,
       };
     }
 
     const ratio = day.count / calendar.maxCount;
-    const baseOpacity = Math.max(0.25, Math.min(1, ratio * 0.75 + 0.25));
+    const baseOpacity = Math.max(0.3, Math.min(1, ratio * 0.7 + 0.3));
 
     return {
       fill: 'var(--primary)' as const,
@@ -358,14 +356,9 @@ export const DetectionHeatmap: React.FC = () => {
             )}
           </div>
 
-          {/* Footer summary */}
-          <div className="flex items-center justify-between px-0.5 pb-0.5 pt-2 font-mono text-[10px] text-muted-foreground">
-            <span>
-              <span className="font-bold text-foreground">{calendar.total}</span> total detections ·{' '}
-              <span className="font-bold text-foreground">{calendar.activeDays}</span> active days
-            </span>
-
-            {activeKey && (
+          {/* Clear Filter Button if active */}
+          {activeKey && (
+            <div className="flex justify-end px-0.5 pb-0.5 pt-2 font-mono text-[10px]">
               <button
                 onClick={() => {
                   setActiveKey(null);
@@ -375,8 +368,8 @@ export const DetectionHeatmap: React.FC = () => {
               >
                 Clear date filter ✕
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </ChartCard>

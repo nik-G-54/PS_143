@@ -34,7 +34,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Official Brand Header */}
       <div className={`p-3.5 border-b border-border flex items-center transition-all duration-300 ${
-        isCollapsed ? 'justify-center' : 'justify-between px-4'
+        isCollapsed ? 'justify-center' : 'px-4'
       }`}>
         <div className="flex items-center gap-3 overflow-hidden">
           {/* Custom Combined Vector Logo */}
@@ -66,19 +66,6 @@ export const Sidebar: React.FC = () => {
             </div>
           )}
         </div>
-
-        {/* Header Close Button (when Expanded) */}
-        {!isCollapsed && (
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 cursor-pointer"
-            title="Close sidebar"
-            aria-label="Close sidebar"
-          >
-            <PanelLeftClose size={18} strokeWidth={1.5} />
-          </button>
-        )}
       </div>
       
       {/* Navigation Links */}

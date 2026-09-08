@@ -131,12 +131,12 @@ export const BacktrackTrajectoryChart: React.FC = () => {
           <AreaChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="latFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="oklch(0.5144 0.1605 267.44)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="oklch(0.5144 0.1605 267.44)" stopOpacity={0.02} />
               </linearGradient>
               <linearGradient id="lonFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.28} />
-                <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="oklch(0.7597 0.0804 267.01)" stopOpacity={0.28} />
+                <stop offset="100%" stopColor="oklch(0.7597 0.0804 267.01)" stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <CartesianGrid stroke="rgba(148,163,184,0.15)" strokeDasharray="3 3" />

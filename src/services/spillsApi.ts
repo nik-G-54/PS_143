@@ -25,8 +25,11 @@ export function normalizeSpill(item: SpillItemRaw): NormalizedSpill {
   };
 }
 
-export async function getSpills(page: number = 1): Promise<SpillPageResponse> {
-  const response = await fetch(`${BASE_URL}?page=${page}`);
+let spillsCache: NormalizedSpill[] | null = null;
+let spillsFetchPromise: Promise<NormalizedSpill[]> | null = null;
+
+export async function getSpills(page: number = 1, signal?: AbortSignal): Promise<SpillPageResponse> {
+  const response = await fetch(`${BASE_URL}?page=${page}`, { signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch spills page ${page}: ${response.status} ${response.statusText}`);
   }
@@ -34,27 +37,61 @@ export async function getSpills(page: number = 1): Promise<SpillPageResponse> {
 }
 
 export async function getAllSpills(): Promise<NormalizedSpill[]> {
-  const firstPage = await getSpills(1);
-  if (!firstPage || !Array.isArray(firstPage.items)) {
-    return [];
+  if (spillsCache && spillsCache.length > 0) {
+    return spillsCache;
   }
 
-  const totalPages = Math.ceil((firstPage.total || 0) / (firstPage.page_size || 20));
-
-  if (totalPages <= 1) {
-    return firstPage.items.map(normalizeSpill);
+  if (spillsFetchPromise) {
+    return spillsFetchPromise;
   }
 
-  const remaining = await Promise.all(
-    Array.from({ length: totalPages - 1 }, (_, i) => getSpills(i + 2))
-  );
+  spillsFetchPromise = (async () => {
+    try {
+      const firstPage = await getSpills(1);
+      if (!firstPage || !Array.isArray(firstPage.items)) {
+        return [];
+      }
 
-  const allRawItems = [
-    ...firstPage.items,
-    ...remaining.flatMap((p) => (p && Array.isArray(p.items) ? p.items : [])),
-  ];
+      const totalItems = firstPage.total || firstPage.items.length;
+      const pageSize = firstPage.page_size || 20;
+      const totalPages = Math.ceil(totalItems / pageSize);
 
-  return allRawItems.map(normalizeSpill);
+      const firstPageNormalized = firstPage.items.map(normalizeSpill);
+
+      if (totalPages <= 1) {
+        spillsCache = firstPageNormalized;
+        return firstPageNormalized;
+      }
+
+      // Concurrently fetch remaining pages with timeout safety
+      const pageNumbers = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+      const settledResults = await Promise.allSettled(
+        pageNumbers.map((p) =>
+          fetch(`${BASE_URL}?page=${p}`, { signal: AbortSignal.timeout(10000) })
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null)
+        )
+      );
+
+      const remainingRawItems: SpillItemRaw[] = [];
+      for (const res of settledResults) {
+        if (res.status === 'fulfilled' && res.value && Array.isArray(res.value.items)) {
+          remainingRawItems.push(...res.value.items);
+        }
+      }
+
+      const allNormalized = [...firstPage.items, ...remainingRawItems].map(normalizeSpill);
+      spillsCache = allNormalized;
+      return allNormalized;
+    } catch (err) {
+      console.error('Error fetching all spills from API:', err);
+      return spillsCache || [];
+    } finally {
+      spillsFetchPromise = null;
+    }
+  })();
+
+  return spillsFetchPromise;
 }
 
 export async function getSpillById(id: string, signal?: AbortSignal): Promise<SpillDetailRaw> {
@@ -93,4 +130,47 @@ export async function getSpillVisualization(
     environment: vizRes.environment ?? null,
     trajectory: vizRes.trajectory || [],
   };
+}
+
+export interface CandidateVesselRaw {
+  vessel_id: string;
+  is_mock?: boolean;
+  is_mock_comparison?: boolean;
+  rank?: number | null;
+  score?: number | null;
+  vessel_name?: string;
+  mmsi?: string;
+  imo?: string;
+  country?: string;
+  shiptype?: number;
+  shiptype_name?: string;
+  vessel_type?: string;
+  speed?: number;
+  course?: number;
+  heading?: number;
+  distance_to_origin_km?: number;
+  time_difference_hours?: number;
+  trajectory_correlation?: number | null;
+}
+
+export async function getSpillVessels(id: string, signal?: AbortSignal): Promise<CandidateVesselRaw[]> {
+  try {
+    const res = await fetch(`https://naavss.duckdns.org/api/v1/demo/spills/${encodeURIComponent(id)}/vessels`, { signal });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data?.vessels) ? data.vessels : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getDiagnosticPlotUrl(id: string, signal?: AbortSignal): Promise<string | null> {
+  try {
+    const res = await fetch(`https://naavss.duckdns.org/api/v1/drift/${encodeURIComponent(id)}/diagnostic-plot`, { signal });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.diagnostic_plot_url || null;
+  } catch {
+    return null;
+  }
 }

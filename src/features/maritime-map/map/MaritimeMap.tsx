@@ -38,7 +38,7 @@ export function MaritimeMap() {
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [basemapMode, setBasemapMode] = useState<BasemapMode>('standard');
+  const [basemapMode, setBasemapMode] = useState<BasemapMode>('satellite');
   const [isStyleLoading, setIsStyleLoading] = useState(false);
   const [isTilesLoading, setIsTilesLoading] = useState(false);
   const [showWind, setShowWind] = useState(false);

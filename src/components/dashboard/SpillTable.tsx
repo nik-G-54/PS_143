@@ -49,7 +49,7 @@ export const SpillTable: React.FC = () => {
           <p className="text-xs text-muted-foreground font-semibold mt-0.5 font-mono">
             {totalMatching === 0
               ? 'No matching incidents'
-              : `Showing ${showingCount} of ${totalMatching} matching incidents`}
+              : `${showingCount} of ${totalMatching} incidents`}
           </p>
         </div>
 
@@ -78,11 +78,11 @@ export const SpillTable: React.FC = () => {
         <div className="w-full overflow-x-auto rounded-lg border border-border/60 bg-background/50">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-card border-b border-border text-muted-foreground text-xs uppercase font-sans tracking-wider">
-                <th className="py-3 px-4 font-bold">Detected</th>
-                <th className="py-3 px-4 font-bold">Area</th>
-                <th className="py-3 px-4 font-bold">Confidence</th>
-                <th className="py-3 px-4 text-right font-bold">Action</th>
+              <tr className="bg-card border-b border-border text-muted-foreground text-[11px] uppercase font-mono tracking-wider">
+                <th className="py-3 px-4 font-bold">DETECTED AT</th>
+                <th className="py-3 px-4 font-bold">AREA</th>
+                <th className="py-3 px-4 font-bold">CONFIDENCE</th>
+                <th className="py-3 px-4 text-right font-bold">ACTION</th>
               </tr>
             </thead>
             <tbody>

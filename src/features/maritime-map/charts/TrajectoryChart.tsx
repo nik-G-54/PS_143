@@ -128,9 +128,9 @@ export function TrajectoryChart({ trajectory, currentTimeMs }: TrajectoryChartPr
               type="monotone"
               dataKey="cumulativeKm"
               name="Cumulative drift"
-              stroke="#67e8f4"
-              fill="#67e8f4"
-              fillOpacity={0.15}
+              stroke="var(--primary)"
+              fill="var(--primary)"
+              fillOpacity={0.2}
               strokeWidth={2}
               isAnimationActive={false}
               dot={false}

@@ -6,10 +6,9 @@ import { useInvestigationPreview } from '../../hooks/useInvestigationPreview';
 import { SpillTrajectory } from './SpillTrajectory';
 import { EnvironmentSummary } from './EnvironmentSummary';
 import { DetectionEvidence } from './DetectionEvidence';
-import { SpillDetails } from './SpillDetails';
-import { InvestigationCTA } from './InvestigationCTA';
-import { formatArea, formatConfidence } from '../../utils/formatters';
-import { X, AlertCircle, RefreshCw } from 'lucide-react';
+import { TopCandidateVessel } from './TopCandidateVessel';
+import { LoaderOne } from '../ui/loader-one';
+import { X, AlertCircle } from 'lucide-react';
 
 export const InvestigationDock: React.FC = () => {
   const { selectedSpillId, setSelectedSpillId } = useDashboardContext();
@@ -35,19 +34,9 @@ export const InvestigationDock: React.FC = () => {
         <div className="w-screen max-w-lg bg-card border-l border-border shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-250">
           {/* Drawer Header */}
           <div className="p-5 border-b border-border flex items-center justify-between bg-card shrink-0">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground font-mono">
-                Investigation Preview
-              </span>
-              <h2 className="text-lg font-mono font-extrabold text-primary flex items-center gap-2">
-                <span>{selectedSpillId}</span>
-                {data && (
-                  <span className="text-xs font-sans font-normal text-muted-foreground">
-                    ({formatArea(data.area)} · {formatConfidence(data.confidence)})
-                  </span>
-                )}
-              </h2>
-            </div>
+            <h2 className="text-lg font-mono font-extrabold text-foreground tracking-tight">
+              Investigation Preview
+            </h2>
             <button
               onClick={handleClose}
               className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -60,8 +49,8 @@ export const InvestigationDock: React.FC = () => {
           {/* Drawer Body Content */}
           <div className="flex-1 overflow-y-auto p-5 space-y-5">
             {isLoading ? (
-              <div className="p-12 text-center text-xs text-muted-foreground font-mono flex flex-col items-center gap-3">
-                <RefreshCw size={24} className="animate-spin text-primary" />
+              <div className="p-12 text-center text-xs text-muted-foreground font-mono flex flex-col items-center gap-4">
+                <LoaderOne size="lg" />
                 <span>Loading investigation visualization...</span>
               </div>
             ) : error ? (
@@ -72,30 +61,19 @@ export const InvestigationDock: React.FC = () => {
               </div>
             ) : data ? (
               <>
-                {/* 1. Trajectory Scrubber */}
+                {/* 1. Estimated Spill Path */}
                 <SpillTrajectory trajectory={data.trajectory} />
 
                 {/* 2. Environment Summary */}
                 <EnvironmentSummary environment={data.environment} />
 
-                {/* 3. Detection Evidence Satellite Image */}
+                {/* 3. Detection Evidence (SAR / Diagnostic Imagery) */}
                 <DetectionEvidence imageUrl={data.imageUrl} spillId={data.spillId} />
 
-                {/* 4. Spill Details */}
-                <SpillDetails
-                  area={data.area}
-                  confidence={data.confidence}
-                  estimatedAgeHours={data.estimatedAgeHours}
-                  candidateCount={data.candidateCount}
-                  rankedTopVessel={data.rankedTopVessel}
-                />
+                {/* 4. Top Candidate Vessel & Telemetry Details */}
+                <TopCandidateVessel spillId={selectedSpillId} />
               </>
             ) : null}
-          </div>
-
-          {/* Drawer Footer CTA */}
-          <div className="p-5 border-t border-border bg-card shrink-0">
-            <InvestigationCTA spillId={selectedSpillId} onNavigate={handleClose} />
           </div>
         </div>
       </div>

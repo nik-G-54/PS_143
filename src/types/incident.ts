@@ -46,18 +46,20 @@ export interface TimelineEvent {
   isIncident?: boolean;
 }
 
-export type IncidentStatus = 'ACTIVE' | 'INVESTIGATING' | 'RESOLVED';
+export type IncidentStatus = 'ACTIVE' | 'INVESTIGATING' | 'RESOLVED' | string;
 
 export interface Incident {
   id: string;
   date: string;
+  detectedAt?: Date;
   latitude: number;
   longitude: number;
-  locationName: string;
-  status: IncidentStatus;
-  confidence: number;        // 0-100
+  locationName?: string;
+  status?: IncidentStatus | null;
+  confidence: number;        // Decimal 0.0 - 1.0 (e.g. 0.78 for 78%)
   vesselInvolved: string;
   spillArea: number;         // km²
-  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 }
+
 

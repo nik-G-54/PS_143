@@ -1,4 +1,19 @@
-import { Crosshair, Eye, EyeOff, Rewind, X } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Activity,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Crosshair,
+  Eye,
+  EyeOff,
+  MapPin,
+  Rewind,
+  Route,
+  Search,
+  Ship,
+  X,
+} from 'lucide-react';
 import type { MapSpill } from '../types/spillTypes';
 import type { SpillTrajectory } from '../types/trajectoryTypes';
 import type { SpillAttribution } from '../types/attributionTypes';
@@ -46,11 +61,53 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SectionHeading({ children }: { children: string }) {
+interface CollapsibleSectionProps {
+  title: string;
+  icon?: React.ReactNode;
+  defaultOpen?: boolean;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+function CollapsibleSection({
+  title,
+  icon,
+  defaultOpen = false,
+  badge,
+  children,
+}: CollapsibleSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(defaultOpen);
+
   return (
-    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-      {children}
-    </p>
+    <div className="border-t border-border pt-2">
+      <button
+        type="button"
+        onClick={() => setIsExpanded((prev) => !prev)}
+        className="flex w-full items-center justify-between py-1 text-left transition-colors hover:text-foreground cursor-pointer select-none group"
+        title={isExpanded ? `Collapse ${title}` : `Expand ${title}`}
+      >
+        <div className="flex items-center gap-1.5 min-w-0">
+          {icon}
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground group-hover:text-foreground">
+            {title}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {badge}
+          {isExpanded ? (
+            <ChevronUp size={12} className="text-muted-foreground group-hover:text-foreground" />
+          ) : (
+            <ChevronDown size={12} className="text-muted-foreground group-hover:text-foreground" />
+          )}
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="space-y-1.5 pt-1.5">
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -65,9 +122,10 @@ function DriftSection({
   error: string | null;
 }) {
   return (
-    <div className="space-y-1.5 border-t border-border pt-2.5">
-      <SectionHeading>Drift backtrack</SectionHeading>
-
+    <CollapsibleSection
+      title="Drift backtrack"
+      icon={<Route size={12} className="text-primary shrink-0" />}
+    >
       {isLoading && (
         <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
@@ -88,7 +146,7 @@ function DriftSection({
           </p>
         </>
       )}
-    </div>
+    </CollapsibleSection>
   );
 }
 
@@ -108,8 +166,15 @@ function CandidateSummarySection({
   const topDist = topVessel?.distanceFromOriginKm;
 
   return (
-    <div className="space-y-1.5 border-t border-border pt-2.5">
-      <SectionHeading>Candidate Summary</SectionHeading>
+    <CollapsibleSection
+      title="Candidate Summary"
+      icon={<Ship size={12} className="text-primary shrink-0" />}
+      badge={
+        count > 0 ? (
+          <span className="font-mono text-[9px] text-muted-foreground">({count})</span>
+        ) : undefined
+      }
+    >
       {isLoading && (
         <p className="text-[11px] text-muted-foreground">Querying candidate vessels…</p>
       )}
@@ -127,7 +192,7 @@ function CandidateSummarySection({
           )}
         </>
       )}
-    </div>
+    </CollapsibleSection>
   );
 }
 
@@ -148,6 +213,7 @@ export function InvestigationPanel({
   onRecenter,
   onScrollToDetails,
 }: InvestigationPanelProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const sourceLon = trajectory?.source?.longitude ?? spill.estimatedSourceLongitude;
   const sourceLat = trajectory?.source?.latitude ?? spill.estimatedSourceLatitude;
   const sourceRadius = trajectory?.source?.radiusKm ?? spill.estimatedSourceRadiusKm;
@@ -158,22 +224,34 @@ export function InvestigationPanel({
     : '—';
 
   return (
-    <div className="absolute top-4 right-4 z-10 flex max-h-[calc(100%-2rem)] w-[276px] flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg backdrop-blur-md">
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          Under investigation
-        </span>
+    <div className="absolute top-4 right-4 z-10 flex max-h-[calc(100%-2rem)] w-[276px] flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg backdrop-blur-md transition-all duration-200">
+      <div className={`flex shrink-0 items-center justify-between px-3 py-2 ${isOpen ? 'border-b border-border' : ''}`}>
+        <button
+          type="button"
+          onClick={() => setIsOpen((prev) => !prev)}
+          className="flex flex-1 items-center gap-1.5 min-w-0 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-foreground cursor-pointer select-none"
+          title={isOpen ? 'Collapse investigation panel' : 'Expand investigation panel'}
+        >
+          <Search size={13} className="text-primary shrink-0" />
+          <span className="truncate">Under investigation</span>
+          {isOpen ? (
+            <ChevronUp size={13} className="ml-auto mr-1 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronDown size={13} className="ml-auto mr-1 text-muted-foreground shrink-0" />
+          )}
+        </button>
         <button
           type="button"
           onClick={onClear}
           title="Clear investigation"
-          className="-mr-1 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="ml-1 -mr-1 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer shrink-0"
         >
           <X size={13} />
         </button>
       </div>
 
-      <div className="space-y-2.5 overflow-y-auto px-3 py-3">
+      {isOpen && (
+        <div className="space-y-2.5 overflow-y-auto px-3 py-3">
         <div className="flex items-start justify-between gap-2">
           <span className="font-mono text-sm font-semibold text-primary">{spill.spillId}</span>
           <button
@@ -187,8 +265,10 @@ export function InvestigationPanel({
         </div>
 
         {/* 1. INCIDENT */}
-        <div className="space-y-1.5 border-t border-border pt-2.5">
-          <SectionHeading>Incident</SectionHeading>
+        <CollapsibleSection
+          title="Incident"
+          icon={<AlertCircle size={12} className="text-primary shrink-0" />}
+        >
           <Field label="Detected" value={formatDetectedAt(spill)} />
           <Field label="Area" value={formatArea(spill.areaKm2)} />
           <Field label="Confidence" value={formatConfidence(spill.confidenceScore)} />
@@ -198,21 +278,25 @@ export function InvestigationPanel({
             value={spill.estimatedAgeHours != null ? `${spill.estimatedAgeHours.toFixed(1)} h` : '—'}
           />
           <Field label="Source type" value={spill.sourceType ?? '—'} />
-        </div>
+        </CollapsibleSection>
 
         {/* 2. PROBABLE SOURCE */}
         {(sourceLat != null && sourceLon != null) && (
-          <div className="space-y-1.5 border-t border-border pt-2.5">
-            <SectionHeading>Probable Source</SectionHeading>
+          <CollapsibleSection
+            title="Probable Source"
+            icon={<MapPin size={12} className="text-primary shrink-0" />}
+          >
             <Field label="Coordinates" value={formatLatLon(sourceLon, sourceLat)} />
             <Field label="Uncertainty" value={formatUncertaintyRadius(sourceRadius)} />
             <Field label="Est. release" value={releaseTime} />
-          </div>
+          </CollapsibleSection>
         )}
 
         {/* 3. DRIFT DIAGNOSTIC */}
-        <div className="space-y-1.5 border-t border-border pt-2.5">
-          <SectionHeading>Drift Diagnostic</SectionHeading>
+        <CollapsibleSection
+          title="Drift Diagnostic"
+          icon={<Activity size={12} className="text-primary shrink-0" />}
+        >
           <DiagnosticPlotViewer
             spillId={spill.spillId}
             fallbackUrl={spill.imageUrl}
@@ -220,7 +304,7 @@ export function InvestigationPanel({
             containerClassName="aspect-[4/3] w-full"
             badgeText="Diagnostic"
           />
-        </div>
+        </CollapsibleSection>
 
         {/* 4. CANDIDATE SUMMARY */}
         <CandidateSummarySection
@@ -306,6 +390,7 @@ export function InvestigationPanel({
           {focusMode ? 'Other detections hidden.' : 'Other detections dimmed for spatial context.'}
         </p>
       </div>
+      )}
     </div>
   );
 }

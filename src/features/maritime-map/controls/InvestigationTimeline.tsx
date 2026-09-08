@@ -1,4 +1,4 @@
-﻿import { Pause, Play } from 'lucide-react';
+import { Pause, Play } from 'lucide-react';
 
 interface InvestigationTimelineProps {
   progress: number;
@@ -7,7 +7,7 @@ interface InvestigationTimelineProps {
   onTogglePlay: () => void;
   onSeek: (progress: number) => void;
   playbackMode: 'forward' | 'backtrack';
-  atSource: boolean;
+  atSource?: boolean;
   disabled?: boolean;
 }
 
@@ -19,7 +19,6 @@ export function InvestigationTimeline({
   onTogglePlay,
   onSeek,
   playbackMode,
-  atSource,
   disabled = false,
 }: InvestigationTimelineProps) {
   const isBacktrack = playbackMode === 'backtrack';
@@ -41,15 +40,6 @@ export function InvestigationTimeline({
           {windowLabel}
         </span>
       </div>
-
-      {/* "Vessel at probable source" milestone */}
-      {atSource && (
-        <div className="flex items-center justify-center gap-1.5 rounded border border-amber-500/60 bg-amber-500/15 px-2 py-1 animate-pulse">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
-            🛢 Vessel at Probable Source
-          </span>
-        </div>
-      )}
 
       {/* Playback row */}
       <div className="flex items-center gap-3">

@@ -256,18 +256,6 @@ export function InvestigationPanel({
           <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
-              onClick={() => onSetPlaybackMode('forward')}
-              title="Forward Reconstruction: Origin → Detection"
-              className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-                playbackMode === 'forward'
-                  ? 'border-cyan-500/70 bg-cyan-500/15 text-cyan-300'
-                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
-              }`}
-            >
-              ▶ Forward
-            </button>
-            <button
-              type="button"
               onClick={() => onSetPlaybackMode('backtrack')}
               title="Backtrack to Source: Detection → Origin"
               className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
@@ -277,6 +265,18 @@ export function InvestigationPanel({
               }`}
             >
               ◀ Backtrack
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetPlaybackMode('forward')}
+              title="Forward Reconstruction: Origin → Detection"
+              className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                playbackMode === 'forward'
+                  ? 'border-cyan-500/70 bg-cyan-500/15 text-cyan-300'
+                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+              }`}
+            >
+              ▶ Forward
             </button>
           </div>
         )}

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { MaritimeMapPage } from './features/maritime-map/page/MaritimeMapPage';
 import { IncidentReconstructionPage } from './pages/IncidentReconstructionPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { ThreeDVisualisationPage } from './pages/ThreeDVisualisationPage';
 
 const IncidentsPage = lazy(() => import('./pages/IncidentsPage'));
 
@@ -34,6 +35,7 @@ function App() {
         } 
       />
       <Route path="/incident-reconstruction" element={<IncidentReconstructionPage />} />
+      <Route path="/3d-visvalisation" element={<ThreeDVisualisationPage />} />
       
       {/* Fallback route */}
       <Route path="*" element={<Navigate to="/" replace />} />

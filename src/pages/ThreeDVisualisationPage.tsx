@@ -8,6 +8,7 @@ import { SimulationProvider } from '../context/SimulationContext';
 import { SceneLayersProvider } from '../context/SceneLayersContext';
 import { OceanControlsProvider } from '../context/OceanControlsContext';
 import { ViewportCameraProvider } from '../context/ViewportCameraContext';
+import { InteractionProvider } from '../context/InteractionContext';
 
 const Metric: React.FC<{ label: string; value: string; icon: React.ReactNode; accent?: string }> = ({ label, value, icon, accent = 'text-primary' }) => (
   <div className="border-b border-cyan-950/70 pb-3 last:border-b-0">
@@ -96,17 +97,19 @@ const VisualizationWorkspace: React.FC = () => {
 };
 
 export const ThreeDVisualisationPage: React.FC = () => (
-  <IncidentProvider>
-    <SimulationProvider>
-      <SceneLayersProvider>
-        <OceanControlsProvider>
-          <ViewportCameraProvider>
-            <VisualizationWorkspace />
-          </ViewportCameraProvider>
-        </OceanControlsProvider>
-      </SceneLayersProvider>
-    </SimulationProvider>
-  </IncidentProvider>
+  <InteractionProvider>
+    <IncidentProvider>
+      <SimulationProvider>
+        <SceneLayersProvider>
+          <OceanControlsProvider>
+            <ViewportCameraProvider>
+              <VisualizationWorkspace />
+            </ViewportCameraProvider>
+          </OceanControlsProvider>
+        </SceneLayersProvider>
+      </SimulationProvider>
+    </IncidentProvider>
+  </InteractionProvider>
 );
 
 export default ThreeDVisualisationPage;

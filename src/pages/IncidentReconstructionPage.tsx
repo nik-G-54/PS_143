@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { InteractionContext, useInteraction } from '../context/InteractionContext';
+
+export { InteractionContext, useInteraction };
 import { Header } from '../components/layout/Header';
 import { Sidebar } from '../components/layout/Sidebar';
 import { SimulationViewport } from '../components/incident/SimulationViewport';
@@ -12,21 +15,6 @@ import { OceanControlsProvider } from '../context/OceanControlsContext';
 import { ViewportCameraProvider } from '../context/ViewportCameraContext';
 import { Maximize2, Minimize2, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { SlideInDrawer } from '../components/ui/SlideInDrawer';
-
-export const InteractionContext = React.createContext<{
-  selectedObject: { type: string; id: string } | null;
-  setSelectedObject: (obj: { type: string; id: string } | null) => void;
-  isFullscreen: boolean;
-  setFullscreen: (val: boolean) => void;
-  drawerContent: React.ReactNode | null;
-  setDrawerContent: (content: React.ReactNode | null, title?: string) => void;
-} | null>(null);
-
-export const useInteraction = () => {
-  const ctx = React.useContext(InteractionContext);
-  if (!ctx) throw new Error('useInteraction must be within InteractionProvider');
-  return ctx;
-};
 
 const ReconstructionWorkspace: React.FC = () => {
   const [isFullscreen, setFullscreen] = useState(false);

@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import type { Group } from 'three';
 import { useSimulation } from '../../../context/SimulationContext';
 import { useIncident } from '../../../context/IncidentContext';
-import { useInteraction } from '../../../pages/IncidentReconstructionPage';
+import { useInteraction } from '../../../context/InteractionContext';
 import { latLonToWorld, VESSEL_SURFACE_OFFSET } from '../../../utils/coordinates';
 import { resolveVesselPosition } from '../../../utils/vesselTrack';
 import { VesselCandidate } from '../../../types/api';

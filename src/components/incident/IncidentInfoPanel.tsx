@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle, ChevronRight, MapPin, Clock } from 'lucide-react';
 import { useIncident } from '../../context/IncidentContext';
-import { useInteraction } from '../../pages/IncidentReconstructionPage';
+import { useInteraction } from '../../context/InteractionContext';
 
 const formatDetected = (iso?: string) => {
   if (!iso) return '---';

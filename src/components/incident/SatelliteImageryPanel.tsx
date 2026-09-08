@@ -5,7 +5,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { Activity, Map as MapIcon, Maximize2, ImageIcon } from 'lucide-react';
 import { useIncident } from '../../context/IncidentContext';
 import { MAP_CONFIG } from '../../features/maritime-map/map/mapConfig';
-import { useInteraction } from '../../pages/IncidentReconstructionPage';
+import { useInteraction } from '../../context/InteractionContext';
 import { computeTrajectoryStats } from '../../utils/trajectoryStats';
 import { DiagnosticPlotViewer } from '../common/DiagnosticPlotViewer';
 import { useDiagnosticPlot } from '../../services/diagnosticPlotService';

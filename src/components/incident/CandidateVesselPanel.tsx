@@ -1,7 +1,7 @@
 import React from 'react';
 import { Ship, ChevronRight } from 'lucide-react';
 import { useIncident } from '../../context/IncidentContext';
-import { useInteraction } from '../../pages/IncidentReconstructionPage';
+import { useInteraction } from '../../context/InteractionContext';
 
 export const CandidateVesselPanel: React.FC = () => {
   const { vesselsData, loading, error } = useIncident();

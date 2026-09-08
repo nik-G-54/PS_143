@@ -3,7 +3,7 @@ import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSimulation } from '../../../context/SimulationContext';
-import { useInteraction } from '../../../pages/IncidentReconstructionPage';
+import { useInteraction } from '../../../context/InteractionContext';
 import { latLonToWorld, METERS_PER_WORLD_UNIT } from '../../../utils/coordinates';
 import { useIncident } from '../../../context/IncidentContext';
 import { resolveTrajectoryPosition } from '../../../utils/trajectory';

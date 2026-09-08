@@ -1,7 +1,7 @@
 import React, { useMemo, useRef } from 'react';
 import { Html } from '@react-three/drei';
 import { useIncident } from '../../../context/IncidentContext';
-import { useInteraction } from '../../../pages/IncidentReconstructionPage';
+import { useInteraction } from '../../../context/InteractionContext';
 import { latLonToWorld, METERS_PER_WORLD_UNIT, OIL_SURFACE_OFFSET } from '../../../utils/coordinates';
 
 export const SourceEstimate: React.FC = () => {

@@ -4,6 +4,7 @@ import { MaritimeMapPage } from './features/maritime-map/page/MaritimeMapPage';
 import { IncidentReconstructionPage } from './pages/IncidentReconstructionPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ThreeDVisualisationPage } from './pages/ThreeDVisualisationPage';
+import { InteractionProvider } from './context/InteractionContext';
 
 const IncidentsPage = lazy(() => import('./pages/IncidentsPage'));
 
@@ -21,7 +22,8 @@ const PageLoader = () => (
 
 function App() {
   return (
-    <Routes>
+    <InteractionProvider>
+      <Routes>
       {/* Active Navigation Routes */}
       <Route path="/" element={<DashboardPage />} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
@@ -39,7 +41,8 @@ function App() {
       
       {/* Fallback route */}
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </InteractionProvider>
   );
 }
 

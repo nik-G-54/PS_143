@@ -1,7 +1,7 @@
 import React from 'react';
 import { Wind, Waves, ChevronRight } from 'lucide-react';
 import { useIncident } from '../../context/IncidentContext';
-import { useInteraction } from '../../pages/IncidentReconstructionPage';
+import { useInteraction } from '../../context/InteractionContext';
 
 export const EnvironmentPanel: React.FC = () => {
   const { environment, loading, error } = useIncident();

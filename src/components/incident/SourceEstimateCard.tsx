@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigation, ChevronRight } from 'lucide-react';
 import { useIncident } from '../../context/IncidentContext';
-import { useInteraction } from '../../pages/IncidentReconstructionPage';
+import { useInteraction } from '../../context/InteractionContext';
 
 export const SourceEstimateCard: React.FC = () => {
   const { backtrackData, loading, error } = useIncident();

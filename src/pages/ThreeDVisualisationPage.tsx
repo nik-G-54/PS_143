@@ -30,19 +30,26 @@ const GlassPanel: React.FC<{ title: string; children: React.ReactNode; className
   </section>
 );
 
+const SIMULATION = {
+  detected: '17 MAY 2025 08:42 UTC',
+  source: '12.846° N, 79.842° E',
+  spillArea: '2.48 km²',
+  confidence: '92%',
+  vessel: 'MV OCEAN STAR',
+  vesselCount: '07',
+  wind: '18.6 kn',
+  current: '0.87 m/s',
+  seaState: '1.2 m',
+  elapsed: '06:42:18',
+};
+
 const VisualizationWorkspace: React.FC = () => {
-  const { spillDetails, backtrackData, vesselsData } = useIncident();
   const { api: cameraApi } = useViewportCamera();
 
   useEffect(() => {
     if (!cameraApi) return;
-    cameraApi.zoomIn();
-    cameraApi.zoomIn();
+    for (let index = 0; index < 5; index += 1) cameraApi.zoomIn();
   }, [cameraApi]);
-  const source = backtrackData?.backtrack?.source_estimate;
-  const confidence = spillDetails?.confidence_score ?? 0;
-  const confidencePercent = confidence <= 1 ? confidence * 100 : confidence;
-  const vesselCount = vesselsData?.vessels?.length ?? 0;
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#020912] text-slate-100 font-sans">
@@ -58,10 +65,11 @@ const VisualizationWorkspace: React.FC = () => {
             <div className="flex items-start justify-between gap-3">
               <GlassPanel title="Incident overview" className="pointer-events-auto w-64 lg:w-72">
                 <div className="space-y-3">
-                  <Metric label="Detected" value={spillDetails?.detected_at ? new Date(spillDetails.detected_at).toLocaleString() : '17 May 2025 08:42 UTC'} icon={<Activity size={12} />} />
-                  <Metric label="Source estimate" value={source ? `${source.latitude.toFixed(3)}°, ${source.longitude.toFixed(3)}°` : 'Calculating'} icon={<Radio size={12} />} />
-                  <Metric label="Spill area" value={`${spillDetails?.area_km2?.toFixed(2) ?? '2.48'} km²`} icon={<Droplets size={12} />} accent="text-orange-400" />
-                  <Metric label="Confidence" value={`${confidencePercent.toFixed(0)}%`} icon={<Gauge size={12} />} />
+                  <Metric label="Detected" value={SIMULATION.detected} icon={<Activity size={12} />} />
+                  <Metric label="Source estimate" value={SIMULATION.source} icon={<Radio size={12} />} />
+                  <Metric label="Spill area" value={SIMULATION.spillArea} icon={<Droplets size={12} />} accent="text-orange-400" />
+                  <Metric label="Confidence" value={SIMULATION.confidence} icon={<Gauge size={12} />} />
+                  <Metric label="Suspected source" value={SIMULATION.vessel} icon={<Radio size={12} />} accent="text-red-400" />
                 </div>
               </GlassPanel>
 
@@ -69,7 +77,7 @@ const VisualizationWorkspace: React.FC = () => {
                 <div className="space-y-3 text-sm text-slate-300">
                   <div className="flex items-center justify-between"><span>Ocean model</span><span className="text-emerald-400">HYCOM</span></div>
                   <div className="flex items-center justify-between"><span>Wind model</span><span className="text-emerald-400">ECMWF</span></div>
-                  <div className="flex items-center justify-between"><span>AIS candidates</span><span className="text-cyan-300">{vesselCount || '—'}</span></div>
+                  <div className="flex items-center justify-between"><span>AIS candidates</span><span className="text-cyan-300">{SIMULATION.vesselCount}</span></div>
                   <div className="flex items-center justify-between"><span>Stream</span><span className="flex items-center gap-1.5 text-emerald-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />LIVE</span></div>
                 </div>
               </GlassPanel>
@@ -77,10 +85,10 @@ const VisualizationWorkspace: React.FC = () => {
 
             <div className="flex items-end justify-between gap-3">
               <GlassPanel title="Environmental telemetry" className="pointer-events-auto w-64 lg:w-72">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded border border-cyan-950 bg-slate-950/50 p-2"><Wind size={14} className="mb-2 text-cyan-300" /><div className="text-[9px] uppercase text-slate-500">Wind</div><div className="mt-1 text-xs">18.6 kn</div><div className="text-[10px] text-slate-400">NE</div></div>
-                  <div className="rounded border border-cyan-950 bg-slate-950/50 p-2"><Waves size={14} className="mb-2 text-cyan-300" /><div className="text-[9px] uppercase text-slate-500">Current</div><div className="mt-1 text-xs">0.87 m/s</div><div className="text-[10px] text-slate-400">NE</div></div>
-                  <div className="rounded border border-cyan-950 bg-slate-950/50 p-2"><Layers3 size={14} className="mb-2 text-cyan-300" /><div className="text-[9px] uppercase text-slate-500">Depth</div><div className="mt-1 text-xs">-124 m</div><div className="text-[10px] text-slate-400">seabed</div></div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded border border-cyan-950 bg-slate-950/70 p-3"><Wind size={18} className="mb-3 text-cyan-300" /><div className="text-[10px] uppercase tracking-wider text-slate-500">Wind</div><div className="mt-1 text-base font-semibold">{SIMULATION.wind}</div><div className="text-xs text-slate-400">NE · 045°</div></div>
+                  <div className="rounded border border-cyan-950 bg-slate-950/70 p-3"><Waves size={18} className="mb-3 text-cyan-300" /><div className="text-[10px] uppercase tracking-wider text-slate-500">Current</div><div className="mt-1 text-base font-semibold">{SIMULATION.current}</div><div className="text-xs text-slate-400">NE · surface</div></div>
+                  <div className="rounded border border-cyan-950 bg-slate-950/70 p-3"><Layers3 size={18} className="mb-3 text-cyan-300" /><div className="text-[10px] uppercase tracking-wider text-slate-500">Wave height</div><div className="mt-1 text-base font-semibold">{SIMULATION.seaState}</div><div className="text-xs text-slate-400">sea state 3</div></div>
                 </div>
               </GlassPanel>
 
@@ -97,7 +105,13 @@ const VisualizationWorkspace: React.FC = () => {
             <div className="mt-1 text-[9px] uppercase tracking-widest text-slate-500">Real-time incident simulation</div>
           </div>
 
-          <button type="button" className="absolute right-4 top-4 z-30 rounded border border-cyan-900 bg-slate-950/70 p-2 text-slate-400 hover:text-white" aria-label="Close visualization overlay"><X size={14} /></button>
+          <div className="pointer-events-auto absolute bottom-4 left-1/2 z-30 w-[min(760px,calc(100%-2rem))] -translate-x-1/2 rounded border border-cyan-800/80 bg-[#061522]/95 p-4 shadow-[0_0_28px_rgba(34,211,238,0.16)] backdrop-blur-md">
+            <div className="mb-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200"><span>Real-time spill simulation</span><span className="text-slate-400">{SIMULATION.elapsed} elapsed</span></div>
+            <div className="relative h-2 rounded-full bg-slate-800"><div className="h-2 w-[42%] rounded-full bg-gradient-to-r from-cyan-500 via-cyan-300 to-orange-400" /><span className="absolute left-[42%] top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-white bg-orange-400 shadow-[0_0_14px_#fb923c]" /></div>
+            <div className="mt-3 flex justify-between text-xs text-slate-400"><span>-24h backtrack</span><span className="font-semibold text-cyan-200">NOW · 08:42 UTC</span><span>+48h forecast</span></div>
+          </div>
+
+          <button type="button" className="absolute right-4 top-4 z-30 rounded border border-cyan-900 bg-slate-950/70 p-2 text-slate-400 hover:text-white" aria-label="Close visualization overlay"><X size={16} /></button>
         </main>
       </div>
     </div>

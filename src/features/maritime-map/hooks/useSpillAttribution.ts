@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { fetchSpillAttribution } from '../api/attributionApi';
+﻿import { useEffect, useState } from 'react';
+import { spillService } from '../../../services/spillService';
 import { adaptSpillAttribution } from '../adapters/vesselAdapter';
-import type { SpillAttribution } from '../types/attributionTypes';
+import type { SpillAttribution, RawAttributionTrajectoryResponse, RawVesselsResponse } from '../types/attributionTypes';
 
 export interface UseSpillAttributionResult {
   attribution: SpillAttribution | null;
@@ -18,36 +18,53 @@ interface AttributionState {
 const EMPTY_STATE: AttributionState = { spillId: null, attribution: null, error: null };
 
 /**
- * Load ranked vessel attribution for a spill when backtrack mode is active.
- * Pass null (or enabled=false) to skip the request.
+ * Load vessel candidates and AIS attribution for a selected spill.
+ * Candidate metadata from `GET /vessels` is fetched as soon as a spill is selected,
+ * and AIS waypoint trajectories from `GET /attribution/trajectory` are merged when
+ * backtrack mode is active (or pre-fetched).
  */
 export function useSpillAttribution(
   spillId: string | null,
-  enabled: boolean
+  backtrackActive: boolean
 ): UseSpillAttributionResult {
   const [state, setState] = useState<AttributionState>(EMPTY_STATE);
 
   useEffect(() => {
-    if (!spillId || !enabled) return;
+    if (!spillId) return;
 
-    const controller = new AbortController();
     let active = true;
 
-    fetchSpillAttribution(spillId, controller.signal)
-      .then((raw) => {
+    // Always fetch candidate vessel information for the selected incident
+    const vesselsPromise: Promise<RawVesselsResponse | null> = spillService
+      .getSpillVessels(spillId)
+      .catch((err) => {
+        console.warn(`[useSpillAttribution] getSpillVessels failed for ${spillId}`, err);
+        return null;
+      });
+
+    // If backtrack is active, fetch attribution trajectory tracks for spatial playback
+    const trajectoryPromise: Promise<RawAttributionTrajectoryResponse | null> = backtrackActive
+      ? spillService.getAttributionTrajectory(spillId).catch((err) => {
+          console.warn(`[useSpillAttribution] getAttributionTrajectory failed for ${spillId}`, err);
+          return null;
+        })
+      : Promise.resolve(null);
+
+    Promise.all([trajectoryPromise, vesselsPromise])
+      .then(([rawTrajectory, rawVessels]) => {
         if (!active) return;
-        const attribution = adaptSpillAttribution(spillId, raw);
+        const attribution = adaptSpillAttribution(spillId, rawTrajectory, rawVessels);
         setState({
           spillId,
           attribution,
           error:
             attribution && attribution.vessels.length > 0
               ? null
-              : 'No ranked vessels for this detection.',
+              : 'No candidate vessels found for this detection.',
         });
       })
       .catch((cause: unknown) => {
-        if (!active || controller.signal.aborted) return;
+        if (!active) return;
         console.error(`[useSpillAttribution] failed for ${spillId}`, cause);
         setState({
           spillId,
@@ -58,11 +75,10 @@ export function useSpillAttribution(
 
     return () => {
       active = false;
-      controller.abort();
     };
-  }, [spillId, enabled]);
+  }, [spillId, backtrackActive]);
 
-  if (!enabled || !spillId) {
+  if (!spillId) {
     return { attribution: null, isLoading: false, error: null };
   }
 

@@ -8,6 +8,7 @@ import { SpillDetailRaw } from '../../types/spill';
 import { formatArea, formatConfidence } from '../../utils/formatters';
 import { formatDateTime } from '../../utils/dateUtils';
 import { X, ExternalLink, Calendar, Waves, ShieldCheck, Ship, AlertCircle, ImageOff } from 'lucide-react';
+import { DiagnosticPlotViewer } from '../common/DiagnosticPlotViewer';
 
 export const SpillPreviewDrawer: React.FC = () => {
   const navigate = useNavigate();
@@ -110,25 +111,20 @@ export const SpillPreviewDrawer: React.FC = () => {
               </div>
             ) : detail ? (
               <>
-                {/* Satellite Image Preview */}
-                <div className="relative w-full h-52 rounded-xl border border-border bg-background overflow-hidden flex items-center justify-center">
-                  {detail.image_url && !imageError ? (
-                    <img
-                      src={detail.image_url}
-                      alt={`Satellite capture for ${detail.spill_id}`}
-                      loading="lazy"
-                      onError={() => setImageError(true)}
-                      className="w-full h-full object-cover transition-opacity duration-300"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground text-xs">
-                      <ImageOff size={24} />
-                      <span>Satellite image unavailable</span>
-                    </div>
-                  )}
-                  <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-mono font-bold text-foreground border border-border">
-                    SAR Image
+                {/* Diagnostic Plot Preview */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="font-mono text-[10px] uppercase tracking-wider font-semibold">
+                      Diagnostic Drift Solution
+                    </span>
                   </div>
+                  <DiagnosticPlotViewer
+                    spillId={detail.spill_id}
+                    fallbackUrl={detail.image_url}
+                    alt={`Diagnostic plot for ${detail.spill_id}`}
+                    containerClassName="aspect-[4/3] w-full min-h-[220px]"
+                    badgeText="Drift Diagnostic"
+                  />
                 </div>
 
                 {/* Metrics Breakdown */}

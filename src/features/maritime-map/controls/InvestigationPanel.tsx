@@ -9,6 +9,7 @@ import {
   formatCoordinates,
   formatDetectedAt,
   formatLatLon,
+  formatUtcTimestamp,
 } from '../utils/formatSpill';
 import {
   formatDistanceKm,
@@ -16,6 +17,7 @@ import {
   formatPositionCount,
   formatUncertaintyRadius,
 } from '../utils/formatTrajectory';
+import { DiagnosticPlotViewer } from '../../../components/common/DiagnosticPlotViewer';
 
 interface InvestigationPanelProps {
   spill: MapSpill;
@@ -26,6 +28,8 @@ interface InvestigationPanelProps {
   attribution: SpillAttribution | null;
   isAttributionLoading: boolean;
   backtrackActive: boolean;
+  playbackMode: 'forward' | 'backtrack';
+  onSetPlaybackMode: (mode: 'forward' | 'backtrack') => void;
   onToggleFocusMode: () => void;
   onToggleBacktrack: () => void;
   onClear: () => void;
@@ -50,7 +54,7 @@ function SectionHeading({ children }: { children: string }) {
   );
 }
 
-/** Readout of the backend's backtrack solution for this detection. */
+/** Readout of the backend backtrack solution for this detection. */
 function DriftSection({
   trajectory,
   isLoading,
@@ -78,18 +82,6 @@ function DriftSection({
           <Field label="Backtracked" value={formatDriftWindow(trajectory.durationHours)} />
           <Field label="Path length" value={formatDistanceKm(trajectory.totalDistanceKm)} />
           <Field label="Positions" value={formatPositionCount(trajectory.points.length)} />
-          {trajectory.source && (
-            <>
-              <Field
-                label="Origin"
-                value={formatLatLon(trajectory.source.longitude, trajectory.source.latitude)}
-              />
-              <Field
-                label="Uncertainty"
-                value={formatUncertaintyRadius(trajectory.source.radiusKm)}
-              />
-            </>
-          )}
           <p className="pt-0.5 text-[10px] leading-relaxed text-muted-foreground">
             Path runs origin → detection, the backend&apos;s drift solution integrated backwards
             from this observation.
@@ -100,37 +92,38 @@ function DriftSection({
   );
 }
 
-function VesselSection({
+function CandidateSummarySection({
   attribution,
+  spill,
   isLoading,
-  active,
 }: {
   attribution: SpillAttribution | null;
+  spill: MapSpill;
   isLoading: boolean;
-  active: boolean;
 }) {
-  if (!active) return null;
+  const count = attribution?.candidateCount ?? spill.candidateCount;
+  const topVessel = attribution?.vessels[0];
+  const topName = topVessel?.vesselName ?? spill.rankedTopVessel ?? '—';
+  const topScore = topVessel?.score ?? spill.rankedTopScore;
+  const topDist = topVessel?.distanceFromOriginKm;
 
   return (
     <div className="space-y-1.5 border-t border-border pt-2.5">
-      <SectionHeading>Ranked vessels</SectionHeading>
+      <SectionHeading>Candidate Summary</SectionHeading>
       {isLoading && (
-        <p className="text-[11px] text-muted-foreground">Loading AIS attribution…</p>
+        <p className="text-[11px] text-muted-foreground">Querying candidate vessels…</p>
       )}
-      {!isLoading && attribution && (
+      {!isLoading && (
         <>
-          <Field label="Candidates" value={String(attribution.candidateCount)} />
-          {attribution.vessels.slice(0, 3).map((vessel) => (
-            <Field
-              key={vessel.vesselId}
-              label={`#${vessel.rank}`}
-              value={vessel.vesselName}
-            />
-          ))}
-          {attribution.drawableVessels.length === 0 && (
-            <p className="text-[10px] leading-relaxed text-muted-foreground">
-              Ranked list loaded; no AIS track points in the attribution window for map animation.
-            </p>
+          <Field label="AIS candidates" value={formatCandidates(count)} />
+          {topName !== '—' && (
+            <>
+              <Field label="Top candidate" value={topName} />
+              <Field label="Match score" value={formatConfidence(topScore)} />
+              {topDist != null && (
+                <Field label="Distance to origin" value={`${topDist.toFixed(2)} km`} />
+              )}
+            </>
           )}
         </>
       )}
@@ -138,7 +131,6 @@ function VesselSection({
   );
 }
 
-/** Readout for the spill currently under investigation. */
 export function InvestigationPanel({
   spill,
   focusMode,
@@ -148,14 +140,25 @@ export function InvestigationPanel({
   attribution,
   isAttributionLoading,
   backtrackActive,
+  playbackMode,
+  onSetPlaybackMode,
   onToggleFocusMode,
   onToggleBacktrack,
   onClear,
   onRecenter,
   onScrollToDetails,
 }: InvestigationPanelProps) {
+  const sourceLon = trajectory?.source?.longitude ?? spill.estimatedSourceLongitude;
+  const sourceLat = trajectory?.source?.latitude ?? spill.estimatedSourceLatitude;
+  const sourceRadius = trajectory?.source?.radiusKm ?? spill.estimatedSourceRadiusKm;
+  const releaseTime = spill.estimatedReleaseTime
+    ? formatUtcTimestamp(Date.parse(spill.estimatedReleaseTime))
+    : trajectory?.points[0]
+    ? formatUtcTimestamp(trajectory.points[0].timestampMs)
+    : '—';
+
   return (
-    <div className="absolute top-4 right-4 z-10 flex max-h-[calc(100%-2rem)] w-[268px] flex-col overflow-hidden rounded-lg border border-border bg-card/92 shadow-lg backdrop-blur-md">
+    <div className="absolute top-4 right-4 z-10 flex max-h-[calc(100%-2rem)] w-[276px] flex-col overflow-hidden rounded-lg border border-border bg-card/92 shadow-lg backdrop-blur-md">
       <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
         <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           Under investigation
@@ -183,39 +186,100 @@ export function InvestigationPanel({
           </button>
         </div>
 
+        {/* 1. INCIDENT */}
         <div className="space-y-1.5 border-t border-border pt-2.5">
+          <SectionHeading>Incident</SectionHeading>
           <Field label="Detected" value={formatDetectedAt(spill)} />
           <Field label="Area" value={formatArea(spill.areaKm2)} />
-          <Field label="Detection conf." value={formatConfidence(spill.confidenceScore)} />
-          <Field label="Candidates" value={formatCandidates(spill.candidateCount)} />
+          <Field label="Confidence" value={formatConfidence(spill.confidenceScore)} />
           <Field label="Centroid" value={formatCoordinates(spill)} />
+          <Field
+            label="Estimated age"
+            value={spill.estimatedAgeHours != null ? `${spill.estimatedAgeHours.toFixed(1)} h` : '—'}
+          />
+          <Field label="Source type" value={spill.sourceType ?? '—'} />
         </div>
 
+        {/* 2. PROBABLE SOURCE */}
+        {(sourceLat != null && sourceLon != null) && (
+          <div className="space-y-1.5 border-t border-border pt-2.5">
+            <SectionHeading>Probable Source</SectionHeading>
+            <Field label="Coordinates" value={formatLatLon(sourceLon, sourceLat)} />
+            <Field label="Uncertainty" value={formatUncertaintyRadius(sourceRadius)} />
+            <Field label="Est. release" value={releaseTime} />
+          </div>
+        )}
+
+        {/* 3. DRIFT DIAGNOSTIC */}
+        <div className="space-y-1.5 border-t border-border pt-2.5">
+          <SectionHeading>Drift Diagnostic</SectionHeading>
+          <DiagnosticPlotViewer
+            spillId={spill.spillId}
+            fallbackUrl={spill.imageUrl}
+            alt={`Drift diagnostic plot for ${spill.spillId}`}
+            containerClassName="aspect-[4/3] w-full"
+            badgeText="Diagnostic"
+          />
+        </div>
+
+        {/* 4. CANDIDATE SUMMARY */}
+        <CandidateSummarySection
+          attribution={attribution}
+          spill={spill}
+          isLoading={isAttributionLoading}
+        />
+
+        {/* 5. DRIFT BACKTRACK */}
         <DriftSection
           trajectory={trajectory}
           isLoading={isTrajectoryLoading}
           error={trajectoryError}
         />
 
-        <VesselSection
-          attribution={attribution}
-          isLoading={isAttributionLoading}
-          active={backtrackActive}
-        />
-
+        {/* Arm / disarm investigation timeline */}
         <button
           type="button"
           onClick={onToggleBacktrack}
           disabled={!trajectory && !isTrajectoryLoading}
           className={`flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors disabled:opacity-40 ${
             backtrackActive
-              ? 'border-amber-500/70 bg-amber-500 text-amber-950'
+              ? 'border-amber-500/70 bg-amber-500/20 text-amber-300'
               : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
           }`}
         >
           <Rewind size={13} />
-          {backtrackActive ? 'Backtrack on' : 'Backtrack vessels'}
+          {backtrackActive ? 'Investigation on' : 'Investigate vessels'}
         </button>
+
+        {/* Playback mode selector — only shown when armed */}
+        {backtrackActive && (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => onSetPlaybackMode('forward')}
+              title="Forward Reconstruction: Origin → Detection"
+              className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                playbackMode === 'forward'
+                  ? 'border-cyan-500/70 bg-cyan-500/15 text-cyan-300'
+                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+              }`}
+            >
+              ▶ Forward
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetPlaybackMode('backtrack')}
+              title="Backtrack to Source: Detection → Origin"
+              className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                playbackMode === 'backtrack'
+                  ? 'border-amber-500/70 bg-amber-500/15 text-amber-300'
+                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+              }`}
+            >
+              ◀ Backtrack
+            </button>
+          </div>
+        )}
 
         <button
           type="button"

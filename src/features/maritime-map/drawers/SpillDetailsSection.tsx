@@ -7,9 +7,16 @@ import {
   formatConfidence,
   formatCoordinates,
   formatDetectedAt,
+  formatLatLon,
+  formatUtcTimestamp,
 } from '../utils/formatSpill';
-import { formatDistanceKm, formatDriftWindow, formatUncertaintyRadius } from '../utils/formatTrajectory';
+import {
+  formatDistanceKm,
+  formatDriftWindow,
+  formatUncertaintyRadius,
+} from '../utils/formatTrajectory';
 import { TrajectoryChart } from '../charts/TrajectoryChart';
+import { DiagnosticPlotViewer } from '../../../components/common/DiagnosticPlotViewer';
 
 interface SpillDetailsSectionProps {
   spill: MapSpill;
@@ -44,6 +51,15 @@ export function SpillDetailsSection({
   currentTimeMs,
   backtrackActive,
 }: SpillDetailsSectionProps) {
+  const sourceLon = trajectory?.source?.longitude ?? spill.estimatedSourceLongitude;
+  const sourceLat = trajectory?.source?.latitude ?? spill.estimatedSourceLatitude;
+  const sourceRadius = trajectory?.source?.radiusKm ?? spill.estimatedSourceRadiusKm;
+  const releaseTime = spill.estimatedReleaseTime
+    ? formatUtcTimestamp(Date.parse(spill.estimatedReleaseTime))
+    : trajectory?.points[0]
+    ? formatUtcTimestamp(trajectory.points[0].timestampMs)
+    : '—';
+
   return (
     <section
       id="spill-investigation-details"
@@ -56,40 +72,50 @@ export function SpillDetailsSection({
           </p>
           <h2 className="font-mono text-xl font-semibold text-primary">{spill.spillId}</h2>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Satellite observation and the backend drift solution for this detection. Vessel ranking
-            and AIS tracks appear after Backtrack is started on the map.
+            Satellite observation, authoritative slick geometry, and hydrographic drift solution for this detection.
+            Candidate vessels and AIS telemetry are ranked according to spatio-temporal proximity to the probable release point.
           </p>
         </header>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {/* Incident telemetry grid */}
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           <Meta label="Detected" value={formatDetectedAt(spill)} />
           <Meta label="Area" value={formatArea(spill.areaKm2)} />
           <Meta label="Detection conf." value={formatConfidence(spill.confidenceScore)} />
           <Meta label="Candidates" value={formatCandidates(spill.candidateCount)} />
           <Meta label="Centroid" value={formatCoordinates(spill)} />
+          <Meta
+            label="Estimated age"
+            value={spill.estimatedAgeHours != null ? `${spill.estimatedAgeHours.toFixed(1)} h` : '—'}
+          />
+          <Meta label="Source type" value={spill.sourceType ?? '—'} />
+          <Meta
+            label="Probable source"
+            value={sourceLon != null && sourceLat != null ? formatLatLon(sourceLon, sourceLat) : '—'}
+          />
+          <Meta
+            label="Source uncertainty"
+            value={formatUncertaintyRadius(sourceRadius)}
+          />
+          <Meta label="Est. release" value={releaseTime} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
+          {/* Satellite / Drift Diagnostic observation */}
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Satellite observation
+              Drift Diagnostic & Satellite Evidence
             </p>
-            <div className="overflow-hidden rounded-lg border border-border bg-card">
-              {spill.imageUrl ? (
-                <img
-                  src={spill.imageUrl}
-                  alt={`Satellite observation for ${spill.spillId}`}
-                  className="aspect-video w-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex aspect-video items-center justify-center text-xs text-muted-foreground">
-                  No satellite image for this detection.
-                </div>
-              )}
-            </div>
+            <DiagnosticPlotViewer
+              spillId={spill.spillId}
+              fallbackUrl={spill.imageUrl}
+              alt={`Drift diagnostic plot for ${spill.spillId}`}
+              containerClassName="aspect-[4/3] w-full max-h-[360px]"
+              badgeText="Drift Diagnostic"
+            />
           </div>
 
+          {/* Drift metrics */}
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Drift metrics
@@ -135,44 +161,54 @@ export function SpillDetailsSection({
           <TrajectoryChart trajectory={trajectory} currentTimeMs={currentTimeMs} />
         </div>
 
+        {/* Ranked Candidate Vessels table */}
         <div className="space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Ranked vessels
+              Candidate Vessels (AIS Attribution)
             </p>
             {!backtrackActive && (
               <p className="text-[11px] text-muted-foreground">
-                Start Backtrack on the map to load AIS attribution.
+                Start investigation on map to animate correlated vessel tracks.
               </p>
             )}
           </div>
 
-          {backtrackActive && isAttributionLoading && (
-            <p className="text-sm text-muted-foreground">Loading ranked vessels…</p>
+          {isAttributionLoading && (
+            <p className="text-sm text-muted-foreground">Loading candidate vessels…</p>
           )}
 
-          {backtrackActive && attribution && attribution.vessels.length > 0 && (
+          {!isAttributionLoading && attribution && attribution.vessels.length > 0 && (
             <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[560px] text-left text-sm">
+              <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="border-b border-border bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 font-semibold">Rank</th>
-                    <th className="px-3 py-2 font-semibold">Vessel</th>
+                    <th className="px-3 py-2 font-semibold">Candidate Vessel</th>
+                    <th className="px-3 py-2 font-semibold">Score</th>
                     <th className="px-3 py-2 font-semibold">Type</th>
                     <th className="px-3 py-2 font-semibold">Flag</th>
-                    <th className="px-3 py-2 font-semibold">Origin dist.</th>
-                    <th className="px-3 py-2 font-semibold">AIS track</th>
+                    <th className="px-3 py-2 font-semibold">Speed</th>
+                    <th className="px-3 py-2 font-semibold">Heading</th>
+                    <th className="px-3 py-2 font-semibold">Origin Dist.</th>
+                    <th className="px-3 py-2 font-semibold">Time Diff.</th>
+                    <th className="px-3 py-2 font-semibold">Correlation</th>
+                    <th className="px-3 py-2 font-semibold">AIS Track</th>
                   </tr>
                 </thead>
                 <tbody>
                   {attribution.vessels.map((vessel) => (
-                    <tr key={vessel.vesselId} className="border-b border-border/60 last:border-0">
+                    <tr key={vessel.vesselId} className="border-b border-border/60 last:border-0 hover:bg-muted/10">
                       <td className="px-3 py-2 font-mono tabular-nums">#{vessel.rank}</td>
                       <td className="px-3 py-2">
                         <div className="font-mono text-xs font-semibold">{vessel.vesselName}</div>
-                        {vessel.mmsi && (
-                          <div className="text-[10px] text-muted-foreground">MMSI {vessel.mmsi}</div>
-                        )}
+                        <div className="flex gap-2 text-[10px] text-muted-foreground">
+                          {vessel.mmsi && <span>MMSI {vessel.mmsi}</span>}
+                          {vessel.imo && <span>IMO {vessel.imo}</span>}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-foreground font-medium">
+                        {vessel.score != null ? `${(vessel.score * 100).toFixed(1)}%` : '—'}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">
                         {vessel.vesselType ?? '—'}
@@ -180,8 +216,28 @@ export function SpillDetailsSection({
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">{vessel.country ?? '—'}</td>
                       <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                        {vessel.speed != null ? `${vessel.speed.toFixed(1)} kn` : '—'}
+                      </td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                        {vessel.heading != null
+                          ? `${Math.round(vessel.heading)}°`
+                          : vessel.course != null
+                          ? `${Math.round(vessel.course)}°`
+                          : '—'}
+                      </td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
                         {vessel.distanceFromOriginKm != null
                           ? `${vessel.distanceFromOriginKm.toFixed(2)} km`
+                          : '—'}
+                      </td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                        {vessel.timeDifferenceHours != null
+                          ? `${vessel.timeDifferenceHours > 0 ? '+' : ''}${vessel.timeDifferenceHours.toFixed(1)} h`
+                          : '—'}
+                      </td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                        {vessel.trajectoryCorrelation != null
+                          ? `${(vessel.trajectoryCorrelation * 100).toFixed(0)}%`
                           : '—'}
                       </td>
                       <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
@@ -194,8 +250,8 @@ export function SpillDetailsSection({
             </div>
           )}
 
-          {backtrackActive && !isAttributionLoading && attribution?.vessels.length === 0 && (
-            <p className="text-sm text-muted-foreground">No ranked vessels returned for this spill.</p>
+          {!isAttributionLoading && (!attribution || attribution.vessels.length === 0) && (
+            <p className="text-sm text-muted-foreground">No candidate vessels recorded for this spill.</p>
           )}
         </div>
       </div>

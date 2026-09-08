@@ -1,4 +1,4 @@
-import { Pause, Play } from 'lucide-react';
+﻿import { Pause, Play } from 'lucide-react';
 
 interface InvestigationTimelineProps {
   progress: number;
@@ -6,6 +6,8 @@ interface InvestigationTimelineProps {
   windowLabel: string;
   onTogglePlay: () => void;
   onSeek: (progress: number) => void;
+  playbackMode: 'forward' | 'backtrack';
+  atSource: boolean;
   disabled?: boolean;
 }
 
@@ -16,43 +18,67 @@ export function InvestigationTimeline({
   windowLabel,
   onTogglePlay,
   onSeek,
+  playbackMode,
+  atSource,
   disabled = false,
 }: InvestigationTimelineProps) {
-  return (
-    <div className="absolute bottom-4 left-1/2 z-10 flex w-[min(520px,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 rounded-lg border border-border bg-card/94 px-3 py-2.5 shadow-lg backdrop-blur-md">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onTogglePlay}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-accent disabled:opacity-40"
-        title={isPlaying ? 'Pause' : 'Play backtrack'}
-      >
-        {isPlaying ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
-      </button>
+  const isBacktrack = playbackMode === 'backtrack';
+  const modeLabel = isBacktrack ? '◀ Backtrack to Source' : '▶ Forward Reconstruction';
+  const leftLabel = isBacktrack ? 'Detection' : 'Origin';
+  const rightLabel = isBacktrack ? 'Origin' : 'Detection';
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Backtrack timeline
-          </span>
-          <span className="truncate font-mono text-[10px] tabular-nums text-muted-foreground">
-            {windowLabel}
+  return (
+    <div className="absolute bottom-4 left-1/2 z-10 flex w-[min(560px,calc(100%-2rem))] -translate-x-1/2 flex-col gap-1.5 rounded-lg border border-border bg-card/94 px-3 py-2.5 shadow-lg backdrop-blur-md">
+
+      {/* Mode badge */}
+      <div className="flex items-center justify-between">
+        <span className={`text-[10px] font-bold uppercase tracking-[0.16em] ${
+          isBacktrack ? 'text-amber-400' : 'text-cyan-400'
+        }`}>
+          {modeLabel}
+        </span>
+        <span className="truncate font-mono text-[10px] tabular-nums text-muted-foreground">
+          {windowLabel}
+        </span>
+      </div>
+
+      {/* "Vessel at probable source" milestone */}
+      {atSource && (
+        <div className="flex items-center justify-center gap-1.5 rounded border border-amber-500/60 bg-amber-500/15 px-2 py-1 animate-pulse">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+            🛢 Vessel at Probable Source
           </span>
         </div>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.001}
-          value={progress}
+      )}
+
+      {/* Playback row */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
           disabled={disabled}
-          onChange={(event) => onSeek(Number(event.target.value))}
-          className="maritime-timeline-slider w-full"
-          aria-label="Investigation timeline"
-        />
-        <div className="flex justify-between text-[9px] uppercase tracking-wider text-muted-foreground/80">
-          <span>Origin</span>
-          <span>Detection</span>
+          onClick={onTogglePlay}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-accent disabled:opacity-40"
+          title={isPlaying ? 'Pause' : modeLabel}
+        >
+          {isPlaying ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
+        </button>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.001}
+            value={progress}
+            disabled={disabled}
+            onChange={(event) => onSeek(Number(event.target.value))}
+            className="maritime-timeline-slider w-full"
+            aria-label="Investigation timeline"
+          />
+          <div className="flex justify-between text-[9px] uppercase tracking-wider text-muted-foreground/80">
+            <span>{leftLabel}</span>
+            <span>{rightLabel}</span>
+          </div>
         </div>
       </div>
     </div>

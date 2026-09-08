@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-import { Satellite, Maximize2, ImageIcon } from 'lucide-react';
+import { Activity, Map as MapIcon, Maximize2, ImageIcon } from 'lucide-react';
 import { useIncident } from '../../context/IncidentContext';
 import { MAP_CONFIG } from '../../features/maritime-map/map/mapConfig';
 import { useInteraction } from '../../pages/IncidentReconstructionPage';
 import { computeTrajectoryStats } from '../../utils/trajectoryStats';
+import { DiagnosticPlotViewer } from '../common/DiagnosticPlotViewer';
+import { useDiagnosticPlot } from '../../services/diagnosticPlotService';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -27,14 +29,18 @@ function buildEsriExportUrl(lat: number, lng: number, padDeg = 0.08) {
 }
 
 export const SatelliteImageryPanel: React.FC = () => {
-  const { spillDetails, backtrackData } = useIncident();
+  const { spillId, spillDetails, backtrackData } = useIncident();
   const { setDrawerContent } = useInteraction();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'diagnostic' | 'map'>('diagnostic');
   const [ready, setReady] = useState(false);
   const [mapError, setMapError] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+
+  const { plotUrl } = useDiagnosticPlot(spillId, spillDetails?.image_url);
 
   const lat =
     backtrackData?.backtrack.observation.latitude ??
@@ -63,8 +69,9 @@ export const SatelliteImageryPanel: React.FC = () => {
     return buildEsriExportUrl(lat, lng, pad);
   }, [lat, lng, stats]);
 
-  // Interactive map layer (optional enhancement on top of static image)
+  // Interactive map layer
   useEffect(() => {
+    if (activeTab !== 'map') return;
     if (!containerRef.current || lat == null || lng == null) return;
 
     let cancelled = false;
@@ -119,13 +126,11 @@ export const SatelliteImageryPanel: React.FC = () => {
           },
         });
 
-        // Fit bounds to trajectory
         const bounds = new maplibregl.LngLatBounds();
         traj.forEach((p) => bounds.extend([p.longitude, p.latitude]));
         map.fitBounds(bounds, { padding: 48, maxZoom: 12.5, duration: 0 });
       }
 
-      // Timestamp markers along path
       stats?.milestones.forEach((m) => {
         const el = document.createElement('div');
         el.className = 'sat-time-marker';
@@ -161,28 +166,39 @@ export const SatelliteImageryPanel: React.FC = () => {
       map.remove();
       mapRef.current = null;
     };
-  }, [lat, lng, backtrackData, stats]);
+  }, [activeTab, lat, lng, backtrackData, stats]);
 
   const openExpanded = () => {
-    if (lat == null || lng == null) return;
     setDrawerContent(
-      <div className="space-y-3 text-sm">
-        {staticImageUrl && (
+      <div className="space-y-4 text-sm">
+        <div className="overflow-hidden rounded-xl border border-border bg-[#020813] p-2 flex items-center justify-center">
           <img
-            src={staticImageUrl}
-            alt="Satellite imagery of spill area"
-            className="w-full rounded border border-border"
+            src={plotUrl}
+            alt={`Drift diagnostic plot for ${spillId}`}
+            className="max-h-[60vh] w-full object-contain select-none"
           />
-        )}
+        </div>
         <div className="grid grid-cols-2 gap-2 text-xs font-mono">
           <div>
-            <span className="text-muted-foreground block text-[9px] tracking-wider mb-0.5">LAT</span>
-            {lat.toFixed(4)}°
+            <span className="text-muted-foreground block text-[9px] tracking-wider mb-0.5">INCIDENT</span>
+            {spillId}
           </div>
           <div>
-            <span className="text-muted-foreground block text-[9px] tracking-wider mb-0.5">LON</span>
-            {lng.toFixed(4)}°
+            <span className="text-muted-foreground block text-[9px] tracking-wider mb-0.5">RESOLUTION</span>
+            1600 × 1440 px
           </div>
+          {lat != null && lng != null && (
+            <>
+              <div>
+                <span className="text-muted-foreground block text-[9px] tracking-wider mb-0.5">LAT</span>
+                {lat.toFixed(4)}°
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[9px] tracking-wider mb-0.5">LON</span>
+                {lng.toFixed(4)}°
+              </div>
+            </>
+          )}
           {stats && (
             <>
               <div>
@@ -201,7 +217,7 @@ export const SatelliteImageryPanel: React.FC = () => {
           )}
         </div>
       </div>,
-      'Satellite Imagery'
+      `Diagnostic Plot · ${spillId}`
     );
   };
 
@@ -209,135 +225,168 @@ export const SatelliteImageryPanel: React.FC = () => {
     <div className="h-full flex flex-col bg-card/90 border border-border rounded-lg overflow-hidden min-h-0">
       <div className="px-3 py-2 border-b border-border flex items-center justify-between gap-2 bg-muted/30 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <Satellite size={13} className="text-emerald-400 shrink-0" />
+          <Activity size={13} className="text-emerald-400 shrink-0" />
           <div className="min-w-0">
-            <h3 className="text-[11px] font-semibold tracking-wider text-foreground truncate">
-              SATELLITE IMAGERY
+            <h3 className="text-[11px] font-semibold tracking-wider text-foreground truncate uppercase">
+              DRIFT DIAGNOSTIC
             </h3>
             <p className="text-[9px] font-mono text-muted-foreground truncate">
-              SENTINEL-1 CONTEXT · ESRI WORLD IMAGERY
+              AUTHORITATIVE SOLUTION · {spillId}
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={openExpanded}
-          className="p-1.5 rounded border border-border hover:border-primary/50 text-muted-foreground hover:text-primary transition-colors"
-          title="Expand"
-        >
-          <Maximize2 size={12} />
-        </button>
+
+        <div className="flex items-center gap-1.5">
+          {/* Tab Switcher */}
+          <div className="flex rounded-md border border-border bg-background p-0.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('diagnostic')}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono font-semibold transition-colors ${
+                activeTab === 'diagnostic'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Activity size={10} />
+              <span>Plot</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('map')}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono font-semibold transition-colors ${
+                activeTab === 'map'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <MapIcon size={10} />
+              <span>Map</span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={openExpanded}
+            className="p-1.5 rounded border border-border hover:border-primary/50 text-muted-foreground hover:text-primary transition-colors"
+            title="Expand Full Diagnostic"
+          >
+            <Maximize2 size={12} />
+          </button>
+        </div>
       </div>
 
-      <div className="relative flex-1 min-h-[200px] bg-[#0a1628]">
-        {lat == null || lng == null ? (
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground gap-2">
-            <ImageIcon size={14} /> Waiting for coordinates…
+      <div className="relative flex-1 min-h-[200px] bg-[#020813] overflow-hidden">
+        {activeTab === 'diagnostic' ? (
+          <div className="h-full w-full p-2 flex items-center justify-center">
+            <DiagnosticPlotViewer
+              spillId={spillId}
+              fallbackUrl={spillDetails?.image_url}
+              alt={`Diagnostic plot for ${spillId}`}
+              containerClassName="h-full w-full border-0 bg-transparent"
+              badgeText="Authoritative Diagnostic"
+            />
           </div>
         ) : (
           <>
-            {/* Always-visible static satellite snapshot (fallback + first paint) */}
-            {staticImageUrl && !imgError && (
-              <img
-                src={staticImageUrl}
-                alt="Spill area satellite imagery"
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
-                  ready && !mapError ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                }`}
-                onLoad={() => setImgLoaded(true)}
-                onError={() => setImgError(true)}
-              />
-            )}
-
-            {/* Interactive map once ready */}
-            <div
-              ref={containerRef}
-              className={`absolute inset-0 transition-opacity duration-500 ${
-                ready && !mapError ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-            />
-
-            {!imgLoaded && !ready && !imgError && (
-              <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground bg-[#0a1628]/80 z-10">
-                Loading satellite image…
+            {lat == null || lng == null ? (
+              <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground gap-2">
+                <ImageIcon size={14} /> Waiting for coordinates…
               </div>
-            )}
-
-            {imgError && mapError && (
-              <div className="absolute inset-0 flex items-center justify-center text-xs text-destructive z-10 px-4 text-center">
-                Satellite imagery unavailable (network blocked). Coordinates:{' '}
-                {lat.toFixed(3)}, {lng.toFixed(3)}
-              </div>
-            )}
-
-            {/* Overlay path summary when showing static image */}
-            {stats && (!ready || mapError) && imgLoaded && (
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none z-[5]"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-              >
-                {stats.milestones.length > 1 && (
-                  <polyline
-                    fill="none"
-                    stroke="#f97316"
-                    strokeWidth="0.8"
-                    strokeDasharray="2 1.2"
-                    points={stats.milestones
-                      .map((m, _i, arr) => {
-                        const lats = arr.map((x) => x.latitude);
-                        const lons = arr.map((x) => x.longitude);
-                        const minLat = Math.min(...lats);
-                        const maxLat = Math.max(...lats);
-                        const minLon = Math.min(...lons);
-                        const maxLon = Math.max(...lons);
-                        const pad = 0.12;
-                        const x =
-                          ((m.longitude - minLon) / Math.max(maxLon - minLon, 1e-6)) *
-                            (100 - 200 * pad) +
-                          100 * pad;
-                        const y =
-                          (1 - (m.latitude - minLat) / Math.max(maxLat - minLat, 1e-6)) *
-                            (100 - 200 * pad) +
-                          100 * pad;
-                        return `${x},${y}`;
-                      })
-                      .join(' ')}
+            ) : (
+              <>
+                {staticImageUrl && !imgError && (
+                  <img
+                    src={staticImageUrl}
+                    alt="Spill area satellite imagery"
+                    className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-500 ${
+                      ready && !mapError ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                    }`}
+                    onLoad={() => setImgLoaded(true)}
+                    onError={() => setImgError(true)}
                   />
                 )}
-              </svg>
-            )}
 
-            <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between gap-2 pointer-events-none z-10">
-              <div className="px-2 py-1 rounded bg-black/70 backdrop-blur border border-white/10 text-[9px] font-mono text-white/90 space-y-0.5">
-                <div>
-                  {lat.toFixed(3)}°{lat >= 0 ? 'N' : 'S'} · {lng.toFixed(3)}°
-                  {lng >= 0 ? 'E' : 'W'}
-                </div>
-                {stats && (
-                  <div className="text-amber-200">
-                    {stats.totalDistanceKm.toFixed(1)} km · {stats.durationLabel}
+                <div
+                  ref={containerRef}
+                  className={`absolute inset-0 transition-opacity duration-500 ${
+                    ready && !mapError ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  }`}
+                />
+
+                {!imgLoaded && !ready && !imgError && (
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground bg-[#0a1628]/80 z-10">
+                    Loading satellite image…
                   </div>
                 )}
-              </div>
-            </div>
+
+                {imgError && mapError && (
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-destructive z-10 px-4 text-center">
+                    Satellite imagery unavailable. Coordinates: {lat.toFixed(3)}, {lng.toFixed(3)}
+                  </div>
+                )}
+
+                {stats && (!ready || mapError) && imgLoaded && (
+                  <svg
+                    className="absolute inset-0 w-full h-full pointer-events-none z-[5]"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                  >
+                    {stats.milestones.length > 1 && (
+                      <polyline
+                        fill="none"
+                        stroke="#f97316"
+                        strokeWidth="0.8"
+                        strokeDasharray="2 1.2"
+                        points={stats.milestones
+                          .map((m, _i, arr) => {
+                            const lats = arr.map((x) => x.latitude);
+                            const lons = arr.map((x) => x.longitude);
+                            const minLat = Math.min(...lats);
+                            const maxLat = Math.max(...lats);
+                            const minLon = Math.min(...lons);
+                            const maxLon = Math.max(...lons);
+                            const pad = 0.12;
+                            const x =
+                              ((m.longitude - minLon) / Math.max(maxLon - minLon, 1e-6)) *
+                                (100 - 200 * pad) +
+                              100 * pad;
+                            const y =
+                              (1 - (m.latitude - minLat) / Math.max(maxLat - minLat, 1e-6)) *
+                                (100 - 200 * pad) +
+                              100 * pad;
+                            return `${x},${y}`;
+                          })
+                          .join(' ')}
+                      />
+                    )}
+                  </svg>
+                )}
+
+                <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between gap-2 pointer-events-none z-10">
+                  <div className="px-2 py-1 rounded bg-black/70 backdrop-blur border border-white/10 text-[9px] font-mono text-white/90 space-y-0.5">
+                    <div>
+                      {lat.toFixed(3)}°{lat >= 0 ? 'N' : 'S'} · {lng.toFixed(3)}°
+                      {lng >= 0 ? 'E' : 'W'}
+                    </div>
+                    {stats && (
+                      <div className="text-amber-200">
+                        {stats.totalDistanceKm.toFixed(1)} km · {stats.durationLabel}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
 
       {detectedAt && (
-        <div className="px-3 py-1.5 border-t border-border text-[9px] font-mono text-muted-foreground flex justify-between shrink-0">
-          <span>LAST SAT IMAGE</span>
+        <div className="px-3 py-1.5 border-t border-border text-[9px] font-mono text-muted-foreground flex justify-between shrink-0 bg-muted/20">
+          <span>SOLUTION SOURCE</span>
           <span className="text-foreground">
-            {new Date(detectedAt).toLocaleString('en-GB', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              timeZone: 'UTC',
-            })}{' '}
-            UTC
+            HYDRODYNAMIC DRIFT DIAGNOSTIC
           </span>
         </div>
       )}

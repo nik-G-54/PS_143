@@ -26,16 +26,33 @@ export interface RawCulpritLocation {
 export interface RawAttributedVessel {
   vessel_id?: string | null;
   is_mock?: boolean | null;
+  is_mock_comparison?: boolean | null;
   rank?: number | null;
   score?: number | null;
   vessel_name?: string | null;
   mmsi?: string | null;
   imo?: string | null;
   country?: string | null;
+  shiptype?: number | null;
+  shiptype_name?: string | null;
   vessel_type?: string | null;
-  culprit_location?: RawCulpritLocation | null;
+  speed?: number | null;
+  course?: number | null;
+  heading?: number | null;
   distance_from_backtrack_origin_km?: number | null;
+  distance_to_origin_km?: number | null;
+  time_difference_hours?: number | null;
+  trajectory_correlation?: number | null;
+  culprit_location?: RawCulpritLocation | null;
   trajectory?: RawAttributionTrackPoint[] | null;
+  track?: RawAttributionTrackPoint[] | null;
+}
+
+/** Response from `GET /api/v1/demo/spills/{spill_id}/vessels`. */
+export interface RawVesselsResponse {
+  spill_id?: string | null;
+  candidate_count?: number | null;
+  vessels?: RawAttributedVessel[] | null;
 }
 
 export interface RawAttributionTrajectoryResponse {
@@ -77,7 +94,12 @@ export interface AttributedVessel {
   imo: string | null;
   country: string | null;
   vesselType: string | null;
+  speed: number | null;
+  course: number | null;
+  heading: number | null;
   distanceFromOriginKm: number | null;
+  timeDifferenceHours: number | null;
+  trajectoryCorrelation: number | null;
   /** Position at the backtrack origin time, when the backend provides one. */
   culpritLocation: VesselTrackPoint | null;
   /** Chronological AIS track (may be empty for vessels with no window coverage). */

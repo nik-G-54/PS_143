@@ -2,6 +2,8 @@ import { apiClient } from './apiClient';
 import { BacktrackResponse, VesselsResponse } from '../types/api';
 import { MOCK_SPILL_LIST, MOCK_SCENARIOS } from '../mocks/spillsData';
 
+import { fetchDiagnosticPlotUrl } from './diagnosticPlotService';
+
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_API === 'true';
 
 // Delay function to simulate network latency
@@ -22,13 +24,28 @@ export const spillService = {
   },
   
   async getSpill(spillId: string): Promise<any> {
+    const diagPromise = fetchDiagnosticPlotUrl(spillId).catch(() => null);
     if (USE_MOCK) {
       await delay(500);
       if (spillId === 'spill_F') throw new Error('Simulated API Failure: HTTP 500');
       const spill = MOCK_SPILL_LIST.find(s => s.spill_id === spillId);
-      return spill || MOCK_SPILL_LIST[0]; // fallback to first if unknown
+      const res = spill ? { ...spill } : { ...MOCK_SPILL_LIST[0] };
+      const diagUrl = await diagPromise;
+      if (diagUrl) res.image_url = diagUrl;
+      return res;
     }
-    return apiClient.get(`/api/v1/demo/spills/${spillId}`);
+    const [spillData, diagUrl] = await Promise.all([
+      apiClient.get<any>(`/api/v1/demo/spills/${spillId}`),
+      diagPromise
+    ]);
+    if (diagUrl && spillData) {
+      spillData.image_url = diagUrl;
+    }
+    return spillData;
+  },
+
+  async getDiagnosticPlot(spillId: string): Promise<string> {
+    return fetchDiagnosticPlotUrl(spillId);
   },
 
   async backtrackSpill(spillId: string): Promise<BacktrackResponse> {

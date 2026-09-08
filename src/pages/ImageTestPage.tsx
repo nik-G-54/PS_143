@@ -1,4 +1,4 @@
-import { Scan, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Header } from '../components/layout/Header';
 import {
@@ -37,28 +37,14 @@ export default function ImageTestPage() {
 
         <div className="flex-1 overflow-y-auto p-6 bg-background">
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* Page Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                  <Scan className="w-5 h-5" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold font-mono tracking-tight text-foreground uppercase">
-                    IMAGE ANALYSIS
-                  </h1>
-                  <p className="text-xs text-muted-foreground font-sans">
-                    Test a SAR image for oil-spill signatures • Upload a SAR satellite image to analyse detected spill regions
-                  </p>
-                </div>
-              </div>
-
-              {USE_MOCK && (
+            {/* Mock Mode Tag if Active */}
+            {USE_MOCK && (
+              <div className="flex justify-end">
                 <span className="px-3 py-1 rounded-full text-xs font-mono border border-amber-500/40 text-amber-500 bg-amber-500/10 font-semibold">
                   Mock Mode Active
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Error Banner */}
             {error && (

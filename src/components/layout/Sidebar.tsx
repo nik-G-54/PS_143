@@ -73,19 +73,19 @@ export const Sidebar: React.FC = () => {
       <nav className="flex-1 py-4 px-2 overflow-y-auto space-y-[4px]">
         <SidebarItem icon={<LayoutDashboard size={18} strokeWidth={1.5} />} label="Dashboard" to="/" isCollapsed={isCollapsed} />
         <SidebarItem icon={<Map size={18} strokeWidth={1.5} />} label="Maritime Map" to="/maritime-map" isCollapsed={isCollapsed} />
-        <SidebarItem icon={<AlertTriangle size={18} strokeWidth={1.5} />} label="Incidents" to="/incidents" isCollapsed={isCollapsed} />
-        <SidebarItem 
-          icon={<Video size={18} strokeWidth={1.5} />} 
-          label="3D Incident Reconstruction" 
-          to="/incident-reconstruction" 
-          isCollapsed={isCollapsed}
-        />
         <SidebarItem 
           icon={<Scan size={18} strokeWidth={1.5} />} 
           label="Test Your Image" 
           to="/test-image" 
           isCollapsed={isCollapsed}
         />
+        <SidebarItem 
+          icon={<Video size={18} strokeWidth={1.5} />} 
+          label="3D Incident Reconstruction" 
+          to="/incident-reconstruction" 
+          isCollapsed={isCollapsed}
+        />
+        <SidebarItem icon={<AlertTriangle size={18} strokeWidth={1.5} />} label="Incidents" to="/incidents" isCollapsed={isCollapsed} />
       </nav>
 
       {/* Footer Toggle Button */}

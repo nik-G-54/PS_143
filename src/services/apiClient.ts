@@ -1,4 +1,5 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const DEFAULT_API_BASE = 'https://naavss.duckdns.org';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE;
 
 export const apiClient = {
   async get<T>(path: string, signal?: AbortSignal): Promise<T> {

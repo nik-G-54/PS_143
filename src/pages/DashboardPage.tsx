@@ -4,13 +4,11 @@ import React from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Header } from '../components/layout/Header';
 import { DashboardProvider, useDashboardContext } from '../context/DashboardContext';
-import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { DashboardFilters } from '../components/dashboard/DashboardFilters';
 import { ActiveFilterChips } from '../components/dashboard/ActiveFilterChips';
 import { KpiGrid } from '../components/dashboard/KpiGrid';
 import { SpillDetectionTrend } from '../components/dashboard/SpillDetectionTrend';
 import { SpillSizeDistribution } from '../components/dashboard/SpillSizeDistribution';
-import { ConfidenceDistribution } from '../components/dashboard/ConfidenceDistribution';
 import { DetectionHeatmap } from '../components/dashboard/DetectionHeatmap';
 import { SpillTable } from '../components/dashboard/SpillTable';
 import { InvestigationDock } from '../components/investigation/InvestigationDock';
@@ -22,9 +20,6 @@ const DashboardContent: React.FC = () => {
 
   return (
     <div className="flex-1 overflow-y-auto pt-6 pb-20 px-4 sm:px-6 lg:px-8 space-y-6 bg-background">
-      {/* Page Header */}
-      <DashboardHeader />
-
       {isLoading ? (
         <LoadingState />
       ) : error ? (
@@ -46,9 +41,8 @@ const DashboardContent: React.FC = () => {
             <SpillSizeDistribution />
           </div>
 
-          {/* Analytics Grid 2: Confidence Distribution & Activity Heatmap */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ConfidenceDistribution />
+          {/* Analytics Section: Detection Activity Heatmap (Full Width) */}
+          <div className="w-full">
             <DetectionHeatmap />
           </div>
 

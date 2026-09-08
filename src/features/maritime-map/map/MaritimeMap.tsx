@@ -11,7 +11,7 @@ import { EnvironmentToggles } from '../controls/EnvironmentToggles';
 import { InvestigationPanel } from '../controls/InvestigationPanel';
 import { InvestigationTimeline } from '../controls/InvestigationTimeline';
 import { SpillDetailsSection } from '../drawers/SpillDetailsSection';
-import { SpillLegend } from '../controls/SpillLegend';
+// import { SpillLegend } from '../controls/SpillLegend';
 import { SpillStatusBadge } from '../controls/SpillStatusBadge';
 import { createDeckOverlay } from '../deck/DeckOverlay';
 import { buildMaritimeLayers } from '../deck/deckLayers';
@@ -144,11 +144,6 @@ export function MaritimeMap() {
       // Fullscreen
       map.addControl(new maplibregl.FullscreenControl(), 'bottom-right');
 
-      // Attribution
-      map.addControl(
-        new maplibregl.AttributionControl({ compact: true }),
-        'bottom-left'
-      );
 
       map.on('error', (e) => {
         console.error('MapLibre error:', e);
@@ -425,7 +420,7 @@ export function MaritimeMap() {
           />
         )}
 
-        <SpillLegend />
+        {/* <SpillLegend /> */}
 
         {(isLoading || isStyleLoading || isTilesLoading) && !error && (
           <div className="maritime-map-loading">

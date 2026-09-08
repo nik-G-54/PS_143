@@ -15,6 +15,26 @@ export interface SpillItemRaw {
   image_url?: string | null;
 }
 
+export interface SpillEvent {
+  spill_id: string;
+  detected_at: string;
+  centroid: {
+    lon: number;
+    lat: number;
+  };
+  area_km2: number;
+  confidence_score: number;
+  candidate_count: number;
+  image_url: string;
+}
+
+export interface SpillsResponse {
+  total: number;
+  page: number;
+  page_size: number;
+  items: SpillEvent[];
+}
+
 export interface SpillPageResponse {
   total: number;
   page: number;

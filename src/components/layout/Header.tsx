@@ -5,6 +5,10 @@ import {
   LayoutDashboard, 
   Map, 
   AlertTriangle, 
+  Sun, 
+  Moon, 
+  ShieldAlert,
+  Scan,
   Loader2,
   PanelLeftClose,
   PanelLeftOpen
@@ -42,6 +46,11 @@ export const Header: React.FC = () => {
         return {
           title: 'OCEAN SENTINEL',
           icon: <Activity size={18} className="text-primary" />
+        };
+      case '/test-image':
+        return {
+          title: 'TEST YOUR IMAGE',
+          icon: <Scan size={18} className="text-primary" />
         };
       default:
         return {

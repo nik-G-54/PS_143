@@ -8,7 +8,7 @@ import { useIncidentFilters } from '../hooks/useIncidentFilters';
 import { getAllSpills } from '../services/spillsApi';
 import { MOCK_SPILL_LIST } from '../mocks/spillsData';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Incident } from '../types/incident';
+import type { Incident } from '../types/incident';
 
 const IncidentsPage: React.FC = () => {
   const navigate = useNavigate();

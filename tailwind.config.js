@@ -66,6 +66,20 @@ export default {
             hover: '#b05730',
           }
         }
+      },
+      animation: {
+        'slide-in': 'slideIn 0.3s ease-out',
+        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
+      },
+      keyframes: {
+        slideIn: {
+          '0%': { transform: 'translateX(100%)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' },
+        },
+        pulseGlow: {
+          '0%, 100%': { boxShadow: '0 0 20px rgba(34, 211, 238, 0.3)' },
+          '50%': { boxShadow: '0 0 40px rgba(34, 211, 238, 0.6)' },
+        }
       }
     },
   },

@@ -97,7 +97,9 @@
 }
 
 @layer base {
-  html, body {
+
+  html,
+  body {
     margin: 0;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -107,11 +109,26 @@
 }
 
 @keyframes ping {
-  75%, 100% { transform: scale(2); opacity: 0; }
+
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
 }
+
 @keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.1); opacity: 1; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
 }
 
 /* Style MapLibre scale control */

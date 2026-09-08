@@ -33,7 +33,7 @@ export function SpillLegend() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="absolute bottom-11 left-4 z-10 w-[228px] overflow-hidden rounded-lg border border-border bg-card/90 shadow-md backdrop-blur-md">
+    <div className="absolute bottom-11 left-4 z-10 w-[228px] overflow-hidden rounded-lg border border-border bg-card shadow-md backdrop-blur-md">
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}

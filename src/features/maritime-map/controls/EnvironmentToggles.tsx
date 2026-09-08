@@ -39,7 +39,7 @@ export function EnvironmentToggles({
           className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider shadow-md backdrop-blur-md transition-colors ${
             showWind
               ? 'border-sky-500/60 bg-sky-500/90 text-white'
-              : 'border-border bg-card/92 text-muted-foreground hover:bg-accent hover:text-foreground'
+              : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
           }`}
         >
           <Wind size={13} />
@@ -59,7 +59,7 @@ export function EnvironmentToggles({
           className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider shadow-md backdrop-blur-md transition-colors ${
             showCurrent
               ? 'border-cyan-500/60 bg-cyan-500/90 text-white'
-              : 'border-border bg-card/92 text-muted-foreground hover:bg-accent hover:text-foreground'
+              : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
           }`}
         >
           <Waves size={13} />

@@ -213,7 +213,7 @@ export function InvestigationPanel({
   onRecenter,
   onScrollToDetails,
 }: InvestigationPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const sourceLon = trajectory?.source?.longitude ?? spill.estimatedSourceLongitude;
   const sourceLat = trajectory?.source?.latitude ?? spill.estimatedSourceLatitude;
   const sourceRadius = trajectory?.source?.radiusKm ?? spill.estimatedSourceRadiusKm;
@@ -296,6 +296,7 @@ export function InvestigationPanel({
         <CollapsibleSection
           title="Drift Diagnostic"
           icon={<Activity size={12} className="text-primary shrink-0" />}
+          defaultOpen={true}
         >
           <DiagnosticPlotViewer
             spillId={spill.spillId}

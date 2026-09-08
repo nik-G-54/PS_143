@@ -402,6 +402,7 @@ export function MaritimeMap() {
 
         {selectedSpill && (
           <InvestigationPanel
+            key={selectedSpill.spillId}
             spill={selectedSpill}
             focusMode={focusMode}
             trajectory={trajectory}

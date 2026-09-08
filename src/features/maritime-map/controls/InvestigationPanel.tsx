@@ -259,7 +259,7 @@ export function InvestigationPanel({
             onClick={onRecenter}
             title="Frame this spill and its drift path"
             className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
+          > 
             <Crosshair size={13} />
           </button>
         </div>

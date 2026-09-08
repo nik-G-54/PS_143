@@ -30,6 +30,7 @@ import { MapboxOverlay } from '@deck.gl/mapbox';
 maplibregl.setWorkerUrl(workerUrl);
 
 export function MaritimeMap() {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const deckOverlayRef = useRef<MapboxOverlay | null>(null);
@@ -100,6 +101,8 @@ export function MaritimeMap() {
     if (mapRef.current) return;
     if (!mapContainerRef.current) return;
 
+    let onFullscreenChange: (() => void) | null = null;
+
     try {
       const initialStyle = MAP_CONFIG.styles[basemapMode][theme];
 
@@ -141,9 +144,24 @@ export function MaritimeMap() {
         'bottom-right'
       );
 
-      // Fullscreen
-      map.addControl(new maplibregl.FullscreenControl(), 'bottom-right');
+      // Fullscreen - target the wrapper element containing the map and all overlays
+      map.addControl(
+        new maplibregl.FullscreenControl({
+          container: wrapperRef.current ?? undefined,
+        }),
+        'bottom-right'
+      );
 
+      onFullscreenChange = () => {
+        setTimeout(() => {
+          if (mapRef.current) {
+            mapRef.current.resize();
+          }
+        }, 60);
+      };
+
+      document.addEventListener('fullscreenchange', onFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
       map.on('error', (e) => {
         console.error('MapLibre error:', e);
@@ -162,6 +180,10 @@ export function MaritimeMap() {
     }
 
     return () => {
+      if (onFullscreenChange) {
+        document.removeEventListener('fullscreenchange', onFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+      }
       if (deckOverlayRef.current && mapRef.current) {
         mapRef.current.removeControl(deckOverlayRef.current as unknown as maplibregl.IControl);
         deckOverlayRef.current.finalize();
@@ -367,7 +389,7 @@ export function MaritimeMap() {
 
   return (
     <div className="maritime-map-shell flex h-full min-h-0 w-full flex-col">
-      <div className="maritime-map-wrapper relative min-h-[70vh] w-full flex-1">
+      <div ref={wrapperRef} className="maritime-map-wrapper relative min-h-[70vh] w-full flex-1">
         <BasemapSelector currentMode={basemapMode} onSelectMode={setBasemapMode} />
 
         <SpillStatusBadge

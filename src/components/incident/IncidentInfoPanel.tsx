@@ -1,75 +1,160 @@
 import React from 'react';
-import { mockIncident } from '../../data/mockIncident';
-import { AlertCircle, Ship } from 'lucide-react';
+import { AlertCircle, ChevronRight, MapPin, Clock } from 'lucide-react';
+import { useIncident } from '../../context/IncidentContext';
+import { useInteraction } from '../../pages/IncidentReconstructionPage';
+
+const formatDetected = (iso?: string) => {
+  if (!iso) return '---';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '---';
+  return `${d.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
+};
 
 export const IncidentInfoPanel: React.FC = () => {
-  const { id, status, detectedAt, location, confidence, vessel } = mockIncident;
+  const { spillId, spillDetails, backtrackData, loading, error } = useIncident();
+  const { setDrawerContent } = useInteraction();
+
+  if (loading) {
+    return (
+      <div className="bg-card/50 border border-border rounded-lg p-3 shadow-sm flex flex-col items-center justify-center">
+        <span className="animate-pulse text-muted-foreground font-sans text-xs">Loading incident...</span>
+      </div>
+    );
+  }
+
+  if (error || !spillDetails) {
+    return (
+      <div className="bg-card/50 border border-destructive/30 rounded-lg p-3 shadow-sm flex flex-col items-center justify-center gap-2">
+        <span className="text-destructive font-sans font-semibold text-xs">Incident Data Unavailable</span>
+      </div>
+    );
+  }
+
+  const area = spillDetails?.area_km2;
+  const rawConf = spillDetails?.confidence_score ?? 0;
+  const confidence = rawConf <= 1 ? rawConf * 100 : rawConf;
+  const lat =
+    backtrackData?.backtrack.observation.latitude ??
+    spillDetails.centroid?.latitude ??
+    spillDetails.centroid?.lat;
+  const lng =
+    backtrackData?.backtrack.observation.longitude ??
+    spillDetails.centroid?.longitude ??
+    spillDetails.centroid?.lon;
+  const detectedAt =
+    backtrackData?.backtrack.observation.timestamp ?? spillDetails.detected_at;
+  const priority = confidence >= 85 ? 'HIGH' : confidence >= 70 ? 'MEDIUM' : 'LOW';
+
+  const handleDetails = () => {
+    setDrawerContent(
+      <div className="space-y-4 text-sm">
+        <p className="text-muted-foreground">ID: {spillId}</p>
+        <p className="text-muted-foreground">Detected: {formatDetected(detectedAt)}</p>
+        <p className="text-muted-foreground">
+          Location:{' '}
+          {lat != null && lng != null
+            ? `${Number(lat).toFixed(4)}°, ${Number(lng).toFixed(4)}°`
+            : '—'}
+        </p>
+        <p className="text-muted-foreground">
+          Area: {typeof area === 'number' ? `${area.toFixed(2)} km²` : '—'}
+        </p>
+        <p className="text-muted-foreground">Confidence: {confidence.toFixed(1)}%</p>
+        <p className="text-muted-foreground">Priority: {priority}</p>
+      </div>,
+      'Incident Details'
+    );
+  };
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col shadow-sm">
-      <div className="bg-muted/40 px-4 py-3 border-b border-border flex items-center gap-2">
-        <AlertCircle size={16} className="text-primary" />
-        <h3 className="text-sm font-semibold text-foreground tracking-wider font-sans">INCIDENT DETAILS</h3>
+      <div className="bg-muted/40 px-3 py-2 border-b border-border flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <AlertCircle size={14} className="text-red-500" />
+          <h3 className="text-xs font-semibold text-foreground tracking-wider font-sans">
+            INCIDENT OVERVIEW
+          </h3>
+        </div>
+        <button
+          onClick={handleDetails}
+          className="flex items-center text-[10px] text-primary hover:text-primary/80 transition-colors uppercase tracking-wider font-bold"
+        >
+          Details <ChevronRight size={12} />
+        </button>
       </div>
-      
-      <div className="p-4 space-y-4 text-sm flex-1 overflow-y-auto">
-        <div className="flex justify-between border-b border-border pb-2">
-          <span className="text-muted-foreground font-medium text-xs tracking-wider font-sans">INCIDENT</span>
-          <span className="text-primary font-mono font-bold">{id}</span>
-        </div>
-        
-        <div className="flex justify-between border-b border-border pb-2">
-          <span className="text-muted-foreground font-medium text-xs tracking-wider font-sans">STATUS</span>
-          <span className="text-destructive font-bold text-xs tracking-wider font-sans">{status}</span>
-        </div>
-        
-        <div className="flex justify-between border-b border-border pb-2">
-          <span className="text-muted-foreground font-medium text-xs tracking-wider font-sans">DETECTED</span>
-          <div className="text-right">
-            <div className="text-foreground font-mono">{detectedAt.split(' ')[0]} {detectedAt.split(' ')[1]} {detectedAt.split(' ')[2]}</div>
-            <div className="text-muted-foreground font-mono text-xs">{detectedAt.split(' ')[3]} {detectedAt.split(' ')[4]}</div>
-          </div>
-        </div>
-        
-        <div className="flex justify-between border-b border-border pb-2">
-          <span className="text-muted-foreground font-medium text-xs tracking-wider font-sans">LOCATION</span>
-          <span className="text-foreground font-sans">{location.name}</span>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-2 border-b border-border pb-2">
+
+      <div className="p-3 flex flex-col gap-2.5">
+        <div className="grid grid-cols-2 gap-2">
           <div>
-            <span className="block text-muted-foreground text-[10px] tracking-wider mb-1 font-sans">LATITUDE</span>
-            <span className="text-foreground font-mono text-xs bg-muted/50 px-2 py-1 rounded">{location.lat}° N</span>
+            <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5 font-sans">
+              ID
+            </span>
+            <span className="text-foreground font-mono text-xs font-bold truncate block">
+              {spillId}
+            </span>
           </div>
           <div>
-            <span className="block text-muted-foreground text-[10px] tracking-wider mb-1 font-sans">LONGITUDE</span>
-            <span className="text-foreground font-mono text-xs bg-muted/50 px-2 py-1 rounded">{location.lng}° E</span>
+            <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5 font-sans">
+              PRIORITY
+            </span>
+            <span
+              className={`font-mono text-xs font-bold ${
+                priority === 'HIGH'
+                  ? 'text-red-400'
+                  : priority === 'MEDIUM'
+                    ? 'text-amber-400'
+                    : 'text-emerald-400'
+              }`}
+            >
+              {priority}
+            </span>
           </div>
-        </div>
-        
-        <div className="flex justify-between border-b border-border pb-2">
-          <span className="text-muted-foreground font-medium text-xs tracking-wider font-sans">CONFIDENCE</span>
-          <span className="text-primary font-mono font-bold">{confidence}%</span>
         </div>
 
-        <div className="mt-4 pt-2">
-          <div className="flex items-center gap-2 mb-3">
-            <Ship size={14} className="text-primary" />
-            <span className="text-muted-foreground font-semibold text-xs tracking-wider font-sans">SUSPECTED VESSEL</span>
+        <div className="flex items-start gap-2 text-xs">
+          <Clock size={12} className="text-muted-foreground mt-0.5 shrink-0" />
+          <div>
+            <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5">
+              DETECTED
+            </span>
+            <span className="font-mono text-[11px] text-foreground">{formatDetected(detectedAt)}</span>
           </div>
-          <div className="bg-muted/30 p-3 rounded border border-border space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground text-xs font-sans">NAME</span>
-              <span className="text-foreground font-medium text-xs font-sans">{vessel.name}</span>
+        </div>
+
+        {lat != null && lng != null && (
+          <div className="flex items-start gap-2 text-xs">
+            <MapPin size={12} className="text-muted-foreground mt-0.5 shrink-0" />
+            <div>
+              <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5">
+                LOCATION
+              </span>
+              <span className="font-mono text-[11px] text-foreground">
+                {Number(lat).toFixed(3)}° {Number(lat) >= 0 ? 'N' : 'S'},{' '}
+                {Number(lng).toFixed(3)}° {Number(lng) >= 0 ? 'E' : 'W'}
+              </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground text-xs font-sans">TYPE</span>
-              <span className="text-foreground text-xs font-sans">{vessel.type}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground text-xs font-sans">IMO</span>
-              <span className="text-primary font-mono text-xs">{vessel.imo}</span>
-            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/60">
+          <div>
+            <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5 font-sans">
+              SPILL AREA
+            </span>
+            <span className="text-orange-300 font-mono text-xs">
+              {typeof area === 'number' ? `${area.toFixed(2)} km²` : '---'}
+            </span>
+          </div>
+          <div>
+            <span className="block text-muted-foreground text-[9px] tracking-wider mb-0.5 font-sans">
+              CONFIDENCE
+            </span>
+            <span className="text-emerald-400 font-mono text-xs">{confidence.toFixed(0)}%</span>
           </div>
         </div>
       </div>

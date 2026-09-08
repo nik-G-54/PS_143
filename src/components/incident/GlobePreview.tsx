@@ -9,7 +9,6 @@ export const GlobePreview: React.FC = () => {
           <Globe size={14} className="text-primary" />
           GLOBE
         </h3>
-        <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded uppercase tracking-widest font-mono">Phase 9</span>
       </div>
       
       <div className="flex-1 p-4 flex items-center justify-center relative overflow-hidden bg-background">
@@ -18,7 +17,7 @@ export const GlobePreview: React.FC = () => {
           <Globe size={32} className="text-primary/50" />
         </div>
         <div className="absolute bottom-4 text-center z-10 w-full">
-          <p className="text-muted-foreground text-[10px] uppercase tracking-widest font-mono">Globe integration pending</p>
+          <p className="text-muted-foreground text-[10px] uppercase tracking-widest font-mono">Globe integration pending backend support</p>
         </div>
       </div>
     </div>

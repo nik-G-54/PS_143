@@ -8,14 +8,20 @@ import {
   Sun, 
   Moon, 
   ShieldAlert,
-  Scan
+  Scan,
+  Loader2,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
-import { mockIncident } from '../../data/mockIncident';
+import { useIncidentOptional } from '../../context/IncidentContext';
+import { useSidebar } from '../../context/SidebarContext';
+import { ThemeToggle } from './ThemeToggle';
+import { IncidentSelector } from '../incident/IncidentSelector';
 
 export const Header: React.FC = () => {
   const location = useLocation();
-  const { theme, toggleTheme } = useTheme();
+  const { isCollapsed, toggleSidebar } = useSidebar();
+  const incidentContext = useIncidentOptional();
 
   // Determine page title and icon based on current path
   const getPageDetails = () => {
@@ -38,7 +44,7 @@ export const Header: React.FC = () => {
         };
       case '/incident-reconstruction':
         return {
-          title: '3D INCIDENT RECONSTRUCTION',
+          title: 'OCEAN SENTINEL',
           icon: <Activity size={18} className="text-primary" />
         };
       case '/test-image':
@@ -56,10 +62,12 @@ export const Header: React.FC = () => {
 
   const { title, icon } = getPageDetails();
 
+  const incidentId = incidentContext?.spillId ?? incidentContext?.spillDetails?.spill_id ?? 'UNKNOWN';
+
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 transition-colors duration-200 shrink-0">
       {/* Left: Route Title */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <h2 className="font-semibold text-foreground flex items-center gap-2 text-sm tracking-wide uppercase font-sans">
           {icon}
           {title}
@@ -69,25 +77,51 @@ export const Header: React.FC = () => {
             <div className="h-4 w-px bg-border"></div>
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground font-sans">Incident:</span>
-              <span className="font-mono text-primary font-semibold">{mockIncident.id}</span>
+              <IncidentSelector currentSpillId={incidentId} />
             </div>
-            <div className="flex items-center gap-2 px-3 py-0.5 bg-destructive/10 border border-destructive/20 rounded-full text-destructive text-xs font-semibold font-sans">
-              <ShieldAlert size={12} />
-              <span>{mockIncident.status}</span>
+            
+            {/* Dataset Provenance Status */}
+            <div className={`flex items-center gap-2 px-3 py-0.5 rounded-full border text-xs font-semibold font-sans ${
+              incidentContext?.loading 
+                ? 'bg-muted text-muted-foreground border-border'
+                : (incidentContext?.dataSources?.vessels === 'Simulated Demo' || incidentContext?.dataSources?.trajectory === 'Simulated Demo')
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+                  : 'bg-primary/10 border-primary/20 text-primary'
+            }`}>
+              {incidentContext?.loading ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <div className={`w-2 h-2 rounded-full ${
+                  (incidentContext?.dataSources?.vessels === 'Simulated Demo' || incidentContext?.dataSources?.trajectory === 'Simulated Demo')
+                    ? 'bg-amber-500'
+                    : 'bg-primary'
+                }`} />
+              )}
+              <span>
+                {incidentContext?.loading 
+                  ? 'LOADING...' 
+                  : ((incidentContext?.dataSources?.vessels === 'Simulated Demo' || incidentContext?.dataSources?.trajectory === 'Simulated Demo') 
+                      ? 'DEMO DATA' 
+                      : 'LIVE DATA')}
+              </span>
             </div>
           </>
         )}
       </div>
       
-      {/* Right: Theme Toggle */}
+      {/* Right: Sidebar Toggle & Pill Theme Toggle */}
       <div className="flex items-center gap-3">
         <button
-          onClick={toggleTheme}
-          className="h-10 w-10 flex items-center justify-center rounded-full border border-border bg-card hover:bg-accent text-foreground transition-all duration-200 shadow-sm"
-          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          type="button"
+          onClick={toggleSidebar}
+          className="h-10 w-10 flex items-center justify-center rounded-full border border-border bg-card hover:bg-accent text-foreground transition-all duration-200 shadow-sm cursor-pointer"
+          title={isCollapsed ? "Open Sidebar (Ctrl+B)" : "Close Sidebar (Ctrl+B)"}
+          aria-label={isCollapsed ? "Open Sidebar" : "Close Sidebar"}
         >
-          {theme === 'dark' ? <Sun size={18} strokeWidth={1.5} /> : <Moon size={18} strokeWidth={1.5} />}
+          {isCollapsed ? <PanelLeftOpen size={18} strokeWidth={1.5} /> : <PanelLeftClose size={18} strokeWidth={1.5} />}
         </button>
+
+        <ThemeToggle />
       </div>
     </header>
   );

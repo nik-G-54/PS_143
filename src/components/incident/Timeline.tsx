@@ -1,10 +1,18 @@
-import React from 'react';
-import { mockTimeline } from '../../data/mockIncident';
+import React, { useMemo } from 'react';
+
 import { Play, Pause } from 'lucide-react';
 import { useSimulation } from '../../context/SimulationContext';
+import { useIncident } from '../../context/IncidentContext';
+
+// Helper to format ISO strings to short HH:mm dates
+const formatTime = (iso: string) => {
+  const d = new Date(iso);
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
+};
 
 export const Timeline: React.FC = () => {
-  const { isPlaying, togglePlay, progress, setProgress } = useSimulation();
+  const { isPlaying, togglePlay, progress, setProgress, direction, setDirection } = useSimulation();
+  const { backtrackData } = useIncident();
 
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const bounds = e.currentTarget.getBoundingClientRect();
@@ -13,18 +21,56 @@ export const Timeline: React.FC = () => {
     setProgress(newProgress);
   };
 
+  const timelineEvents = useMemo(() => {
+    if (backtrackData) {
+      const releaseTime = formatTime(backtrackData.backtrack.estimated_release_time);
+      const obsTime = formatTime(backtrackData.backtrack.observation.timestamp);
+
+      if (direction === 'FORWARD') {
+        return [
+          { label: 'EST. RELEASE', time: releaseTime },
+          { label: 'OBSERVATION', time: obsTime, isIncident: true }
+        ];
+      } else {
+        return [
+          { label: 'OBSERVATION', time: obsTime, isIncident: true },
+          { label: 'EST. RELEASE', time: releaseTime }
+        ];
+      }
+    }
+    return [
+      { label: 'START', time: '00:00' },
+      { label: 'END', time: '23:59' }
+    ];
+  }, [backtrackData, direction]);
+
   return (
-    <div className="bg-card border-t border-border h-24 flex flex-col justify-center px-6 relative z-10">
-      <div className="flex items-center gap-6">
+    <div className="bg-card/95 border-t border-border h-14 flex flex-col justify-center px-4 relative z-10 shrink-0">
+      <div className="flex items-center gap-3 w-full max-w-7xl mx-auto">
+        
+        {/* Backtrack Button */}
+        <button
+          onClick={() => setDirection('BACKTRACK')}
+          className={`px-4 py-1.5 text-xs font-semibold tracking-wider font-sans rounded transition-colors border ${
+            direction === 'BACKTRACK' 
+              ? 'bg-primary/20 text-primary border-primary/50 shadow-sm' 
+              : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground'
+          }`}
+        >
+          BACKTRACK
+        </button>
+
+        {/* Play/Pause */}
         <button 
           onClick={togglePlay}
           className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground shrink-0 transition-colors shadow-md"
         >
-          {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-1" />}
+          {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
         </button>
         
+        {/* Scrubber Line */}
         <div 
-          className="flex-1 relative flex items-center h-12 cursor-pointer group/timeline"
+          className="flex-1 relative flex items-center h-10 cursor-pointer group/timeline mx-4"
           onClick={handleTimelineClick}
         >
           {/* Main Line */}
@@ -44,8 +90,8 @@ export const Timeline: React.FC = () => {
 
           {/* Timeline Nodes */}
           <div className="absolute left-0 right-0 flex justify-between pointer-events-none">
-            {mockTimeline.map((event, idx) => {
-              const nodeProgress = idx / (mockTimeline.length - 1);
+            {timelineEvents.map((event, idx) => {
+              const nodeProgress = idx / (timelineEvents.length - 1);
               const isPast = progress >= nodeProgress;
               const isCurrent = Math.abs(progress - nodeProgress) < 0.05;
               
@@ -57,9 +103,11 @@ export const Timeline: React.FC = () => {
                     'bg-card border-border'
                   }`} />
                   
-                  <div className="absolute top-5 flex flex-col items-center w-24">
-                    <span className={`text-[10px] font-semibold tracking-wider font-sans ${
-                      event.isIncident ? 'text-destructive' : (isCurrent ? 'text-primary' : 'text-muted-foreground')
+                  <div className={`absolute -top-6 flex flex-col items-center whitespace-nowrap ${
+                    idx === 0 ? 'items-start -left-1' : idx === timelineEvents.length - 1 ? 'items-end -right-1' : 'items-center'
+                  }`}>
+                    <span className={`text-[9px] font-semibold tracking-wider font-sans ${
+                      event.isIncident ? 'text-red-500' : (isCurrent ? 'text-primary' : 'text-muted-foreground')
                     }`}>
                       {event.label}
                     </span>
@@ -72,6 +120,19 @@ export const Timeline: React.FC = () => {
             })}
           </div>
         </div>
+
+        {/* Forward Button */}
+        <button
+          onClick={() => setDirection('FORWARD')}
+          className={`px-4 py-1.5 text-xs font-semibold tracking-wider font-sans rounded transition-colors border ${
+            direction === 'FORWARD' 
+              ? 'bg-primary/20 text-primary border-primary/50 shadow-sm' 
+              : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground'
+          }`}
+        >
+          FORWARD
+        </button>
+
       </div>
     </div>
   );

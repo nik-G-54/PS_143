@@ -351,8 +351,8 @@ html.dark .view-controls button.active {
 
 /* 3D Viewport - Canvas remains dark oceanic for contrast */
 .viewport {
-  height: clamp(440px, 58vh, 680px);
-  min-height: 440px;
+  height: clamp(400px, 50vh, 560px);
+  min-height: 380px;
   position: relative;
   overflow: hidden;
   touch-action: none;
@@ -557,12 +557,13 @@ html.dark .view-controls button.active {
 
 /* Timeline */
 .timeline {
-  margin-top: 16px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  margin-top: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
   background: var(--panel);
-  box-shadow: var(--shadow-card);
-  padding: 18px 20px;
+  box-shadow: none;
+  padding: 16px 20px 18px;
 }
 
 .timeline-top {
@@ -1026,16 +1027,64 @@ dialog .dialog-actions {
   line-height: 1.7;
 }
 
-.scene-card:fullscreen .viewport {
-  height: calc(100vh - 110px);
-}
-
-.scene-card:fullscreen {
+.scene-card:fullscreen,
+.scene-card:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0;
   border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  overflow: hidden;
 }
 
-.scene-card:fullscreen .scene-label {
-  font-size: 14px;
+.scene-card:fullscreen .scene-toolbar,
+.scene-card:-webkit-full-screen .scene-toolbar {
+  flex-shrink: 0;
+  padding: 10px 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.scene-card:fullscreen .viewport,
+.scene-card:-webkit-full-screen .viewport {
+  flex: 1 1 0;
+  min-height: 200px;
+  height: auto !important;
+  width: 100%;
+  position: relative;
+}
+
+.scene-card:fullscreen .legend,
+.scene-card:-webkit-full-screen .legend {
+  flex-shrink: 0;
+  padding: 8px 24px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.scene-card:fullscreen .timeline,
+.scene-card:-webkit-full-screen .timeline {
+  flex-shrink: 0;
+  margin-top: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--panel);
+  padding: 12px 24px 16px;
+  z-index: 10;
+}
+
+.scene-card:fullscreen .scene-label,
+.scene-card:-webkit-full-screen .scene-label {
+  font-size: 13px;
 }
 
 @media (min-width: 1650px) {
@@ -1131,7 +1180,6 @@ dialog .dialog-actions {
   .footer { font-size: 10px; }
   .scene-label.oil { display: none; }
   dialog { padding: 20px; }
-  .scene-card:fullscreen .viewport { height: calc(100vh - 160px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

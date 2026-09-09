@@ -372,8 +372,8 @@ html.dark .view-controls button.active {
 
 /* 3D Viewport - Canvas remains dark oceanic for contrast */
 .viewport {
-  height: clamp(440px, 58vh, 680px);
-  min-height: 440px;
+  height: clamp(400px, 50vh, 560px);
+  min-height: 380px;
   position: relative;
   overflow: hidden;
   touch-action: none;
@@ -578,12 +578,13 @@ html.dark .view-controls button.active {
 
 /* Timeline */
 .timeline {
-  margin-top: 16px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  margin-top: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
   background: var(--panel);
-  box-shadow: var(--shadow-card);
-  padding: 18px 20px;
+  box-shadow: none;
+  padding: 16px 20px 18px;
 }
 
 .timeline-top {
@@ -1047,16 +1048,64 @@ dialog .dialog-actions {
   line-height: 1.7;
 }
 
-.scene-card:fullscreen .viewport {
-  height: calc(100vh - 110px);
-}
-
-.scene-card:fullscreen {
+.scene-card:fullscreen,
+.scene-card:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0;
   border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  overflow: hidden;
 }
 
-.scene-card:fullscreen .scene-label {
-  font-size: 14px;
+.scene-card:fullscreen .scene-toolbar,
+.scene-card:-webkit-full-screen .scene-toolbar {
+  flex-shrink: 0;
+  padding: 10px 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.scene-card:fullscreen .viewport,
+.scene-card:-webkit-full-screen .viewport {
+  flex: 1 1 0;
+  min-height: 200px;
+  height: auto !important;
+  width: 100%;
+  position: relative;
+}
+
+.scene-card:fullscreen .legend,
+.scene-card:-webkit-full-screen .legend {
+  flex-shrink: 0;
+  padding: 8px 24px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.scene-card:fullscreen .timeline,
+.scene-card:-webkit-full-screen .timeline {
+  flex-shrink: 0;
+  margin-top: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--panel);
+  padding: 12px 24px 16px;
+  z-index: 10;
+}
+
+.scene-card:fullscreen .scene-label,
+.scene-card:-webkit-full-screen .scene-label {
+  font-size: 13px;
 }
 
 @media (min-width: 1650px) {
@@ -1152,7 +1201,6 @@ dialog .dialog-actions {
   .footer { font-size: 10px; }
   .scene-label.oil { display: none; }
   dialog { padding: 20px; }
-  .scene-card:fullscreen .viewport { height: calc(100vh - 160px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1162,8 +1210,7 @@ dialog .dialog-actions {
 <header class="topbar"><div class="brand"><svg class="brandmark" viewBox="0 0 40 44" fill="none"><path d="M20 2 37 12v20L20 42 3 32V12Z" stroke="currentColor" stroke-width="1.5"/><path d="m20 7 12 22H8Z" fill="currentColor" opacity=".9"/><path d="M8 33c6-6 13 6 24-1" stroke="currentColor" stroke-width="2"/><path d="M20 17v9" stroke="#09232c" stroke-width="2"/></svg><div>OCEAN SENTINEL<div class="subbrand">MARITIME INTELLIGENCE</div></div></div><div class="header-right"><span class="session muted mono" style="font-size:12px">WORKSPACE / INVESTIGATIONS</span><span class="green" style="font-size:12px"><i class="dot"></i> Local session</span><span class="badge amber">SYNTHETIC DEMO</span></div></header>
 <div class="layout"><nav class="rail" aria-label="Workspace tools"><button class="active" id="rail-scene" title="Reset investigation view" aria-label="Reset investigation view"><svg><use href="#ico-scene"/></svg></button><span class="rail-label">SCENE</span><button id="rail-evidence" title="Inspect vessel evidence" aria-label="Inspect vessel evidence"><svg><use href="#ico-ship"/></svg></button><button id="rail-layers" title="Scene layers" aria-label="Scene layers"><svg><use href="#ico-layers"/></svg></button><button id="rail-data" title="Data and methodology" aria-label="Data and methodology"><svg><use href="#ico-file"/></svg></button><button class="rail-bottom" id="help" title="Controls and help" aria-label="Controls and help"><svg><use href="#ico-help"/></svg></button></nav>
 <main><div class="heading"><div><div class="eyebrow" id="investigation-eyebrow">Investigation / spill_05b4e0</div><h1>Reconstruct the incident.</h1><p>Follow the spill. Trace the source. Examine the connection.</p></div><div class="actions"><button id="data-button"><svg><use href="#ico-file"/></svg> Data & methodology</button><button id="export"><svg><use href="#ico-export"/></svg> Export session</button></div></div>
-<div class="workspace"><div class="main-column"><section class="scene-card" id="scene-card" aria-label="Interactive 3D incident reconstruction"><div class="scene-toolbar"><div class="scene-title"><i class="live-dot"></i> 3D RECONSTRUCTION</div><div class="view-controls" aria-label="Camera views"><button data-view="perspective" class="active" aria-pressed="true">Perspective</button><button data-view="top" aria-pressed="false">Top</button><button data-view="low" aria-pressed="false">Low</button><button id="fullscreen" title="Fullscreen scene" aria-label="Fullscreen scene"><svg style="width:15px"><use href="#ico-full"/></svg></button></div></div><div class="viewport" id="viewport"><canvas id="ocean" tabindex="0" aria-label="3D ocean investigation. Drag to orbit, Shift drag to pan, scroll to zoom. Arrow keys rotate, plus and minus zoom. Timeline below controls reconstruction time."></canvas><div class="scene-meta"><div class="kicker" id="scene-kicker">SOUTH OF CRETE · spill_05b4e0</div><strong id="scene-phase">Observation reached</strong><small id="scene-time">22 Jan 2019 · 15:56 UTC</small></div><div class="compass"><span>N</span><svg viewBox="0 0 50 50" id="compass-arrow"><circle cx="25" cy="25" r="20" stroke="#45616e" fill="none" stroke-dasharray="1 5"/><path d="m25 6 6 20-6-3-6 3Z" fill="#b0d2de"/><path d="m25 44 6-18-6 3-6-3Z" fill="#325465"/></svg></div><div class="scene-label source" id="source-label"><b>◇ SUSPECTED SOURCE</b><span>Model estimate · 21 Jan 07:44 UTC</span></div><div class="scene-label observation" id="obs-label"><b>● OBSERVED SPILL</b><span>22 Jan · 15:56 UTC</span></div><div class="scene-label ship" id="ship-label"><b>SYNTH-Y2019-000097</b><span>Candidate vessel · AIS position</span></div><div class="scene-label oil hidden" id="oil-label"><b>RECONSTRUCTED POSITION</b><span>Interpolated · not observed</span></div><div class="scene-instructions">Drag to orbit · Scroll to zoom · Shift + drag to pan</div><div class="zoom"><button id="zoom-in" aria-label="Zoom in" title="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out" title="Zoom out">−</button><button id="reset-view" aria-label="Reset camera" title="Reset camera"><svg style="width:15px"><use href="#ico-reset"/></svg></button></div></div><div class="legend"><span><i class="swatch"></i> Vessel AIS</span><span><i class="swatch oil"></i> Oil trajectory</span><span><i class="swatch source"></i> Source estimate</span><span><i class="swatch obs"></i> Observation</span><span><i class="swatch dashed"></i> Full-path context</span></div></section>
-<section class="timeline" aria-label="Reconstruction timeline"><div class="timeline-top"><div class="time-current"><div class="eyebrow">RECONSTRUCTION TIME</div><strong class="mono" id="current-time">22 JAN · 15:56 UTC</strong></div><div class="transport"><button id="restart" title="Return to start" aria-label="Return to start">|◀</button><button id="play" class="play" title="Play reconstruction" aria-label="Play reconstruction">▶</button><select id="speed" aria-label="Playback speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="0.5">0.5×</option></select></div></div><div class="track-wrap"><input id="timeline" type="range" min="0" max="1000" value="1000" step="1" aria-label="Incident reconstruction time"><div class="ticks" id="timeline-ticks"><span>21 JAN · 05:00</span><span>16:30</span><span>22 JAN · 04:00</span><span>15:56</span></div></div><div class="event-shortcuts" id="timeline-shortcuts"><button data-event="0" id="shortcut-approach"><b>01 / Vessel approaches</b>21 Jan · 05:00</button><button data-event="source" id="shortcut-release"><b style="color:var(--green)">02 / Possible release</b>21 Jan · 07:44</button><button data-event="1" id="shortcut-observed"><b style="color:var(--red)">03 / Spill observed</b>22 Jan · 15:56</button></div></section>
+<div class="workspace"><div class="main-column"><section class="scene-card" id="scene-card" aria-label="Interactive 3D incident reconstruction"><div class="scene-toolbar"><div class="scene-title"><i class="live-dot"></i> 3D RECONSTRUCTION</div><div class="view-controls" aria-label="Camera views"><button data-view="perspective" class="active" aria-pressed="true">Perspective</button><button data-view="top" aria-pressed="false">Top</button><button data-view="low" aria-pressed="false">Low</button><button id="fullscreen" title="Fullscreen scene" aria-label="Fullscreen scene"><svg style="width:15px"><use href="#ico-full"/></svg></button></div></div><div class="viewport" id="viewport"><canvas id="ocean" tabindex="0" aria-label="3D ocean investigation. Drag to orbit, Shift drag to pan, scroll to zoom. Arrow keys rotate, plus and minus zoom. Timeline below controls reconstruction time."></canvas><div class="scene-meta"><div class="kicker" id="scene-kicker">SOUTH OF CRETE · spill_05b4e0</div><strong id="scene-phase">Observation reached</strong><small id="scene-time">22 Jan 2019 · 15:56 UTC</small></div><div class="compass"><span>N</span><svg viewBox="0 0 50 50" id="compass-arrow"><circle cx="25" cy="25" r="20" stroke="#45616e" fill="none" stroke-dasharray="1 5"/><path d="m25 6 6 20-6-3-6 3Z" fill="#b0d2de"/><path d="m25 44 6-18-6 3-6-3Z" fill="#325465"/></svg></div><div class="scene-label source" id="source-label"><b>◇ SUSPECTED SOURCE</b><span>Model estimate · 21 Jan 07:44 UTC</span></div><div class="scene-label observation" id="obs-label"><b>● OBSERVED SPILL</b><span>22 Jan · 15:56 UTC</span></div><div class="scene-label ship" id="ship-label"><b>SYNTH-Y2019-000097</b><span>Candidate vessel · AIS position</span></div><div class="scene-label oil hidden" id="oil-label"><b>RECONSTRUCTED POSITION</b><span>Interpolated · not observed</span></div><div class="scene-instructions">Drag to orbit · Scroll to zoom · Shift + drag to pan</div><div class="zoom"><button id="zoom-in" aria-label="Zoom in" title="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out" title="Zoom out">−</button><button id="reset-view" aria-label="Reset camera" title="Reset camera"><svg style="width:15px"><use href="#ico-reset"/></svg></button></div></div><div class="legend"><span><i class="swatch"></i> Vessel AIS</span><span><i class="swatch oil"></i> Oil trajectory</span><span><i class="swatch source"></i> Source estimate</span><span><i class="swatch obs"></i> Observation</span><span><i class="swatch dashed"></i> Full-path context</span></div><section class="timeline" aria-label="Reconstruction timeline"><div class="timeline-top"><div class="time-current"><div class="eyebrow">RECONSTRUCTION TIME</div><strong class="mono" id="current-time">22 JAN · 15:56 UTC</strong></div><div class="transport"><button id="restart" title="Return to start" aria-label="Return to start">|◀</button><button id="play" class="play" title="Play reconstruction" aria-label="Play reconstruction">▶</button><select id="speed" aria-label="Playback speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="0.5">0.5×</option></select></div></div><div class="track-wrap"><input id="timeline" type="range" min="0" max="1000" value="1000" step="1" aria-label="Incident reconstruction time"><div class="ticks" id="timeline-ticks"><span>21 JAN · 05:00</span><span>16:30</span><span>22 JAN · 04:00</span><span>15:56</span></div></div><div class="event-shortcuts" id="timeline-shortcuts"><button data-event="0" id="shortcut-approach"><b>01 / Vessel approaches</b>21 Jan · 05:00</button><button data-event="source" id="shortcut-release"><b style="color:var(--green)">02 / Possible release</b>21 Jan · 07:44</button><button data-event="1" id="shortcut-observed"><b style="color:var(--red)">03 / Spill observed</b>22 Jan · 15:56</button></div></section></section>
 <section class="environment" aria-label="Illustrative environmental conditions"><div class="env-item"><span class="env-icon" id="env-wind-icon">↘</span><div><small>WIND</small><strong id="env-wind">14.2 <span class="detail">km/h · from SSE</span></strong></div></div><div class="env-item"><span class="env-icon" style="color:var(--amber)" id="env-current-icon">↖</span><div><small>CURRENT / DRIFT</small><strong id="env-current">0.24 <span class="detail">m/s · toward NNW</span></strong></div></div><div class="env-item"><span class="env-icon">≈</span><div><small>WAVE HEIGHT</small><strong id="env-wave">1.2 <span class="detail">m · illustrative</span></strong></div></div></section>
 </div><aside class="aside"><section class="panel" id="incident-panel"><div class="panel-title">Incident overview<span class="mono" id="incident-spill-id">#spill_05b4e0</span></div><div class="panel-body"><div id="incident-status-banner" class="callout" style="display:none;margin-top:0;margin-bottom:14px;"></div><span class="badge amber" id="incident-badge">OPEN INVESTIGATION</span><h2 class="incident-name" id="incident-name">Surface oil detection</h2><p class="incident-location" id="incident-location">South of Crete, Mediterranean Sea<br><span class="mono" id="incident-coords">35.0505° N &nbsp; 24.0362° E</span></p><div id="incident-image-container" style="display:none;margin:14px 0 6px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--panel-secondary);"><img id="incident-image" src="" alt="Satellite detection" style="width:100%;height:110px;object-fit:cover;display:block;"><div style="padding:6px 10px;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;"><span>SATELLITE DETECTION</span><a id="incident-image-link" href="" target="_blank" rel="noopener noreferrer" style="color:var(--blue-primary);text-decoration:none;font-weight:500;">View full ↗</a></div></div><div class="separator"></div><div class="kv"><span>Detected</span><strong id="incident-detected">22 Jan 2019 · 15:56 UTC</strong></div><div class="kv"><span>Area</span><strong id="incident-area">0.31 km²</strong></div><div class="kv"><span>Confidence</span><strong id="incident-confidence" class="green">67%</strong></div><div class="kv"><span>Estimated age</span><strong id="incident-age">32.2 h</strong></div><div class="kv"><span>Est. release</span><strong id="incident-release">21 Jan 2019 · 07:44 UTC</strong></div><div class="kv"><span>Candidates</span><strong id="incident-candidates">3</strong></div><div class="separator"></div><p class="small-note" id="incident-note">Incident records retrieved live from NAUKA demo API. 3D simulation remains illustrative demo.</p></div></section>
 <section class="panel" id="evidence-panel"><div class="panel-title">Vessel association<span>01 candidate</span></div><div class="tabs" role="tablist" aria-label="Candidate evidence"><button class="active" id="candidate-tab" role="tab" aria-selected="true" aria-controls="candidate-content">Candidate</button><button id="evidence-tab" role="tab" aria-selected="false" aria-controls="evidence-content" tabindex="-1">Evidence</button></div><div class="panel-body" id="candidate-content" role="tabpanel" aria-labelledby="candidate-tab"><div class="vessel-name">MV Ocean Star <svg width="26" height="26" style="fill:none;stroke:var(--cyan);stroke-width:1.3"><use href="#ico-ship"/></svg></div><p class="small-note" style="margin-top:5px">Illustrative tanker · identity not verified</p><div class="kv"><span>Position at playhead</span><strong id="vessel-time" class="mono">08:42 UTC</strong></div><div class="kv"><span>Heading</span><strong id="vessel-heading">—</strong></div><div class="kv"><span>AIS rendering</span><strong>Linear interpolation</strong></div><div class="callout">A nearby vessel is a candidate, not a conclusion. Spatial and temporal proximity do not establish responsibility.</div><button id="jump-source" style="width:100%;font-size:12px;margin-top:14px">Inspect source-time encounter ↗</button></div><div class="panel-body hidden" id="evidence-content" role="tabpanel" aria-labelledby="evidence-tab"><div class="eyebrow">AT THE ESTIMATED RELEASE TIME</div><p style="font-size:13px;line-height:1.7">The synthetic AIS route passes near the estimated source at 23:30 UTC. The dotted connector visualizes this relationship.</p><div class="separator"></div><p class="small-note">This demo does not calculate attribution confidence. A real investigation needs verified AIS, timestamped observations, model uncertainty and independent corroboration.</p><button id="inspect-evidence" style="width:100%;font-size:12px;margin-top:14px">Go to encounter</button></div></section>

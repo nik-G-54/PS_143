@@ -9,6 +9,7 @@ import {
   Moon, 
   ShieldAlert,
   Scan,
+  Box,
   Loader2,
   PanelLeftClose,
   PanelLeftOpen
@@ -51,6 +52,11 @@ export const Header: React.FC = () => {
         return {
           title: 'TEST YOUR IMAGE',
           icon: <Scan size={18} className="text-primary" />
+        };
+      case '/3d-visualisation':
+        return {
+          title: '3D VISUALISATION',
+          icon: <Box size={18} className="text-primary" />
         };
       default:
         return {

@@ -1,5 +1,25 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071116"><title>Ocean Sentinel — Incident Reconstruction</title><style>/* STYLE */</style></head><body>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071116"><title>Ocean Sentinel — Incident Reconstruction</title><script>
+(function() {
+  try {
+    var saved = localStorage.getItem('theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  } catch(e) {}
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'THEME_CHANGE') {
+      if (e.data.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  });
+})();
+</script><style>/* STYLE */</style></head><body>
 <svg style="display:none" xmlns="http://www.w3.org/2000/svg"><symbol id="ico-scene" viewBox="0 0 24 24"><path d="m12 3 9 5v9l-9 5-9-5V8Zm0 0v9m9-4-9 4-9-4m9 4v10"/></symbol><symbol id="ico-reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></symbol><symbol id="ico-export" viewBox="0 0 24 24"><path d="M12 3v12m-4-8 4-4 4 4M4 14v6h16v-6"/></symbol><symbol id="ico-full" viewBox="0 0 24 24"><path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/></symbol><symbol id="ico-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></symbol><symbol id="ico-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 5m0 2v1"/></symbol><symbol id="ico-file" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8m-8 4h6"/></symbol><symbol id="ico-ship" viewBox="0 0 24 24"><path d="M3 15h18l-4 5H7ZM7 15V8h7v7m-4-7V4m4 7h4v4M2 22l4-1 4 1 4-1 4 1 4-1"/></symbol></svg>
 <header class="topbar"><div class="brand"><svg class="brandmark" viewBox="0 0 40 44" fill="none"><path d="M20 2 37 12v20L20 42 3 32V12Z" stroke="currentColor" stroke-width="1.5"/><path d="m20 7 12 22H8Z" fill="currentColor" opacity=".9"/><path d="M8 33c6-6 13 6 24-1" stroke="currentColor" stroke-width="2"/><path d="M20 17v9" stroke="#09232c" stroke-width="2"/></svg><div>OCEAN SENTINEL<div class="subbrand">MARITIME INTELLIGENCE</div></div></div><div class="header-right"><span class="session muted mono" style="font-size:12px">WORKSPACE / INVESTIGATIONS</span><span class="green" style="font-size:12px"><i class="dot"></i> Local session</span><span class="badge amber">SYNTHETIC DEMO</span></div></header>
 <div class="layout"><nav class="rail" aria-label="Workspace tools"><button class="active" id="rail-scene" title="Reset investigation view" aria-label="Reset investigation view"><svg><use href="#ico-scene"/></svg></button><span class="rail-label">SCENE</span><button id="rail-evidence" title="Inspect vessel evidence" aria-label="Inspect vessel evidence"><svg><use href="#ico-ship"/></svg></button><button id="rail-layers" title="Scene layers" aria-label="Scene layers"><svg><use href="#ico-layers"/></svg></button><button id="rail-data" title="Data and methodology" aria-label="Data and methodology"><svg><use href="#ico-file"/></svg></button><button class="rail-bottom" id="help" title="Controls and help" aria-label="Controls and help"><svg><use href="#ico-help"/></svg></button></nav>

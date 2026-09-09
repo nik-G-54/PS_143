@@ -80,12 +80,12 @@ export const Sidebar: React.FC = () => {
           to="/test-image" 
           isCollapsed={isCollapsed}
         />
-        <SidebarItem 
+        {/* <SidebarItem 
           icon={<Video size={18} strokeWidth={1.5} />} 
           label="3D Incident Reconstruction" 
           to="/incident-reconstruction" 
           isCollapsed={isCollapsed}
-        />
+        /> */}
         <SidebarItem 
           icon={<Box size={18} strokeWidth={1.5} />} 
           label="3D Visualisation" 

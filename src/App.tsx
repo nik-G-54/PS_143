@@ -7,6 +7,7 @@ import { ThreeDVisualisationPage } from './pages/ThreeDVisualisationPage';
 
 const IncidentsPage = lazy(() => import('./pages/IncidentsPage'));
 const ImageTestPage = lazy(() => import('./pages/ImageTestPage'));
+const IncidentOverviewPage = lazy(() => import('./pages/IncidentOverviewPage'));
 
 const PageLoader = () => (
   <div className="flex h-screen w-full bg-background items-center justify-center text-primary font-medium font-sans">
@@ -30,6 +31,14 @@ function App() {
       {/* Active Navigation Routes */}
       <Route path="/" element={<DashboardPage />} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
+      <Route 
+        path="/incident-overview" 
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <IncidentOverviewPage />
+          </Suspense>
+        } 
+      />
       <Route path="/maritime-map" element={<MaritimeMapPage />} />
       <Route 
         path="/incidents" 

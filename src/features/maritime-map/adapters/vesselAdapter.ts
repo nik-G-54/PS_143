@@ -45,15 +45,18 @@ function adaptVessel(raw: RawAttributedVessel): AttributedVessel | null {
   const vesselId = typeof raw.vessel_id === 'string' ? raw.vessel_id.trim() : '';
   if (!vesselId) return null;
 
-  const rawTrack = raw.trajectory ?? raw.track ?? [];
+  const rawRank = isFiniteNumber(raw.rank) && raw.rank > 0 ? Math.round(raw.rank) : null;
+  const rank = rawRank ?? 999;
+
+  // Only keep vessel trajectory for Rank 1 vessel; remove trajectory for rank null vessels
+  const isRank1 = rawRank === 1;
+  const rawTrack = isRank1 ? (raw.trajectory ?? raw.track ?? []) : [];
   const track: VesselTrackPoint[] = [];
   for (const point of rawTrack) {
     const adapted = adaptTrackPoint(point);
     if (adapted) track.push(adapted);
   }
   track.sort((a, b) => a.timestampMs - b.timestampMs);
-
-  const rank = isFiniteNumber(raw.rank) && raw.rank > 0 ? Math.round(raw.rank) : 999;
 
   const dist = isFiniteNumber(raw.distance_from_backtrack_origin_km)
     ? raw.distance_from_backtrack_origin_km
@@ -65,11 +68,12 @@ function adaptVessel(raw: RawAttributedVessel): AttributedVessel | null {
     vesselId,
     isMock: Boolean(raw.is_mock),
     rank,
+    rawRank,
     score: isFiniteNumber(raw.score) ? raw.score : null,
     vesselName:
       (typeof raw.vessel_name === 'string' && raw.vessel_name.trim()) || vesselId,
-    mmsi: typeof raw.mmsi === 'string' ? raw.mmsi : null,
-    imo: typeof raw.imo === 'string' ? raw.imo : null,
+    mmsi: raw.mmsi != null && String(raw.mmsi).trim() !== '' ? String(raw.mmsi).trim() : null,
+    imo: raw.imo != null && String(raw.imo).trim() !== '' ? String(raw.imo).trim() : null,
     country: typeof raw.country === 'string' ? raw.country : null,
     vesselType: typeof raw.vessel_type === 'string' ? raw.vessel_type : null,
     speed: isFiniteNumber(raw.speed) ? raw.speed : null,
@@ -154,6 +158,13 @@ export function adaptSpillAttribution(
   }
 
   vessels.sort((a, b) => a.rank - b.rank);
+
+  // Normalize ranks so any vessel with fallback rank 999 is ranked sequentially (#2, #3, #4, ...)
+  vessels.forEach((v, index) => {
+    if (v.rank >= 999 || !v.rank) {
+      v.rank = index + 1;
+    }
+  });
 
   let bounds: GeoBounds | null = null;
   for (const vessel of vessels) {

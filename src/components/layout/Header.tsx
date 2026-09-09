@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { 
   Activity, 
   LayoutDashboard, 
+  Database,
   Map, 
   AlertTriangle, 
   Sun, 
@@ -32,6 +33,11 @@ export const Header: React.FC = () => {
         return {
           title: 'DASHBOARD',
           icon: <LayoutDashboard size={18} className="text-primary" />
+        };
+      case '/incident-overview':
+        return {
+          title: 'INCIDENT OVERVIEW',
+          icon: <Database size={18} className="text-primary" />
         };
       case '/live-map':
         return {

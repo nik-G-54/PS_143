@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
+  Database,
   Map, 
   AlertTriangle, 
   Video,
@@ -80,6 +81,7 @@ export const Sidebar: React.FC = () => {
       {/* Navigation Links */}
       <nav className="flex-1 py-4 px-2 overflow-y-auto space-y-[4px]">
         <SidebarItem icon={<LayoutDashboard size={18} strokeWidth={1.5} />} label="Dashboard" to="/" isCollapsed={isCollapsed} />
+        {/* <SidebarItem icon={<Database size={18} strokeWidth={1.5} />} label="Incident Overview" to="/incident-overview" isCollapsed={isCollapsed} /> */}
         <SidebarItem icon={<Map size={18} strokeWidth={1.5} />} label="Maritime Map" to="/maritime-map" isCollapsed={isCollapsed} />
         <SidebarItem 
           icon={<Scan size={18} strokeWidth={1.5} />} 
@@ -99,7 +101,8 @@ export const Sidebar: React.FC = () => {
           to="/3d-visualisation" 
           isCollapsed={isCollapsed}
         />
-        <SidebarItem icon={<AlertTriangle size={18} strokeWidth={1.5} />} label="Incidents" to="/incidents" isCollapsed={isCollapsed} />
+        <SidebarItem icon={<Database size={18} strokeWidth={1.5} />} label="Incident Overview" to="/incident-overview" isCollapsed={isCollapsed} />
+        {/* <SidebarItem icon={<AlertTriangle size={18} strokeWidth={1.5} />} label="Incidents" to="/incidents" isCollapsed={isCollapsed} /> */}
       </nav>
 
       {/* Footer Toggle Button */}

@@ -185,66 +185,59 @@ export function SpillDetailsSection({
                   <tr>
                     <th className="px-3 py-2 font-semibold">Rank</th>
                     <th className="px-3 py-2 font-semibold">Candidate Vessel</th>
-                    <th className="px-3 py-2 font-semibold">Score</th>
+                    <th className="px-3 py-2 font-semibold">MMSI</th>
+                    <th className="px-3 py-2 font-semibold">IMO</th>
                     <th className="px-3 py-2 font-semibold">Type</th>
                     <th className="px-3 py-2 font-semibold">Flag</th>
                     <th className="px-3 py-2 font-semibold">Speed</th>
                     <th className="px-3 py-2 font-semibold">Heading</th>
                     <th className="px-3 py-2 font-semibold">Origin Dist.</th>
                     <th className="px-3 py-2 font-semibold">Time Diff.</th>
-                    <th className="px-3 py-2 font-semibold">Correlation</th>
-                    <th className="px-3 py-2 font-semibold">AIS Track</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {attribution.vessels.map((vessel) => (
-                    <tr key={vessel.vesselId} className="border-b border-border/60 last:border-0 hover:bg-muted/10">
-                      <td className="px-3 py-2 font-mono tabular-nums">#{vessel.rank}</td>
-                      <td className="px-3 py-2">
-                        <div className="font-mono text-xs font-semibold">{vessel.vesselName}</div>
-                        <div className="flex gap-2 text-[10px] text-muted-foreground">
-                          {vessel.mmsi && <span>MMSI {vessel.mmsi}</span>}
-                          {vessel.imo && <span>IMO {vessel.imo}</span>}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-foreground font-medium">
-                        {vessel.score != null ? `${(vessel.score * 100).toFixed(1)}%` : '—'}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {vessel.vesselType ?? '—'}
-                        {vessel.isMock ? ' · synth' : ''}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">{vessel.country ?? '—'}</td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
-                        {vessel.speed != null ? `${vessel.speed.toFixed(1)} kn` : '—'}
-                      </td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
-                        {vessel.heading != null
-                          ? `${Math.round(vessel.heading)}°`
-                          : vessel.course != null
-                          ? `${Math.round(vessel.course)}°`
-                          : '—'}
-                      </td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
-                        {vessel.distanceFromOriginKm != null
-                          ? `${vessel.distanceFromOriginKm.toFixed(2)} km`
-                          : '—'}
-                      </td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
-                        {vessel.timeDifferenceHours != null
-                          ? `${vessel.timeDifferenceHours > 0 ? '+' : ''}${vessel.timeDifferenceHours.toFixed(1)} h`
-                          : '—'}
-                      </td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
-                        {vessel.trajectoryCorrelation != null
-                          ? `${(vessel.trajectoryCorrelation * 100).toFixed(0)}%`
-                          : '—'}
-                      </td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
-                        {vessel.track.length > 0 ? `${vessel.track.length} pts` : 'No track'}
-                      </td>
-                    </tr>
-                  ))}
+                  {attribution.vessels.map((vessel, idx) => {
+                    const rankNum = vessel.rank > 0 && vessel.rank < 999 ? vessel.rank : idx + 1;
+                    return (
+                      <tr key={vessel.vesselId} className="border-b border-border/60 last:border-0 hover:bg-muted/10">
+                        <td className="px-3 py-2 font-mono tabular-nums">#{rankNum}</td>
+                        <td className="px-3 py-2">
+                          <div className="font-mono text-xs font-semibold">{vessel.vesselName}</div>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs tabular-nums text-foreground">
+                          {vessel.mmsi ?? '—'}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs tabular-nums text-foreground">
+                          {vessel.imo ?? '—'}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {vessel.vesselType ?? '—'}
+                          {vessel.isMock ? ' · synth' : ''}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">{vessel.country ?? '—'}</td>
+                        <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                          {vessel.speed != null ? `${vessel.speed.toFixed(1)} kn` : '—'}
+                        </td>
+                        <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                          {vessel.heading != null
+                            ? `${Math.round(vessel.heading)}°`
+                            : vessel.course != null
+                            ? `${Math.round(vessel.course)}°`
+                            : '—'}
+                        </td>
+                        <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                          {vessel.distanceFromOriginKm != null
+                            ? `${vessel.distanceFromOriginKm.toFixed(2)} km`
+                            : '—'}
+                        </td>
+                        <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                          {vessel.timeDifferenceHours != null
+                            ? `${vessel.timeDifferenceHours > 0 ? '+' : ''}${vessel.timeDifferenceHours.toFixed(1)} h`
+                            : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

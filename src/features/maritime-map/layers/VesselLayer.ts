@@ -35,7 +35,8 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
   if (!backtrackActive) return [];
 
   const layers: Layer[] = [];
-  const withTracks = vessels.filter((v) => v.track.length >= 2);
+  // Only display vessel trajectory on the map for Rank 1; remove trajectory for rank null vessels
+  const withTracks = vessels.filter((v) => (v.rawRank === 1 || v.rank === 1) && v.track.length >= 2);
 
   if (withTracks.length > 0) {
     layers.push(
@@ -58,25 +59,27 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
     );
   }
 
-  if (vesselPositions.length > 0) {
+  // Render yellow dot marker exclusively for Rank 1 vessel
+  const rank1Positions = vesselPositions.filter((p) => p.rank === 1);
+
+  if (rank1Positions.length > 0) {
     layers.push(
       new ScatterplotLayer<TimelineVesselPosition>({
         id: LAYER_IDS.vesselMarkers,
-        data: vesselPositions,
+        data: rank1Positions,
         getPosition: (d) => [d.longitude, d.latitude],
-        getRadius: (d) => (d.rank === 1 ? 8 : 6),
+        getRadius: 8,
         radiusUnits: 'pixels',
-        radiusMinPixels: 5,
+        radiusMinPixels: 6,
         filled: true,
         stroked: true,
-        getFillColor: (d) => rankColor(d.rank),
+        getFillColor: [250, 204, 21, 230], // Yellow dot for rank 1
         getLineColor: [255, 255, 255, 230],
         lineWidthUnits: 'pixels',
         getLineWidth: 1.5,
         pickable: true,
         updateTriggers: {
-          getPosition: vesselPositions.map((v) => `${v.vesselId}:${v.longitude}:${v.latitude}`).join('|'),
-          getFillColor: vesselPositions.map((v) => v.rank).join(','),
+          getPosition: rank1Positions.map((v) => `${v.vesselId}:${v.longitude}:${v.latitude}`).join('|'),
         },
       })
     );
@@ -84,9 +87,9 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
     layers.push(
       new TextLayer<TimelineVesselPosition>({
         id: `${LAYER_IDS.vesselMarkers}-labels`,
-        data: vesselPositions,
+        data: rank1Positions,
         getPosition: (d) => [d.longitude, d.latitude],
-        getText: (d) => `#${d.rank}`,
+        getText: () => '#1',
         getSize: 11,
         getColor: [255, 255, 255, 240],
         getTextAnchor: 'middle',
@@ -96,7 +99,7 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
         outlineColor: [15, 23, 42, 220],
         pickable: false,
         updateTriggers: {
-          getPosition: vesselPositions.map((v) => `${v.vesselId}:${v.longitude}:${v.latitude}`).join('|'),
+          getPosition: rank1Positions.map((v) => `${v.vesselId}:${v.longitude}:${v.latitude}`).join('|'),
         },
       })
     );

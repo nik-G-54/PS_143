@@ -1,0 +1,93 @@
+{
+  "checks": [
+    {
+      "name": "WebGL renderer initialized",
+      "pass": true
+    },
+    {
+      "name": "App initialized",
+      "pass": true
+    },
+    {
+      "name": "Timeline scrubbing sets time",
+      "pass": true
+    },
+    {
+      "name": "Time text updates",
+      "pass": true
+    },
+    {
+      "name": "Playback advances",
+      "pass": true
+    },
+    {
+      "name": "Pause works",
+      "pass": true
+    },
+    {
+      "name": "Source event time",
+      "pass": true
+    },
+    {
+      "name": "Top camera",
+      "pass": true
+    },
+    {
+      "name": "Low camera",
+      "pass": true
+    },
+    {
+      "name": "Zoom works",
+      "pass": true
+    },
+    {
+      "name": "Oil layer toggles",
+      "pass": true
+    },
+    {
+      "name": "Waves pause",
+      "pass": true
+    },
+    {
+      "name": "Past-only hides later observation",
+      "pass": true
+    },
+    {
+      "name": "Past-only hides future source",
+      "pass": true
+    },
+    {
+      "name": "Evidence tab accessible",
+      "pass": true
+    },
+    {
+      "name": "Evidence jumps to source time",
+      "pass": true
+    },
+    {
+      "name": "Methodology opens",
+      "pass": true
+    },
+    {
+      "name": "Session export contains synthetic data and state",
+      "pass": true
+    },
+    {
+      "name": "Orbit drag works",
+      "pass": true
+    },
+    {
+      "name": "Mobile has no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "Mobile modal fits viewport",
+      "pass": true
+    },
+    {
+      "name": "No runtime exceptions",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

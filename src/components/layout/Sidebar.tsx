@@ -6,6 +6,7 @@ import {
   AlertTriangle, 
   Video,
   Scan,
+  Box,
   ChevronLeft,
   ChevronRight,
   PanelLeftClose,
@@ -79,10 +80,16 @@ export const Sidebar: React.FC = () => {
           to="/test-image" 
           isCollapsed={isCollapsed}
         />
-        <SidebarItem 
+        {/* <SidebarItem 
           icon={<Video size={18} strokeWidth={1.5} />} 
           label="3D Incident Reconstruction" 
           to="/incident-reconstruction" 
+          isCollapsed={isCollapsed}
+        /> */}
+        <SidebarItem 
+          icon={<Box size={18} strokeWidth={1.5} />} 
+          label="3D Visualisation" 
+          to="/3d-visualisation" 
           isCollapsed={isCollapsed}
         />
         <SidebarItem icon={<AlertTriangle size={18} strokeWidth={1.5} />} label="Incidents" to="/incidents" isCollapsed={isCollapsed} />

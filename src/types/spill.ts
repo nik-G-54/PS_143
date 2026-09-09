@@ -117,6 +117,7 @@ export interface NormalizedSpill {
   longitude: number | null;
   imageUrl: string | null;
   candidateCount: number;
+  rankedTopVessel?: string | null;
 }
 
 export interface DashboardFilters {

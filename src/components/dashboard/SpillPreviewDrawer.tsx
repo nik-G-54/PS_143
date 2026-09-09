@@ -192,7 +192,7 @@ export const SpillPreviewDrawer: React.FC = () => {
           </div>
 
           {/* Drawer Footer Action */}
-          <div className="p-5 border-t border-border bg-card">
+          {/* <div className="p-5 border-t border-border bg-card">
             <button
               onClick={handleViewIncident}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-semibold text-xs rounded-xl shadow-md hover:bg-primary/90 transition-all duration-150"
@@ -200,7 +200,7 @@ export const SpillPreviewDrawer: React.FC = () => {
               <span>View Full Incident Details</span>
               <ExternalLink size={15} />
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

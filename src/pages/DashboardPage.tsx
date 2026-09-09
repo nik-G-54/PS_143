@@ -11,6 +11,7 @@ import { SpillDetectionTrend } from '../components/dashboard/SpillDetectionTrend
 import { SpillSizeDistribution } from '../components/dashboard/SpillSizeDistribution';
 import { DetectionHeatmap } from '../components/dashboard/DetectionHeatmap';
 import { SpillTable } from '../components/dashboard/SpillTable';
+import { SpillPreviewDrawer } from '../components/dashboard/SpillPreviewDrawer';
 import { InvestigationDock } from '../components/investigation/InvestigationDock';
 import { LoadingState } from '../components/dashboard/LoadingState';
 import { ErrorState } from '../components/dashboard/ErrorState';
@@ -67,6 +68,7 @@ export const DashboardPage: React.FC = () => {
           <DashboardContent />
         </main>
       </div>
+      <SpillPreviewDrawer />
     </DashboardProvider>
   );
 };

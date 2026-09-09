@@ -88,6 +88,7 @@ export interface AttributedVessel {
   vesselId: string;
   isMock: boolean;
   rank: number;
+  rawRank?: number | null;
   score: number | null;
   vesselName: string;
   mmsi: string | null;

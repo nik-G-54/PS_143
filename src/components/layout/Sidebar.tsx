@@ -1,7 +1,8 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
+  Database,
   Map, 
   AlertTriangle, 
   Video,
@@ -39,33 +40,40 @@ export const Sidebar: React.FC = () => {
         isCollapsed ? 'justify-center' : 'px-4'
       }`}>
         <div className="flex items-center gap-3 overflow-hidden">
-          {/* Custom Combined Vector Logo */}
-          <button
-            type="button"
-            onClick={isCollapsed ? toggleSidebar : undefined}
-            className={`w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-sm shrink-0 border border-primary/40 ${
-              isCollapsed ? 'hover:opacity-90 hover:scale-105 transition-all cursor-pointer' : ''
-            }`}
-            title={isCollapsed ? "Click to open sidebar" : undefined}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L14.5 4.5H9.5L12 2Z" fill="currentColor" />
-              <path d="M6.5 5.5C10 4 14 4 17.5 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
-              <line x1="12" y1="4.5" x2="12" y2="8.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="1.5 1.5" />
-              <path d="M4.5 12.5L6.5 16H17.5L19.5 12.5H4.5Z" fill="currentColor" />
-              <path d="M10 9.5H14V12.5H10V9.5Z" fill="currentColor" />
-              <path d="M2.5 19C6 17 9.5 20.5 13 18.5C16.5 16.5 19.5 19 21.5 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
-          
-          {/* Brand Title: NAUKA */}
-          {!isCollapsed && (
-            <div className="overflow-hidden whitespace-nowrap transition-all duration-300">
-              <h1 className="font-sans font-[900] tracking-[0.16em] text-2xl uppercase leading-none select-none">
-                <span className="text-primary font-black">N</span>
-                <span className="text-foreground font-black">AUKA</span>
-              </h1>
-            </div>
+          {/* Maritime Vessel Official Logo */}
+          {isCollapsed ? (
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center shadow-sm shrink-0 border border-primary/30 ring-2 ring-primary/20 bg-background/50 hover:opacity-90 hover:scale-105 transition-all cursor-pointer p-0.5"
+              title="Click to open sidebar"
+            >
+              <img 
+                src="/logo.png" 
+                alt="NAUKA Maritime Intelligence" 
+                className="w-full h-full object-contain rounded-full select-none"
+              />
+            </button>
+          ) : (
+            <Link
+              to="/"
+              className="flex items-center gap-3 group focus:outline-none"
+              title="NAUKA Maritime Intelligence"
+            >
+              <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center shadow-sm shrink-0 border border-primary/30 ring-2 ring-primary/20 bg-background/50 group-hover:scale-105 transition-all p-0.5">
+                <img 
+                  src="/logo.png" 
+                  alt="NAUKA Maritime Intelligence" 
+                  className="w-full h-full object-contain rounded-full select-none"
+                />
+              </div>
+              <div className="overflow-hidden whitespace-nowrap transition-all duration-300">
+                <h1 className="font-sans font-[900] tracking-[0.16em] text-2xl uppercase leading-none select-none">
+                  <span className="text-primary font-black">N</span>
+                  <span className="text-foreground font-black">AUKA</span>
+                </h1>
+              </div>
+            </Link>
           )}
         </div>
       </div>
@@ -73,6 +81,7 @@ export const Sidebar: React.FC = () => {
       {/* Navigation Links */}
       <nav className="flex-1 py-4 px-2 overflow-y-auto space-y-[4px]">
         <SidebarItem icon={<LayoutDashboard size={18} strokeWidth={1.5} />} label="Dashboard" to="/" isCollapsed={isCollapsed} />
+        {/* <SidebarItem icon={<Database size={18} strokeWidth={1.5} />} label="Incident Overview" to="/incident-overview" isCollapsed={isCollapsed} /> */}
         <SidebarItem icon={<Map size={18} strokeWidth={1.5} />} label="Maritime Map" to="/maritime-map" isCollapsed={isCollapsed} />
         <SidebarItem 
           icon={<Scan size={18} strokeWidth={1.5} />} 
@@ -92,7 +101,8 @@ export const Sidebar: React.FC = () => {
           to="/3d-visualisation" 
           isCollapsed={isCollapsed}
         />
-        <SidebarItem icon={<AlertTriangle size={18} strokeWidth={1.5} />} label="Incidents" to="/incidents" isCollapsed={isCollapsed} />
+        <SidebarItem icon={<Database size={18} strokeWidth={1.5} />} label="Incident Overview" to="/incident-overview" isCollapsed={isCollapsed} />
+        {/* <SidebarItem icon={<AlertTriangle size={18} strokeWidth={1.5} />} label="Incidents" to="/incidents" isCollapsed={isCollapsed} /> */}
       </nav>
 
       {/* Footer Toggle Button */}

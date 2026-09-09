@@ -8,11 +8,17 @@ import { ArrowRight } from 'lucide-react';
 
 interface SpillTableRowProps {
   spill: NormalizedSpill;
+  topVessel?: string | null;
   isSelected: boolean;
   onClick: (id: string) => void;
 }
 
-export const SpillTableRow: React.FC<SpillTableRowProps> = ({ spill, isSelected, onClick }) => {
+export const SpillTableRow: React.FC<SpillTableRowProps> = ({
+  spill,
+  topVessel,
+  isSelected,
+  onClick,
+}) => {
   const confidencePct = Math.round((spill.confidence || 0) * 100);
 
   // Semantic color for confidence
@@ -30,6 +36,11 @@ export const SpillTableRow: React.FC<SpillTableRowProps> = ({ spill, isSelected,
         isSelected ? 'bg-primary/10 hover:bg-primary/15' : ''
       }`}
     >
+      {/* Spill ID */}
+      <td className="py-3.5 px-4 font-mono text-xs font-bold text-primary whitespace-nowrap">
+        {spill.id}
+      </td>
+
       {/* Detected At */}
       <td className="py-3.5 px-4 font-mono text-xs font-semibold text-foreground whitespace-nowrap">
         {formatIncidentDate(spill.detectedAt)}
@@ -53,6 +64,19 @@ export const SpillTableRow: React.FC<SpillTableRowProps> = ({ spill, isSelected,
             {formatConfidence(spill.confidence)}
           </span>
         </div>
+      </td>
+
+      {/* Rank 1 Vessel ID */}
+      <td className="py-3.5 px-4 font-mono text-xs whitespace-nowrap">
+        {topVessel === undefined ? (
+          <span className="inline-block w-24 h-4 bg-muted/60 animate-pulse rounded" />
+        ) : topVessel ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary border border-primary/25">
+            {topVessel}
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-xs font-mono">—</span>
+        )}
       </td>
 
       {/* Action */}

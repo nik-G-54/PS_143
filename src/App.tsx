@@ -7,15 +7,20 @@ import { ThreeDVisualisationPage } from './pages/ThreeDVisualisationPage';
 
 const IncidentsPage = lazy(() => import('./pages/IncidentsPage'));
 const ImageTestPage = lazy(() => import('./pages/ImageTestPage'));
+const IncidentOverviewPage = lazy(() => import('./pages/IncidentOverviewPage'));
 
 const PageLoader = () => (
   <div className="flex h-screen w-full bg-background items-center justify-center text-primary font-medium font-sans">
-    <div className="flex flex-col items-center gap-3">
-      <span className="relative flex h-8 w-8">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-8 w-8 bg-primary shadow-[0_0_12px_var(--primary)]"></span>
-      </span>
-      <span>Loading Sentinel Systems...</span>
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative flex h-14 w-14 items-center justify-center">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/30 opacity-75"></span>
+        <img 
+          src="/logo.png" 
+          alt="NAUKA Loading" 
+          className="relative w-12 h-12 rounded-full shadow-lg border border-primary/40 object-contain p-0.5 bg-background select-none" 
+        />
+      </div>
+      <span className="text-xs font-mono tracking-widest text-muted-foreground uppercase">Loading Sentinel Systems...</span>
     </div>
   </div>
 );
@@ -26,6 +31,14 @@ function App() {
       {/* Active Navigation Routes */}
       <Route path="/" element={<DashboardPage />} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
+      <Route 
+        path="/incident-overview" 
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <IncidentOverviewPage />
+          </Suspense>
+        } 
+      />
       <Route path="/maritime-map" element={<MaritimeMapPage />} />
       <Route 
         path="/incidents" 

@@ -2,16 +2,16 @@
 // Ocean Sentinel — dependency-free WebGL investigation prototype.
 // x = local east, z = local south, y = elevation. All timestamps UTC.
 const $ = id => document.getElementById(id);
-const START = Date.parse('2025-05-16T22:00:00Z'), DURATION = 642 * 60000;
+const START = Date.parse('2019-01-21T05:00:00Z'), DURATION = Date.parse('2019-01-22T15:56:10Z') - START;
 const DATA = {
-  schemaVersion: 1, synthetic: true, incidentId: 'OS-2025-0517',
+  schemaVersion: 1, synthetic: true, incidentId: 'spill_05b4e0',
   frame: {type:'local illustrative Cartesian', x:'east', z:'south', units:'scene units; not calibrated metres'},
-  observation: {time:'2025-05-17T08:42:00Z', lat:35.0494, lon:24.0517, position:[51,34], illustrativeAreaKm2:2.48},
-  vessel: {name:'MV Ocean Star', identity:'Synthetic candidate; unverified'},
+  observation: {time:'2019-01-22T15:56:10Z', lat:35.0505, lon:24.0362, position:[51,34], illustrativeAreaKm2:0.31},
+  vessel: {name:'SYNTH-Y2019-000097', identity:'Rank 1 candidate vessel · AIS position'},
   oilTrack: [ [90,-43,-8], [155,-36,-1], [215,-30,6], [280,-16,11], [345,-5,15], [410,8,24], [490,21,30], [565,36,29], [642,51,34] ].map(([minute,x,z])=>({time:new Date(START+minute*60000).toISOString(),x,z})),
   aisTrack: [ [0,-82,28], [45,-64,10], [90,-44,-12], [145,-37,-28], [220,-23,-39], [300,-4,-44], [390,13,-44], [480,27,-37], [570,39,-30], [642,52,-28] ].map(([minute,x,z])=>({time:new Date(START+minute*60000).toISOString(),x,z})),
-  environment: {synthetic:true,windKmh:18.6,windFromDegrees:315,currentMps:.37,currentTowardDegrees:135,illustrativeWaveHeightM:1.2},
-  limitations: ['No live or verified incident data','No hydrodynamic drift calculation','No vessel responsibility or confidence score','Linear temporal interpolation','Slick footprint only shown at observation time','Ship and waves exaggerated for legibility']
+  environment: {synthetic:true,windKmh:14.2,windFromDegrees:146,currentMps:.24,currentTowardDegrees:326,illustrativeWaveHeightM:1.2},
+  limitations: ['Incident data from NAUKA demo API: spill_05b4e0','Candidate vessel: SYNTH-Y2019-000097','Linear temporal interpolation','Slick footprint shown at observation time','Ship and waves exaggerated for legibility']
 };
 const toTrack = t => t.map(p=>({...p,t:(Date.parse(p.time)-START)/DURATION}));
 const oilTrack=toTrack(DATA.oilTrack),aisTrack=toTrack(DATA.aisTrack),release=oilTrack[0].t;
@@ -96,8 +96,9 @@ $('compass-arrow').style.transform=`rotate(${-state.camera.yaw*180/Math.PI}deg)`
 renderer={frame,project};
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();state.playing=false;toast('3D graphics context lost. Reload this page to restore the scene.');});
 }
-function fmt(t,full=false){let d=new Date(START+t*DURATION);return `${full?d.getUTCDate()+' MAY · ':''}${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')} UTC`;}
-function updateUI(){let time=state.time; $('timeline').value=Math.round(time*1000);$('timeline').setAttribute('aria-valuetext',fmt(time,true));$('current-time').textContent=fmt(time,true);$('scene-time').textContent=fmt(time,true);$('scene-phase').textContent=time<release?'Vessel approaches source region':time<.9999?'Reconstructing oil movement':'Observation reached';$('play').textContent=state.playing?'Ⅱ':'▶';$('play').setAttribute('aria-label',state.playing?'Pause reconstruction':'Play reconstruction');$('play').title=state.playing?'Pause reconstruction':'Play reconstruction';$('vessel-time').textContent=fmt(time);const p=sample(aisTrack,time);$('vessel-heading').textContent=Math.round((90+p.angle*180/Math.PI+360)%360)+'° · course-derived';$('obs-label').querySelector('b').textContent=time<.9999?'● OBSERVATION · LATER':'● OBSERVED SPILL';$('source-label').querySelector('span').textContent=time<release?'Later estimate · 23:30 UTC':'Model estimate · 23:30 UTC';document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===state.view);b.setAttribute('aria-pressed',String(b.dataset.view===state.view));});}
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+function fmt(t,full=false){let d=new Date(START+t*DURATION);return `${full?d.getUTCDate()+' '+MONTHS[d.getUTCMonth()]+' · ':''}${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')} UTC`;}
+function updateUI(){let time=state.time; $('timeline').value=Math.round(time*1000);$('timeline').setAttribute('aria-valuetext',fmt(time,true));$('current-time').textContent=fmt(time,true);$('scene-time').textContent=fmt(time,true);$('scene-phase').textContent=time<release?'Candidate vessel approaches source':time<.9999?'Reconstructing oil movement':'Observation reached';$('play').textContent=state.playing?'Ⅱ':'▶';$('play').setAttribute('aria-label',state.playing?'Pause reconstruction':'Play reconstruction');$('play').title=state.playing?'Pause reconstruction':'Play reconstruction';$('vessel-time').textContent=fmt(time);const p=sample(aisTrack,time);$('vessel-heading').textContent=Math.round((90+p.angle*180/Math.PI+360)%360)+'° · course-derived';$('obs-label').querySelector('b').textContent=time<.9999?'● OBSERVATION · LATER':'● OBSERVED SPILL';$('obs-label').querySelector('span').textContent='22 Jan · 15:56 UTC';$('source-label').querySelector('span').textContent=time<release?'Later estimate · 21 Jan 07:44 UTC':'Model estimate · 21 Jan 07:44 UTC';$('ship-label').querySelector('b').textContent=DATA.vessel.name;document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===state.view);b.setAttribute('aria-pressed',String(b.dataset.view===state.view));});}
 function setTime(t){state.time=Math.max(0,Math.min(1,t));state.playing=false;updateUI();}
 $('timeline').addEventListener('input',e=>setTime(Number(e.target.value)/1000));
 $('play').onclick=()=>{if(state.time>=1)state.time=0;state.playing=!state.playing;updateUI();};$('restart').onclick=()=>setTime(0);$('speed').onchange=e=>{state.speed=Number(e.target.value);};
@@ -118,7 +119,7 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();zoom(Math.exp(e.deltaY*.0
 canvas.addEventListener('keydown',e=>{let handled=true;switch(e.key){case'ArrowLeft':state.camera.yaw-=.1;break;case'ArrowRight':state.camera.yaw+=.1;break;case'ArrowUp':state.camera.pitch=Math.min(1.55,state.camera.pitch+.08);break;case'ArrowDown':state.camera.pitch=Math.max(.15,state.camera.pitch-.08);break;case'+':case'=':zoom(.9);break;case'-':zoom(1.1);break;default:handled=false;}if(handled){e.preventDefault();state.view='custom';updateUI();}});
 function tab(which){for(let name of ['candidate','evidence']){let on=name===which,b=$(name+'-tab');b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;$(name+'-content').classList.toggle('hidden',!on);}}
 $('candidate-tab').onclick=()=>tab('candidate');$('evidence-tab').onclick=()=>tab('evidence');document.querySelector('.tabs').onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();let which=$('candidate-tab').getAttribute('aria-selected')==='true'?'evidence':'candidate';tab(which);$(which+'-tab').focus();}};
-function encounter(){setTime(release);preset('perspective');toast('Source-time encounter · 16 May 23:30 UTC. Association is illustrative, not attribution.');}
+function encounter(){setTime(release);preset('perspective');toast('Source-time encounter · 21 Jan 07:44 UTC. Association is illustrative, not attribution.');}
 $('jump-source').onclick=encounter;$('inspect-evidence').onclick=encounter;$('rail-evidence').onclick=()=>{tab('evidence');$('evidence-panel').scrollIntoView({behavior:'auto',block:'center'});};$('rail-layers').onclick=()=>{$('layers-panel').scrollIntoView({behavior:'auto',block:'center'});document.querySelector('[data-layer="oil"]').focus({preventScroll:true});};
 for(let id of ['data-button','rail-data'])$(id).onclick=()=>$('data-dialog').showModal();$('help').onclick=()=>$('help-dialog').showModal();$('close-data').onclick=()=>$('data-dialog').close();$('close-help').onclick=()=>$('help-dialog').close();$('open-help').onclick=()=>{$('data-dialog').close();$('help-dialog').showModal();};
 for(let id of ['data-dialog','help-dialog'])$(id).addEventListener('click',e=>{if(e.target===$(id)){let r=$(id).getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$(id).close();}});

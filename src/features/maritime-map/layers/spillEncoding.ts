@@ -60,3 +60,4 @@ export function alphaForConfidence(confidenceScore: number | null): number {
     MIN_CONFIDENCE_ALPHA + confidenceScore * (MAX_CONFIDENCE_ALPHA - MIN_CONFIDENCE_ALPHA)
   );
 }
+

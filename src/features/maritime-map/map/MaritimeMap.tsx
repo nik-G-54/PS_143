@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as turf from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
@@ -24,6 +25,17 @@ import { useInvestigation } from '../investigation/useInvestigation';
 import { useInvestigationTimeline } from '../timeline/useInvestigationTimeline';
 import type { PlaybackMode } from '../timeline/useInvestigationTimeline';
 import { MapboxOverlay } from '@deck.gl/mapbox';
+import {
+  buildOilSlickKeyframes,
+  detectionHandoffOpacity,
+  resolvePolygonAtProgress,
+} from '../utils/oilSlickKeyframes';
+import { DEFAULT_VERTEX_COUNT } from '../utils/organicPolygon';
+import {
+  addFocusPolygon,
+  updateFocusPolygon,
+  removeFocusPolygon,
+} from '../../../components/map/layers/DriftTrajectory';
 
 // Explicitly set the worker URL using Vite's ?worker&url syntax
 // This fixes the 'maplibre-gl-worker.mjs does not exist in optimize deps' error
@@ -80,6 +92,79 @@ export function MaritimeMap() {
     backtrackActive && Boolean(trajectory),
     playbackMode
   );
+
+  const focusPoints = useMemo(
+    () =>
+      trajectory?.points.map((p) => ({
+        longitude: p.longitude,
+        latitude: p.latitude,
+        timestamp: p.timestamp,
+      })) ?? null,
+    [trajectory]
+  );
+
+  // Organic oil-slick polygon ("Focus Mode") keyframes — precomputed once per
+  // trajectory identity, then resolved at InvestigationTimeline's own
+  // progress/playbackMode on every render (play tick AND manual scrub alike).
+  // No separate animation loop: this is purely derived state.
+  const oilSlickKeyframes = useMemo(() => {
+    if (!focusPoints || focusPoints.length === 0) return null;
+    return buildOilSlickKeyframes(
+      focusPoints,
+      selectedSpill?.estimatedSourceRadiusKm ?? trajectory?.source?.radiusKm ?? null,
+      selectedSpill?.areaKm2 ?? null,
+      selectedSpillId ?? 'focus',
+      DEFAULT_VERTEX_COUNT
+    );
+  }, [focusPoints, selectedSpill, trajectory, selectedSpillId]);
+
+  const focusPolygonRing = useMemo(
+    () => resolvePolygonAtProgress(oilSlickKeyframes, timeline.progress, playbackMode),
+    [oilSlickKeyframes, timeline.progress, playbackMode]
+  );
+
+  // Opacity multiplier (0..1) for the TRAVELING focus polygon only — fades it
+  // out in the last stretch of the approach to detection (and, symmetrically,
+  // fades it in as backtrack departs from detection) so it hands off visually
+  // to the always-on static authoritative polygon layer (SpillLayer.ts)
+  // underneath instead of the two ever rendering the same shape on top of
+  // each other. See oilSlickKeyframes.ts's `detectionHandoffOpacity`. Pure
+  // function of (progress, playbackMode), recomputed on every render, so
+  // manual slider drags fade identically to playback.
+  const focusPolygonOpacity = useMemo(
+    () => detectionHandoffOpacity(timeline.progress, playbackMode),
+    [timeline.progress, playbackMode]
+  );
+
+  // Diagnostic only: cross-check the trajectory's own detection-end point
+  // against the spill detail's observation_latitude/observation_longitude.
+  // These come from two different backend endpoints (visualization vs
+  // demo/spills detail) that are expected to describe the same detection
+  // event. This never changes which keyframe is treated as "detection" —
+  // that's always the trajectory's own last point (oldest->newest order,
+  // see oilSlickKeyframes.ts) — it only reports a mismatch so a real
+  // data-alignment problem between the two sources doesn't go unnoticed.
+  useEffect(() => {
+    if (!trajectory || trajectory.points.length === 0) return;
+    const obsLon = selectedSpill?.observationLongitude;
+    const obsLat = selectedSpill?.observationLatitude;
+    if (obsLon == null || obsLat == null) return;
+
+    const detectionPoint = trajectory.points[trajectory.points.length - 1];
+    const distanceKm = turf.distance(
+      [detectionPoint.longitude, detectionPoint.latitude],
+      [obsLon, obsLat],
+      { units: 'kilometers' }
+    );
+
+    const FLAG_THRESHOLD_KM = 0.05; // 50 m — a few meters is rounding noise, more than this is worth a look.
+    if (distanceKm > FLAG_THRESHOLD_KM) {
+      console.warn(
+        `[MaritimeMap] trajectory detection-end point is ~${(distanceKm * 1000).toFixed(1)}m from spill detail's observation_latitude/observation_longitude for ${trajectory.spillId} — the two backend sources may be misaligned.`,
+        { trajectoryPoint: detectionPoint, observation: { longitude: obsLon, latitude: obsLat } }
+      );
+    }
+  }, [trajectory, selectedSpill]);
 
   // Environment toggles only apply while a spill is selected.
   const windVisible = Boolean(selectedSpill && showWind);
@@ -337,6 +422,43 @@ export function MaritimeMap() {
     frameDriftPath(map, trajectory.bounds);
   }, [trajectory, selectedSpillId]);
 
+  // Focus Mode polygon layer — armed by the SAME condition that renders the
+  // InvestigationTimeline panel (backtrackActive + trajectory loaded), kept in
+  // its own effect so add/remove never touches the deck.gl spill/trajectory
+  // layers above. There is no independent animation loop: the ring is derived
+  // (see `focusPolygonRing` above) straight from InvestigationTimeline's own
+  // progress/playbackMode, so this effect only (re)adds the maplibre
+  // source/layer pair when the panel arms or disarms.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (!backtrackActive || !trajectory) {
+      removeFocusPolygon(map);
+      return;
+    }
+
+    addFocusPolygon(map);
+    updateFocusPolygon(map, focusPolygonRing ? [focusPolygonRing] : null, focusPolygonOpacity);
+
+    return () => {
+      removeFocusPolygon(map);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial paint only; live updates handled by the effect below.
+  }, [backtrackActive, trajectory]);
+
+  // Push every progress change (play tick AND manual slider drag) into the
+  // existing source — no re-add, matches the marching-ants update pattern.
+  // Also re-applies the detection-handoff fade opacity on every change, since
+  // it's a pure function of the same (progress, playbackMode) this effect
+  // already depends on.
+  useEffect(() => {
+    if (!backtrackActive) return;
+    const map = mapRef.current;
+    if (!map) return;
+    updateFocusPolygon(map, focusPolygonRing ? [focusPolygonRing] : null, focusPolygonOpacity);
+  }, [backtrackActive, focusPolygonRing, focusPolygonOpacity]);
+
   const handleRecenter = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -439,6 +561,8 @@ export function MaritimeMap() {
             onTogglePlay={timeline.togglePlay}
             onSeek={timeline.setProgress}
             playbackMode={playbackMode}
+            speed={timeline.speed}
+            onSpeedChange={timeline.setSpeed}
             atSource={timeline.atSource}
           />
         )}

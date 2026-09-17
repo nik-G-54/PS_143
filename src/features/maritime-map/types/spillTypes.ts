@@ -67,6 +67,15 @@ export interface MapSpill {
   estimatedReleaseTime: string | null;
   /** Authoritative polygon geometry [[lon, lat], ...] */
   polygon: [number, number][] | null;
+  /**
+   * Raw observation point the detail endpoint reports (`observation_latitude`
+   * / `observation_longitude`), distinct from `latitude`/`longitude` above
+   * (the list endpoint's `centroid`). Optional/additive — populated on detail
+   * fetch only, used to cross-check against the trajectory's own detection
+   * point (see MaritimeMap.tsx). Absent on the base list-only spill.
+   */
+  observationLatitude?: number | null;
+  observationLongitude?: number | null;
   estimatedSourceLatitude: number | null;
   estimatedSourceLongitude: number | null;
   estimatedSourceRadiusKm: number | null;

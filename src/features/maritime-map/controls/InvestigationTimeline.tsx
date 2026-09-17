@@ -1,4 +1,5 @@
 import { Pause, Play } from 'lucide-react';
+import { PLAYBACK_SPEEDS, type PlaybackSpeed } from '../timeline/useInvestigationTimeline';
 
 interface InvestigationTimelineProps {
   progress: number;
@@ -7,6 +8,8 @@ interface InvestigationTimelineProps {
   onTogglePlay: () => void;
   onSeek: (progress: number) => void;
   playbackMode: 'forward' | 'backtrack';
+  speed: PlaybackSpeed;
+  onSpeedChange: (speed: PlaybackSpeed) => void;
   atSource?: boolean;
   disabled?: boolean;
 }
@@ -19,6 +22,8 @@ export function InvestigationTimeline({
   onTogglePlay,
   onSeek,
   playbackMode,
+  speed,
+  onSpeedChange,
   disabled = false,
 }: InvestigationTimelineProps) {
   const isBacktrack = playbackMode === 'backtrack';
@@ -36,9 +41,25 @@ export function InvestigationTimeline({
         }`}>
           {modeLabel}
         </span>
-        <span className="truncate font-mono text-[10px] tabular-nums text-muted-foreground">
-          {windowLabel}
-        </span>
+        <div className="flex items-center gap-2">
+          <select
+            value={speed}
+            disabled={disabled}
+            onChange={(event) => onSpeedChange(Number(event.target.value) as PlaybackSpeed)}
+            className="rounded border border-border bg-transparent px-1 py-0.5 font-mono text-[9px] font-semibold tabular-nums text-muted-foreground disabled:opacity-40"
+            aria-label="Playback speed"
+            title="Playback speed"
+          >
+            {PLAYBACK_SPEEDS.map((s) => (
+              <option key={s} value={s}>
+                {s}x
+              </option>
+            ))}
+          </select>
+          <span className="truncate font-mono text-[10px] tabular-nums text-muted-foreground">
+            {windowLabel}
+          </span>
+        </div>
       </div>
 
       {/* Playback row */}

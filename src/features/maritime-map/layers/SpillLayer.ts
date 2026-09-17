@@ -20,6 +20,18 @@ export interface SpillLayerOptions {
   /** Hide unselected detections entirely instead of dimming them. */
   focusMode: boolean;
   onSelectSpill: (spillId: string) => void;
+  /**
+   * True whenever the investigation timeline is armed (Focus Mode's
+   * traveling polygon is on screen), regardless of `focusMode`. `focusMode`
+   * and the timeline are independent toggles in the UI (see
+   * `InvestigationPanel.tsx`'s "Focus mode" and "Investigate vessels"
+   * buttons) — a user can arm the timeline without ever turning Focus Mode
+   * on. The static authoritative-polygon layer below must still render in
+   * that case so the traveling polygon's detection-handoff fade
+   * (`oilSlickKeyframes.ts`'s `detectionHandoffOpacity`) has something real
+   * to reveal underneath it instead of fading to bare basemap.
+   */
+  backtrackActive: boolean;
 }
 
 /**
@@ -155,7 +167,7 @@ function createSelectionRingLayer(
  * Returns polygon first (bottom), selection ring second, dots third (top).
  */
 export function createSpillLayers(options: SpillLayerOptions): Layer[] {
-  const { spills, selectedSpillId, selectedSpill, focusMode, onSelectSpill } = options;
+  const { spills, selectedSpillId, selectedSpill, focusMode, onSelectSpill, backtrackActive } = options;
   if (spills.length === 0) return [];
 
   const maxSqrtArea = createAreaScale(spills);
@@ -224,8 +236,13 @@ export function createSpillLayers(options: SpillLayerOptions): Layer[] {
 
   const layers: Layer[] = [];
   if (selected) {
-    // Only render the detailed organic slick geometry when Focus Mode is ON
-    if (focusMode && selected.polygon && selected.polygon.length >= 3) {
+    // Render the detailed organic slick geometry when Focus Mode is ON, OR
+    // whenever the investigation timeline is armed — the traveling polygon's
+    // detection-handoff fade (see oilSlickKeyframes.ts) needs this layer
+    // present underneath it to reveal, even if the user never toggled Focus
+    // Mode on separately (the two are independent controls; see
+    // `backtrackActive`'s docstring above).
+    if ((focusMode || backtrackActive) && selected.polygon && selected.polygon.length >= 3) {
       layers.push(createSpillPolygonLayer(selected));
     }
     layers.push(createSelectionRingLayer(selected, maxSqrtArea));

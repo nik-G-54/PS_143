@@ -1,5 +1,5 @@
 // src/components/map/layers/DriftTrajectory.ts
-import type { Map } from 'maplibre-gl';
+import type { Map, GeoJSONSource } from 'maplibre-gl';
 import type { VisualizationData } from '../../../types/detail';
 
 let animFrameId: number | null = null;
@@ -105,4 +105,125 @@ export function removeDriftTrajectory(map: Map) {
   ['drift-traj-source', 'drift-waypoints'].forEach(id => {
     if (map.getSource(id)) map.removeSource(id);
   });
+}
+
+// --- Focus Mode: organic, morphing spill polygon -------------------------
+//
+// Renders the current interpolated polygon resolved by
+// `resolvePolygonAtProgress` (features/maritime-map/utils/oilSlickKeyframes.ts)
+// at InvestigationTimeline's own progress/playbackMode. This is purely a
+// GeoJSON source/layer pair — all geometry math lives in
+// `features/maritime-map/utils/organicPolygon.ts` and
+// `oilSlickKeyframes.ts`; there is no independent animation loop here or in
+// the caller. Kept separate from the marching-ants line layers above so
+// Focus Mode can be added/removed independently without touching the
+// existing (default) rendering.
+
+const FOCUS_SOURCE_ID = 'drift-focus-source';
+const FOCUS_FILL_ID = 'drift-focus-fill';
+const FOCUS_OUTLINE_ID = 'drift-focus-outline';
+
+/**
+ * Base (unfaded) paint opacities for the traveling focus polygon. Named here
+ * so `addFocusPolygon`'s initial paint and `updateFocusPolygon`'s per-progress
+ * fade multiply the SAME numbers — see `updateFocusPolygon`'s
+ * `opacityMultiplier` param, driven by
+ * `oilSlickKeyframes.ts`'s `detectionHandoffOpacity`.
+ */
+const FOCUS_FILL_BASE_OPACITY = 0.5;
+const FOCUS_OUTLINE_BASE_OPACITY = 0.95;
+
+/** GeoJSON Polygon coordinates: one ring, [lon, lat] pairs, closed. */
+export type FocusPolygonCoordinates = number[][][];
+
+function emptyPolygonFeature() {
+  return {
+    type: 'Feature' as const,
+    geometry: { type: 'Polygon' as const, coordinates: [] as number[][][] },
+    properties: {},
+  };
+}
+
+export function addFocusPolygon(map: Map) {
+  if (!map.getSource(FOCUS_SOURCE_ID)) {
+    map.addSource(FOCUS_SOURCE_ID, {
+      type: 'geojson',
+      data: emptyPolygonFeature(),
+    });
+  }
+
+  // Red is deliberate: distinct from the teal/blue drift-line layers above
+  // (#38bdf8) and from the vessel rank markers (gold #facc15, slate-blue
+  // #94a3b8, orange #fb923c — see VesselLayer.ts's rankColor) so the oil-slick
+  // polygon never gets visually confused with either.
+  if (!map.getLayer(FOCUS_FILL_ID)) {
+    map.addLayer({
+      id: FOCUS_FILL_ID,
+      type: 'fill',
+      source: FOCUS_SOURCE_ID,
+      paint: {
+        'fill-color': '#ff3b30',
+        'fill-opacity': FOCUS_FILL_BASE_OPACITY,
+      },
+    });
+  }
+
+  if (!map.getLayer(FOCUS_OUTLINE_ID)) {
+    map.addLayer({
+      id: FOCUS_OUTLINE_ID,
+      type: 'line',
+      source: FOCUS_SOURCE_ID,
+      paint: {
+        'line-color': '#dc2626',
+        'line-width': 2,
+        'line-opacity': FOCUS_OUTLINE_BASE_OPACITY,
+      },
+    });
+  }
+}
+
+/**
+ * Push a new polygon shape into the existing focus-mode source (no re-add),
+ * and apply the detection-handoff fade to both the fill and outline layers.
+ *
+ * `opacityMultiplier` (0..1, default 1 = fully visible/unfaded) is expected
+ * to come from `oilSlickKeyframes.ts`'s `detectionHandoffOpacity(progress,
+ * direction)` — see MaritimeMap.tsx's call site. It's applied here (rather
+ * than baked into the source data) so the SAME base paint values
+ * `addFocusPolygon` sets stay the single source of truth; this just scales
+ * them via `setPaintProperty`, the same dynamic-paint-update pattern already
+ * used for the marching-ants dash layer above.
+ */
+export function updateFocusPolygon(
+  map: Map,
+  coordinates: FocusPolygonCoordinates | null,
+  opacityMultiplier: number = 1
+) {
+  const source = map.getSource(FOCUS_SOURCE_ID) as GeoJSONSource | undefined;
+  if (!source) return;
+
+  source.setData(
+    coordinates && coordinates.length > 0 && coordinates[0].length > 0
+      ? {
+          type: 'Feature',
+          geometry: { type: 'Polygon', coordinates },
+          properties: {},
+        }
+      : emptyPolygonFeature()
+  );
+
+  const clampedMultiplier = Math.min(1, Math.max(0, opacityMultiplier));
+  if (map.getLayer(FOCUS_FILL_ID)) {
+    map.setPaintProperty(FOCUS_FILL_ID, 'fill-opacity', FOCUS_FILL_BASE_OPACITY * clampedMultiplier);
+  }
+  if (map.getLayer(FOCUS_OUTLINE_ID)) {
+    map.setPaintProperty(FOCUS_OUTLINE_ID, 'line-opacity', FOCUS_OUTLINE_BASE_OPACITY * clampedMultiplier);
+  }
+}
+
+export function removeFocusPolygon(map: Map) {
+  [FOCUS_OUTLINE_ID, FOCUS_FILL_ID].forEach(id => {
+    if (map.getLayer(id)) map.removeLayer(id);
+  });
+  if (map.getSource(FOCUS_SOURCE_ID)) map.removeSource(FOCUS_SOURCE_ID);
 }

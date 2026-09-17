@@ -43,8 +43,8 @@ export function ScanningPreview({ imageUrl }: Props) {
         </div>
       </div>
 
-      {/* Image with Subtle Scanning Line Treatment */}
-      <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-black border border-border/80">
+      {/* Image with Subtle Scanning Line Treatment (Full Width with Elevated Height & Clear Fit) */}
+      <div className="relative w-full h-72 sm:h-80 md:h-96 rounded-xl overflow-hidden bg-black border-2 border-slate-300 dark:border-slate-700 shadow-md">
         <img
           src={imageUrl}
           alt="Scanning SAR"
@@ -57,9 +57,9 @@ export function ScanningPreview({ imageUrl }: Props) {
         {/* Scanning horizontal laser line */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div
-            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-90"
+            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-90"
             style={{
-              boxShadow: '0 0 15px var(--primary)',
+              boxShadow: '0 0 15px rgba(99, 102, 241, 0.9)',
               animation: 'scanLine 2.4s ease-in-out infinite',
             }}
           />

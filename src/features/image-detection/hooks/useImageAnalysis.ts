@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import type { UIState, AnalysisResult, ScanHistoryItem } from '../types/image-analysis';
 import { analyzeImage } from '../services/mlApi';
 
@@ -44,7 +44,6 @@ export function useImageAnalysis() {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>(loadHistory);
 
-  const abortRef = useRef<AbortController | null>(null);
 
   // Step 1: Handle File Selection (State 1 -> State 2)
   const handleFileSelect = useCallback((file: File) => {
@@ -52,7 +51,7 @@ export function useImageAnalysis() {
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
       }
-      const url = URL.createObjectURL(file);
+      const url = (file as any).sample_url || URL.createObjectURL(file);
       setPreviewUrl(url);
       setSelectedFile(file);
       setFileSizeFormatted(formatFileSize(file.size));
@@ -159,9 +158,54 @@ export function useImageAnalysis() {
     }
   }, [selectedFile, previewUrl, fileSizeFormatted, dimensions]);
 
-  // Reset to initial clean state (State 4 -> State 1)
+  // Direct analysis on file select (bypassing intermediate preview screen)
+  const analyzeSelectedFile = useCallback(async (file: File) => {
+    try {
+      if (previewUrl && !previewUrl.startsWith('http')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      const url = (file as any).sample_url || URL.createObjectURL(file);
+      setPreviewUrl(url);
+      setSelectedFile(file);
+      setFileSizeFormatted(formatFileSize(file.size));
+      setResult(null);
+      setError(null);
+      setStatus('uploading');
+
+      // Phase 1: Quick upload delay (600ms)
+      await new Promise(r => setTimeout(r, 600));
+      setStatus('scanning');
+
+      // Phase 2: ML API prediction + scanning delay (1.2s)
+      const scanDelay = new Promise(r => setTimeout(r, 1200));
+      const [prediction] = await Promise.all([
+        analyzeImage(file),
+        scanDelay,
+      ]);
+
+      const analysisResult: AnalysisResult = {
+        id: `scan-${Date.now()}`,
+        prediction,
+        image_url: url,
+        file_name: file.name,
+        file_size_formatted: formatFileSize(file.size),
+        dimensions_formatted: undefined,
+        analyzed_at: new Date().toISOString(),
+      };
+
+      setResult(analysisResult);
+      setStatus('result');
+    } catch (err) {
+      console.error('[useImageAnalysis] Analysis pipeline failed:', err);
+      const msg = err instanceof Error ? err.message : 'Analysis failed due to an unexpected error.';
+      setError(msg);
+      setStatus('error');
+    }
+  }, [previewUrl]);
+
+  // Reset to initial clean state
   const reset = useCallback(() => {
-    if (previewUrl) {
+    if (previewUrl && !previewUrl.startsWith('http')) {
       URL.revokeObjectURL(previewUrl);
     }
     setSelectedFile(null);
@@ -207,6 +251,7 @@ export function useImageAnalysis() {
     error,
     history,
     handleFileSelect,
+    analyzeSelectedFile,
     handleRemoveSelected,
     startAnalysis,
     reset,

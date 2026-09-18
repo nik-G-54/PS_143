@@ -1,22 +1,33 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Activity,
   AlertCircle,
+  AlertTriangle,
   ChevronDown,
   ChevronUp,
   Crosshair,
   Eye,
   EyeOff,
+  Mail,
   MapPin,
   Rewind,
   Route,
   Search,
   Ship,
+  TrendingUp,
   X,
 } from 'lucide-react';
 import type { MapSpill } from '../types/spillTypes';
 import type { SpillTrajectory } from '../types/trajectoryTypes';
+import type { SpillForecast } from '../types/forecastTypes';
 import type { SpillAttribution } from '../types/attributionTypes';
+import type { InvestigationMode } from '../deck/deckLayers';
+import {
+  type AlertSeverity,
+  type CoastlineGeoJSON,
+  computeAlertSeverity,
+  computeDistanceToCoast,
+} from '../utils/coastalAlert';
 import {
   formatArea,
   formatCandidates,
@@ -45,11 +56,49 @@ interface InvestigationPanelProps {
   backtrackActive: boolean;
   playbackMode: 'forward' | 'backtrack';
   onSetPlaybackMode: (mode: 'forward' | 'backtrack') => void;
+  investigationMode: InvestigationMode;
+  onSetInvestigationMode: (mode: InvestigationMode) => void;
+  isForecastLoading: boolean;
+  forecastError: string | null;
+  forecast: SpillForecast | null;
+  coastline: CoastlineGeoJSON | null;
   onToggleFocusMode: () => void;
   onToggleBacktrack: () => void;
   onClear: () => void;
   onRecenter: () => void;
   onScrollToDetails: () => void;
+}
+
+/** Banner background per severity — the whole point is to be readable at a glance. */
+const COASTAL_ALERT_STYLES: Record<AlertSeverity, string> = {
+  monitor: 'border-green-500/70 bg-green-500/15 text-green-700 dark:text-green-300',
+  advisory: 'border-yellow-500/70 bg-yellow-500/15 text-yellow-700 dark:text-yellow-300',
+  watch: 'border-orange-500/70 bg-orange-500/15 text-orange-700 dark:text-orange-300',
+  critical: 'border-red-500/70 bg-red-500/15 text-red-700 dark:text-red-300',
+};
+
+/**
+ * How urgently the predicted landfall should read. `critical`/`watch` add a
+ * simulated notification line — no email is actually sent, this is a UI
+ * mock of what a real alerting pipeline would surface here.
+ */
+function CoastalAlertBanner({ severity }: { severity: AlertSeverity }) {
+  const notifies = severity === 'critical' || severity === 'watch';
+
+  return (
+    <div className={`rounded-md border px-2 py-1.5 ${COASTAL_ALERT_STYLES[severity]}`}>
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider">
+        <AlertTriangle size={12} className="shrink-0" />
+        Coastal alert: {severity}
+      </div>
+      {notifies && (
+        <div className="mt-1 flex items-center gap-1.5 text-[10px] normal-case tracking-normal opacity-90">
+          <Mail size={11} className="shrink-0" />
+          Alert emailed to nikhilgupta542006@gmail.com
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -207,6 +256,12 @@ export function InvestigationPanel({
   backtrackActive,
   playbackMode,
   onSetPlaybackMode,
+  investigationMode,
+  onSetInvestigationMode,
+  isForecastLoading,
+  forecastError,
+  forecast,
+  coastline,
   onToggleFocusMode,
   onToggleBacktrack,
   onClear,
@@ -216,6 +271,23 @@ export function InvestigationPanel({
   const [isOpen, setIsOpen] = useState(true);
   const sourceLon = trajectory?.source?.longitude ?? spill.estimatedSourceLongitude;
   const sourceLat = trajectory?.source?.latitude ?? spill.estimatedSourceLatitude;
+
+  // Severity at the forecast's headline answer — predicted_position, +6h —
+  // not at "now": the alert is about where the oil ends up, not where it is.
+  // Speed comes from that same last point's own drift reading where the
+  // backend reported one, falling back to the forecast-wide average only
+  // when it didn't (see `forecastTypes.ts` on why the two are distinct).
+  const coastalAlertSeverity = useMemo<AlertSeverity | null>(() => {
+    if (!forecast || !coastline) return null;
+    const target = forecast.predictedPosition;
+    if (!target) return null;
+
+    const lastPoint = forecast.points[forecast.points.length - 1];
+    const speedKnots = lastPoint?.driftSpeedKnots ?? forecast.averageSpeedKnots ?? 0;
+
+    const distanceKm = computeDistanceToCoast(target, coastline);
+    return computeAlertSeverity(distanceKm, speedKnots);
+  }, [forecast, coastline]);
   const sourceRadius = trajectory?.source?.radiusKm ?? spill.estimatedSourceRadiusKm;
   const releaseTime = spill.estimatedReleaseTime
     ? formatUtcTimestamp(Date.parse(spill.estimatedReleaseTime))
@@ -321,11 +393,66 @@ export function InvestigationPanel({
           error={trajectoryError}
         />
 
-        {/* Arm / disarm investigation timeline */}
+        {/* Investigation mode: Backtrack (where the oil came from, existing
+            behavior, unchanged) vs Forecast (where the oil is going, new). */}
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => onSetInvestigationMode('backtrack')}
+            title="Backtrack: reconstruct where the oil came from"
+            className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+              investigationMode === 'backtrack'
+                ? 'border-amber-500/70 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+            }`}
+          >
+            <Rewind size={12} />
+            Backtrack
+          </button>
+          <button
+            type="button"
+            onClick={() => onSetInvestigationMode('forecast')}
+            title="Forecast: predict where the oil is going"
+            className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+              investigationMode === 'forecast'
+                ? 'border-cyan-500/70 bg-cyan-500/15 text-cyan-700 dark:text-cyan-300'
+                : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+            }`}
+          >
+            <TrendingUp size={12} />
+            Forecast
+          </button>
+        </div>
+
+        {investigationMode === 'forecast' && (
+          <>
+            {isForecastLoading && (
+              <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                Solving forecast…
+              </p>
+            )}
+            {!isForecastLoading && forecastError && (
+              <p className="text-[11px] text-muted-foreground">{forecastError}</p>
+            )}
+            {!isForecastLoading && !forecastError && coastalAlertSeverity && (
+              <CoastalAlertBanner severity={coastalAlertSeverity} />
+            )}
+          </>
+        )}
+
+        {/* Arm / disarm investigation timeline — Backtrack-mode only: the
+            timeline and Focus Mode polygon are both trajectory-driven and
+            would render underneath an unrelated forecast path otherwise. */}
         <button
           type="button"
           onClick={onToggleBacktrack}
-          disabled={!trajectory && !isTrajectoryLoading}
+          disabled={(!trajectory && !isTrajectoryLoading) || investigationMode === 'forecast'}
+          title={
+            investigationMode === 'forecast'
+              ? 'Investigate vessels is only available in Backtrack mode'
+              : undefined
+          }
           className={`flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors disabled:opacity-40 ${
             backtrackActive
               ? 'border-amber-500/70 bg-amber-500/20 text-amber-700 dark:text-amber-300'

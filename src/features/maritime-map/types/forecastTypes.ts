@@ -21,6 +21,10 @@ export interface RawForecastPoint {
   timestamp?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  /** Instantaneous drift speed at this point, knots. */
+  drift_speed_knots?: number | null;
+  /** Instantaneous drift heading at this point, degrees. */
+  drift_heading_deg?: number | null;
 }
 
 /** Backend's headline answer: where the oil is predicted to end up at the
@@ -51,6 +55,15 @@ export interface ForecastPoint {
   hoursFromNow: number;
   /** Distance along the polyline from the nearest-term position, km. */
   cumulativeKm: number;
+  /**
+   * Instantaneous drift speed at this point, knots. Distinct from
+   * `SpillForecast.averageSpeedKnots` — that is one summary figure for the
+   * whole forecast; this is per-point and can vary point to point. Null when
+   * the backend didn't report a usable value for this sample.
+   */
+  driftSpeedKnots: number | null;
+  /** Instantaneous drift heading at this point, degrees (backend contract — visualize as-given). */
+  driftHeadingDeg: number | null;
 }
 
 /** The backend's headline predicted position, normalized. */
@@ -82,7 +95,10 @@ export interface SpillForecast {
   totalDisplacementKm: number | null;
   /** Bearing of that net displacement (backend contract — visualize as-given). */
   netHeadingDeg: number | null;
-  /** Backend's average drift speed over the forecast horizon. */
+  /**
+   * Backend's average drift speed over the whole forecast horizon — a single
+   * summary figure, not a replacement for each point's own `driftSpeedKnots`.
+   */
   averageSpeedKnots: number | null;
   /** Span from now to the furthest-term forecast position, hours. */
   durationHours: number;

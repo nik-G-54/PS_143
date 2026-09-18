@@ -15,15 +15,22 @@ import { SpillDetailsSection } from '../drawers/SpillDetailsSection';
 // import { SpillLegend } from '../controls/SpillLegend';
 import { SpillStatusBadge } from '../controls/SpillStatusBadge';
 import { createDeckOverlay } from '../deck/DeckOverlay';
-import { buildMaritimeLayers } from '../deck/deckLayers';
+import { buildDriftLayers } from '../deck/deckLayers';
+import { createSpillLayers } from '../layers/SpillLayer';
+import { createVesselLayers } from '../layers/VesselLayer';
+import { createEnvironmentLayers } from '../layers/EnvironmentLayer';
 import { getSpillBounds } from '../adapters/spillAdapter';
 import { useSpills } from '../hooks/useSpills';
 import { useSpillTrajectory } from '../hooks/useSpillTrajectory';
+import { useSpillForecast } from '../hooks/useSpillForecast';
 import { useSpillAttribution } from '../hooks/useSpillAttribution';
 import { useSpillDetails } from '../hooks/useSpillDetails';
 import { useInvestigation } from '../investigation/useInvestigation';
 import { useInvestigationTimeline } from '../timeline/useInvestigationTimeline';
 import type { PlaybackMode } from '../timeline/useInvestigationTimeline';
+import type { InvestigationMode } from '../deck/deckLayers';
+import { loadCoastline } from '../config/coastlineConfig';
+import type { CoastlineGeoJSON } from '../utils/coastalAlert';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import {
   buildOilSlickKeyframes,
@@ -36,6 +43,11 @@ import {
   updateFocusPolygon,
   removeFocusPolygon,
 } from '../../../components/map/layers/DriftTrajectory';
+import { addTimeTickLabels, removeTimeTickLabels, updateTimeTickLabels } from './timeTickLabels';
+import type { TimeTickLabelDatum } from './timeTickLabels';
+import { selectTimeTicks } from '../layers/trajectoryEncoding';
+import { selectForecastTimeTicks } from '../layers/forecastEncoding';
+import { formatUtcTimestamp } from '../utils/formatSpill';
 
 // Explicitly set the worker URL using Vite's ?worker&url syntax
 // This fixes the 'maplibre-gl-worker.mjs does not exist in optimize deps' error
@@ -60,6 +72,15 @@ export function MaritimeMap() {
   const [backtrackSpillId, setBacktrackSpillId] = useState<string | null>(null);
   /** Active playback direction — resets to forward whenever investigation is toggled or spill changes. */
   const [playbackMode, setPlaybackMode] = useState<PlaybackMode>('forward');
+  /** Which drift geometry to show: backtracked (existing, default) or forward forecast (new). */
+  const [investigationMode, setInvestigationMode] = useState<InvestigationMode>('backtrack');
+  /**
+   * Current map zoom, tracked so `createForecastLayers` can re-derive the
+   * heatmap kernel's `radiusPixels` on every zoom change — see
+   * `forecastEncoding.ts`'s `heatmapRadiusPixelsForZoom` for why a fixed
+   * pixel radius alone lets gaps reopen between points once you zoom in.
+   */
+  const [zoom, setZoom] = useState(MAP_CONFIG.initialCamera.zoom);
 
   const { spills, isLoading: isSpillsLoading, error: spillsError, reload } = useSpills();
   const { selectedSpillId, focusMode, selectSpill, clearInvestigation, toggleFocusMode } =
@@ -80,6 +101,34 @@ export function MaritimeMap() {
     isLoading: isTrajectoryLoading,
     error: trajectoryError,
   } = useSpillTrajectory(selectedSpillId);
+
+  // Only fetched while forecast mode is actually armed — backtrack mode never
+  // requests it, so switching between spills in backtrack mode costs nothing extra.
+  const {
+    forecast,
+    isLoading: isForecastLoading,
+    error: forecastError,
+  } = useSpillForecast(investigationMode === 'forecast' ? selectedSpillId : null);
+
+  // Coastline extract for forecast mode's coastal-alert readout (see
+  // `coastalAlert.ts`), loaded whenever forecast mode arms. State, not a ref:
+  // the InvestigationPanel's coastal-alert banner renders from it.
+  const [coastline, setCoastline] = useState<CoastlineGeoJSON | null>(null);
+  useEffect(() => {
+    if (investigationMode !== 'forecast' || !selectedSpillId) {
+      setCoastline(null);
+      return;
+    }
+
+    let active = true;
+    loadCoastline('mediterranean').then((loaded) => {
+      if (active) setCoastline(loaded);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [investigationMode, selectedSpillId]);
 
   const {
     attribution,
@@ -257,6 +306,13 @@ export function MaritimeMap() {
         }
       });
 
+      // Zoom feeds the forecast heatmap's radius re-derivation (see the
+      // `zoom` state declaration above). `zoomend` rather than `zoom`: the
+      // latter fires on every animation frame of a zoom gesture or flyTo, and
+      // rebuilding the whole deck.gl layer stack that often would be wasteful
+      // — the heatmap only needs to be right once the camera settles.
+      map.on('zoomend', () => setZoom(map.getZoom()));
+
       mapRef.current = map;
     } catch (e) {
       console.error('Failed to initialize MapLibre:', e);
@@ -342,48 +398,80 @@ export function MaritimeMap() {
     };
   }, [isLoading]); // Attach after initial map load
 
-  // --- Push the deck.gl layer stack whenever map state changes ---
-  useEffect(() => {
-    const overlay = deckOverlayRef.current;
-    if (!overlay || isLoading) return;
+  // --- deck.gl layer stack, split into independently memoized pieces ---
+  // Zoom only affects driftLayers (the forecast heatmap's kernel radius has
+  // no geographic-unit option — see `forecastEncoding.ts`), so it's kept out
+  // of every other memo's dependencies. Before this split, `zoom` lived on
+  // one combined effect that rebuilt the whole stack, so every zoom tick
+  // also rebuilt the ~377 spill markers and vessel tracks — that's what made
+  // zooming feel laggy while a forecast was active.
+  const environmentLayers = useMemo(
+    () =>
+      createEnvironmentLayers({
+        environment,
+        showWind: windVisible,
+        showCurrent: currentVisible,
+      }),
+    [environment, windVisible, currentVisible]
+  );
 
-    overlay.setProps({
-      layers: buildMaritimeLayers({
+  const driftLayers = useMemo(
+    () =>
+      buildDriftLayers({
+        investigationMode,
+        trajectory,
+        visiblePoints: backtrackActive ? timeline.visiblePoints : null,
+        oilPlayhead: backtrackActive ? timeline.oilPosition : null,
+        playbackMode,
+        forecast,
+        zoom,
+      }),
+    [
+      investigationMode,
+      trajectory,
+      backtrackActive,
+      timeline.visiblePoints,
+      timeline.oilPosition,
+      playbackMode,
+      forecast,
+      zoom,
+    ]
+  );
+
+  const vesselLayers = useMemo(
+    () =>
+      createVesselLayers({
+        vessels: attribution?.drawableVessels ?? [],
+        vesselPositions: timeline.vesselPositions,
+        backtrackActive,
+      }),
+    [attribution, timeline.vesselPositions, backtrackActive]
+  );
+
+  const spillLayers = useMemo(
+    () =>
+      createSpillLayers({
         spills,
         selectedSpillId,
         selectedSpill,
         focusMode,
         onSelectSpill: selectSpill,
-        trajectory,
-        visiblePoints: backtrackActive ? timeline.visiblePoints : null,
-        oilPlayhead: backtrackActive ? timeline.oilPosition : null,
-        environment,
-        showWind: windVisible,
-        showCurrent: currentVisible,
-        vessels: attribution?.drawableVessels ?? [],
-        vesselPositions: timeline.vesselPositions,
         backtrackActive,
-        playbackMode,
       }),
+    [spills, selectedSpillId, selectedSpill, focusMode, selectSpill, backtrackActive]
+  );
+
+  // --- Push the deck.gl layer stack whenever any of the above change ---
+  // Paint order (bottom → top): environment arrows → drift geometry → vessel
+  // tracks/markers → spill dots.
+  useEffect(() => {
+    const overlay = deckOverlayRef.current;
+    if (!overlay || isLoading) return;
+
+    overlay.setProps({
+      layers: [...environmentLayers, ...driftLayers, ...vesselLayers, ...spillLayers],
     });
-  }, [
-    spills,
-    selectedSpillId,
-    selectedSpill,
-    focusMode,
-    selectSpill,
-    isLoading,
-    trajectory,
-    backtrackActive,
-    playbackMode,
-    timeline.visiblePoints,
-    timeline.oilPosition,
-    timeline.vesselPositions,
-    environment,
-    windVisible,
-    currentVisible,
-    attribution,
-  ]);
+  }, [environmentLayers, driftLayers, vesselLayers, spillLayers, isLoading]);
 
   // Clear framed-drift lock when the selection changes so the next path can reframe.
   useEffect(() => {
@@ -414,13 +502,25 @@ export function MaritimeMap() {
   }, [selectedSpill]);
 
   // --- Second beat: frame the drift path once it arrives for this selection ---
+  // Bounds come from whichever geometry is actually on screen for the active
+  // mode — the forecast's own bounds in 'forecast' mode, not the backtrack
+  // trajectory's, so a forecast with a very different reach (a stalled 0.3km
+  // creep vs. a 40km run) still lands fully framed instead of reusing a box
+  // sized for the backtracked path. Keyed by mode as well as spill id so
+  // switching modes for the same spill reframes too, not just switching spills.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !trajectory || !selectedSpillId) return;
-    if (framedDriftForRef.current === trajectory.spillId) return;
-    framedDriftForRef.current = trajectory.spillId;
-    frameDriftPath(map, trajectory.bounds);
-  }, [trajectory, selectedSpillId]);
+    if (!map || !selectedSpillId) return;
+
+    const bounds =
+      investigationMode === 'forecast' ? (forecast?.bounds ?? null) : (trajectory?.bounds ?? null);
+    if (!bounds) return;
+
+    const framedKey = `${selectedSpillId}:${investigationMode}`;
+    if (framedDriftForRef.current === framedKey) return;
+    framedDriftForRef.current = framedKey;
+    frameDriftPath(map, bounds);
+  }, [trajectory, forecast, selectedSpillId, investigationMode]);
 
   // Focus Mode polygon layer — armed by the SAME condition that renders the
   // InvestigationTimeline panel (backtrackActive + trajectory loaded), kept in
@@ -459,15 +559,114 @@ export function MaritimeMap() {
     updateFocusPolygon(map, focusPolygonRing ? [focusPolygonRing] : null, focusPolygonOpacity);
   }, [backtrackActive, focusPolygonRing, focusPolygonOpacity]);
 
+  // "T-Nh"/"T+Nh" time-tick labels, plus the path endpoints (Probable
+  // source/Detection for backtrack, Now/Predicted position for forecast).
+  // Rendered as a native maplibre symbol layer — see timeTickLabels.ts for
+  // why this can't be a deck.gl TextLayer on this map. Only one of
+  // backtrack/forecast is ever active, so both branches share one label set.
+  const timeTickLabelData = useMemo<TimeTickLabelDatum[]>(() => {
+    if (investigationMode === 'forecast') {
+      if (!forecast || forecast.points.length < 2) return [];
+      const first = forecast.points[0];
+      const last = forecast.points[forecast.points.length - 1];
+      const ticks = selectForecastTimeTicks(forecast.points);
+      return [
+        { longitude: first.longitude, latitude: first.latitude, text: 'NOW' },
+        ...ticks.map((tick) => ({
+          longitude: tick.longitude,
+          latitude: tick.latitude,
+          text: `T+${Math.round(tick.hoursFromNow)}h`,
+        })),
+        { longitude: last.longitude, latitude: last.latitude, text: 'PREDICTED POSITION' },
+      ];
+    }
+
+    if (!trajectory || trajectory.points.length < 2) return [];
+    const oldest = trajectory.points[0];
+    const newest = trajectory.points[trajectory.points.length - 1];
+    // Same clip the tick dots use (TrajectoryLayer.ts): only label ticks the
+    // playhead has already reached, so labels appear in lockstep with dots
+    // while scrubbing instead of spoiling ticks still ahead of the playhead.
+    const pointsForPath =
+      backtrackActive && timeline.visiblePoints && timeline.visiblePoints.length >= 2
+        ? timeline.visiblePoints
+        : trajectory.points;
+    const ticks = selectTimeTicks(trajectory.points).filter((tick) =>
+      pointsForPath.some((p) => p.timestampMs >= tick.timestampMs)
+    );
+    // Same fallback InvestigationPanel's "Est. release" field uses: the
+    // backend's own estimate when it has one, else the backtracked path's
+    // own oldest sample — so the map label and the panel never disagree.
+    const releaseTimeMs = selectedSpill?.estimatedReleaseTime
+      ? Date.parse(selectedSpill.estimatedReleaseTime)
+      : oldest.timestampMs;
+    return [
+      {
+        longitude: oldest.longitude,
+        latitude: oldest.latitude,
+        text: `PROBABLE SOURCE\n${formatUtcTimestamp(releaseTimeMs)}`,
+      },
+      ...ticks.map((tick) => ({
+        longitude: tick.longitude,
+        latitude: tick.latitude,
+        text: `T-${Math.round(tick.hoursBeforeDetection)}h`,
+      })),
+      {
+        longitude: newest.longitude,
+        latitude: newest.latitude,
+        text: `DETECTION\n${formatUtcTimestamp(newest.timestampMs)}`,
+      },
+    ];
+  }, [
+    investigationMode,
+    forecast,
+    trajectory,
+    backtrackActive,
+    timeline.visiblePoints,
+    selectedSpill?.estimatedReleaseTime,
+  ]);
+
+  const hasTimeTickLabels = timeTickLabelData.length > 0;
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (!hasTimeTickLabels) {
+      removeTimeTickLabels(map, 'drift');
+      return;
+    }
+
+    addTimeTickLabels(map, 'drift');
+    updateTimeTickLabels(map, 'drift', timeTickLabelData);
+
+    return () => {
+      removeTimeTickLabels(map, 'drift');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial paint only; live content updates handled by the effect below.
+  }, [hasTimeTickLabels]);
+
+  // Push content changes (e.g. a new tick label revealed by scrubbing) into
+  // the existing source — no re-add, same pattern as the focus polygon above.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !hasTimeTickLabels) return;
+    updateTimeTickLabels(map, 'drift', timeTickLabelData);
+  }, [timeTickLabelData, hasTimeTickLabels]);
+
   const handleRecenter = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
+    if (investigationMode === 'forecast' && forecast) {
+      frameDriftPath(map, forecast.bounds);
+      return;
+    }
     if (trajectory) {
       frameDriftPath(map, trajectory.bounds);
       return;
     }
     if (selectedSpill) flyToSpill(map, selectedSpill);
-  }, [selectedSpill, trajectory]);
+  }, [selectedSpill, trajectory, forecast, investigationMode]);
 
   const handleResetView = useCallback(() => {
     const map = mapRef.current;
@@ -475,6 +674,7 @@ export function MaritimeMap() {
     clearInvestigation();
     setBacktrackSpillId(null);
     setPlaybackMode('forward');
+    setInvestigationMode('backtrack');
     setShowWind(false);
     setShowCurrent(false);
     resetToGlobe(map);
@@ -493,10 +693,22 @@ export function MaritimeMap() {
     });
   }, [selectedSpillId]);
 
+  // Forecast and the vessel-investigation timeline are mutually exclusive
+  // stories on the map: the timeline and its Focus Mode polygon are both
+  // driven by `trajectory`, and would keep rendering underneath an unrelated
+  // forecast path if left armed. Disarming through the same toggle the button
+  // itself uses keeps this identical to a manual click, not a parallel code path.
+  useEffect(() => {
+    if (investigationMode === 'forecast' && backtrackActive) {
+      handleToggleBacktrack();
+    }
+  }, [investigationMode, backtrackActive, handleToggleBacktrack]);
+
   const handleClearInvestigation = useCallback(() => {
     clearInvestigation();
     setBacktrackSpillId(null);
     setPlaybackMode('forward');
+    setInvestigationMode('backtrack');
     setShowWind(false);
     setShowCurrent(false);
     framedDriftForRef.current = null;
@@ -535,6 +747,12 @@ export function MaritimeMap() {
             backtrackActive={backtrackActive}
             playbackMode={playbackMode}
             onSetPlaybackMode={setPlaybackMode}
+            investigationMode={investigationMode}
+            onSetInvestigationMode={setInvestigationMode}
+            isForecastLoading={isForecastLoading}
+            forecastError={forecastError}
+            forecast={forecast}
+            coastline={coastline}
             onToggleFocusMode={toggleFocusMode}
             onToggleBacktrack={handleToggleBacktrack}
             onClear={handleClearInvestigation}

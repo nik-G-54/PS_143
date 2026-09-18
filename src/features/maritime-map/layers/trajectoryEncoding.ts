@@ -32,7 +32,7 @@ export const PATH_WIDTH_NEW_PX = 4;
 export const CASING_EXTRA_PX = 2.6;
 
 /** Spacing of the time marks along the path. Referenced by the legend copy. */
-export const TICK_INTERVAL_HOURS = 6;
+export const TICK_INTERVAL_HOURS = 4;
 export const TICK_RADIUS_PX = 3;
 
 export const ORIGIN_RADIUS_PX = 5.5;

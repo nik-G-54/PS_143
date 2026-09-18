@@ -27,6 +27,8 @@ interface DatedPosition {
   latitude: number;
   timestamp: string;
   timestampMs: number;
+  driftSpeedKnots: number | null;
+  driftHeadingDeg: number | null;
 }
 
 function adaptPredictedPosition(
@@ -77,6 +79,11 @@ export function adaptSpillForecast(
       latitude: point.latitude as number,
       timestamp,
       timestampMs,
+      driftSpeedKnots:
+        isFiniteNumber(point?.drift_speed_knots) && point.drift_speed_knots >= 0
+          ? point.drift_speed_knots
+          : null,
+      driftHeadingDeg: isFiniteNumber(point?.drift_heading_deg) ? point.drift_heading_deg : null,
     });
   }
 
@@ -122,6 +129,8 @@ export function adaptSpillForecast(
       timestampMs: position.timestampMs,
       hoursFromNow: (position.timestampMs - startMs) / 3_600_000,
       cumulativeKm,
+      driftSpeedKnots: position.driftSpeedKnots,
+      driftHeadingDeg: position.driftHeadingDeg,
     };
   });
 

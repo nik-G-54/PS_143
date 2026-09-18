@@ -1,6 +1,12 @@
 // src/components/map/layers/DriftTrajectory.ts
 import type { Map, GeoJSONSource } from 'maplibre-gl';
 import type { VisualizationData } from '../../../types/detail';
+import {
+  buildOilPatchFillBands,
+  buildOilPatchGlowBands,
+  smoothRing,
+} from '../../../features/maritime-map/utils/oilPatchGeometry';
+import type { OilPatchBand } from '../../../features/maritime-map/utils/oilPatchGeometry';
 
 let animFrameId: number | null = null;
 
@@ -119,111 +125,127 @@ export function removeDriftTrajectory(map: Map) {
 // Focus Mode can be added/removed independently without touching the
 // existing (default) rendering.
 
-const FOCUS_SOURCE_ID = 'drift-focus-source';
+const FOCUS_GLOW_SOURCE_ID = 'drift-focus-glow-source';
+const FOCUS_GLOW_FILL_ID = 'drift-focus-glow-fill';
+const FOCUS_FILL_SOURCE_ID = 'drift-focus-fill-source';
 const FOCUS_FILL_ID = 'drift-focus-fill';
-const FOCUS_OUTLINE_ID = 'drift-focus-outline';
-
-/**
- * Base (unfaded) paint opacities for the traveling focus polygon. Named here
- * so `addFocusPolygon`'s initial paint and `updateFocusPolygon`'s per-progress
- * fade multiply the SAME numbers — see `updateFocusPolygon`'s
- * `opacityMultiplier` param, driven by
- * `oilSlickKeyframes.ts`'s `detectionHandoffOpacity`.
- */
-const FOCUS_FILL_BASE_OPACITY = 0.5;
-const FOCUS_OUTLINE_BASE_OPACITY = 0.95;
 
 /** GeoJSON Polygon coordinates: one ring, [lon, lat] pairs, closed. */
 export type FocusPolygonCoordinates = number[][][];
 
-function emptyPolygonFeature() {
+function emptyFeatureCollection(): GeoJSON.FeatureCollection {
+  return { type: 'FeatureCollection', features: [] };
+}
+
+/**
+ * One band per feature, each carrying its own colour/opacity as GeoJSON
+ * properties — lets a single `fill` layer paint every band via a
+ * `['get', ...]` data expression instead of needing one source+layer pair
+ * per band. Render order follows array order (`buildOilPatchFillBands`/
+ * `buildOilPatchGlowBands` already order widest/boundary-first), matching
+ * how MapLibre draws a GeoJSON source's features in the order they appear.
+ */
+function bandsToFeatureCollection(bands: OilPatchBand[]): GeoJSON.FeatureCollection {
   return {
-    type: 'Feature' as const,
-    geometry: { type: 'Polygon' as const, coordinates: [] as number[][][] },
-    properties: {},
+    type: 'FeatureCollection',
+    features: bands.map((band) => ({
+      type: 'Feature',
+      geometry: { type: 'Polygon', coordinates: [band.ring] },
+      properties: {
+        color: `rgb(${band.rgb[0]}, ${band.rgb[1]}, ${band.rgb[2]})`,
+        opacity: band.alpha / 255,
+      },
+    })),
   };
 }
 
 export function addFocusPolygon(map: Map) {
-  if (!map.getSource(FOCUS_SOURCE_ID)) {
-    map.addSource(FOCUS_SOURCE_ID, {
-      type: 'geojson',
-      data: emptyPolygonFeature(),
-    });
+  if (!map.getSource(FOCUS_GLOW_SOURCE_ID)) {
+    map.addSource(FOCUS_GLOW_SOURCE_ID, { type: 'geojson', data: emptyFeatureCollection() });
+  }
+  if (!map.getSource(FOCUS_FILL_SOURCE_ID)) {
+    map.addSource(FOCUS_FILL_SOURCE_ID, { type: 'geojson', data: emptyFeatureCollection() });
   }
 
-  // Red is deliberate: distinct from the teal/blue drift-line layers above
-  // (#38bdf8) and from the vessel rank markers (gold #facc15, slate-blue
-  // #94a3b8, orange #fb923c — see VesselLayer.ts's rankColor) so the oil-slick
-  // polygon never gets visually confused with either.
-  if (!map.getLayer(FOCUS_FILL_ID)) {
+  // A warm dark-core/amber-sheen gradient + soft outward glow (see
+  // `oilPatchGeometry.ts` and `spillEncoding.ts`'s `OIL_PATCH_STOPS`/
+  // `OIL_GLOW_STOPS`) in place of one flat red fill + a hard stroke — real
+  // oil doesn't render as a single flat tint with a ruled border. Distinct
+  // from the teal/blue drift-line layers above (#38bdf8) and from the vessel
+  // rank markers (gold #facc15, slate-blue #94a3b8, orange #fb923c — see
+  // VesselLayer.ts's rankColor) so the oil-slick polygon never gets visually
+  // confused with either.
+  if (!map.getLayer(FOCUS_GLOW_FILL_ID)) {
     map.addLayer({
-      id: FOCUS_FILL_ID,
+      id: FOCUS_GLOW_FILL_ID,
       type: 'fill',
-      source: FOCUS_SOURCE_ID,
+      source: FOCUS_GLOW_SOURCE_ID,
       paint: {
-        'fill-color': '#ff3b30',
-        'fill-opacity': FOCUS_FILL_BASE_OPACITY,
+        'fill-color': ['get', 'color'],
+        'fill-opacity': ['get', 'opacity'],
       },
     });
   }
 
-  if (!map.getLayer(FOCUS_OUTLINE_ID)) {
+  if (!map.getLayer(FOCUS_FILL_ID)) {
     map.addLayer({
-      id: FOCUS_OUTLINE_ID,
-      type: 'line',
-      source: FOCUS_SOURCE_ID,
+      id: FOCUS_FILL_ID,
+      type: 'fill',
+      source: FOCUS_FILL_SOURCE_ID,
       paint: {
-        'line-color': '#dc2626',
-        'line-width': 2,
-        'line-opacity': FOCUS_OUTLINE_BASE_OPACITY,
+        'fill-color': ['get', 'color'],
+        'fill-opacity': ['get', 'opacity'],
       },
     });
   }
 }
 
 /**
- * Push a new polygon shape into the existing focus-mode source (no re-add),
- * and apply the detection-handoff fade to both the fill and outline layers.
+ * Push a new polygon shape into the existing focus-mode sources (no re-add),
+ * and apply the detection-handoff fade to every band's opacity.
  *
  * `opacityMultiplier` (0..1, default 1 = fully visible/unfaded) is expected
  * to come from `oilSlickKeyframes.ts`'s `detectionHandoffOpacity(progress,
- * direction)` — see MaritimeMap.tsx's call site. It's applied here (rather
- * than baked into the source data) so the SAME base paint values
- * `addFocusPolygon` sets stay the single source of truth; this just scales
- * them via `setPaintProperty`, the same dynamic-paint-update pattern already
- * used for the marching-ants dash layer above.
+ * direction)` — see MaritimeMap.tsx's call site. Baked into each band's own
+ * `opacity` property (rather than a paint-property multiply, which would
+ * need a `['*', ...]` expression rebuilt on every call anyway) since the
+ * bands are already being rebuilt here on every progress tick.
+ *
+ * Runs on every play-tick/slider-drag update, same as before — the band
+ * geometry comes from `oilPatchGeometry.ts`'s cheap centroid-scaling, not
+ * true polygon buffering, specifically so this stays safe at animation-frame
+ * rate (see that file's docstring).
  */
 export function updateFocusPolygon(
   map: Map,
   coordinates: FocusPolygonCoordinates | null,
   opacityMultiplier: number = 1
 ) {
-  const source = map.getSource(FOCUS_SOURCE_ID) as GeoJSONSource | undefined;
-  if (!source) return;
+  const glowSource = map.getSource(FOCUS_GLOW_SOURCE_ID) as GeoJSONSource | undefined;
+  const fillSource = map.getSource(FOCUS_FILL_SOURCE_ID) as GeoJSONSource | undefined;
+  if (!glowSource || !fillSource) return;
 
-  source.setData(
-    coordinates && coordinates.length > 0 && coordinates[0].length > 0
-      ? {
-          type: 'Feature',
-          geometry: { type: 'Polygon', coordinates },
-          properties: {},
-        }
-      : emptyPolygonFeature()
-  );
+  const ring = coordinates && coordinates.length > 0 && coordinates[0].length >= 4 ? coordinates[0] : null;
+
+  if (!ring) {
+    glowSource.setData(emptyFeatureCollection());
+    fillSource.setData(emptyFeatureCollection());
+    return;
+  }
 
   const clampedMultiplier = Math.min(1, Math.max(0, opacityMultiplier));
-  if (map.getLayer(FOCUS_FILL_ID)) {
-    map.setPaintProperty(FOCUS_FILL_ID, 'fill-opacity', FOCUS_FILL_BASE_OPACITY * clampedMultiplier);
-  }
-  if (map.getLayer(FOCUS_OUTLINE_ID)) {
-    map.setPaintProperty(FOCUS_OUTLINE_ID, 'line-opacity', FOCUS_OUTLINE_BASE_OPACITY * clampedMultiplier);
-  }
+  const smoothed = smoothRing(ring);
+  const fade = (band: OilPatchBand): OilPatchBand => ({ ...band, alpha: band.alpha * clampedMultiplier });
+
+  glowSource.setData(bandsToFeatureCollection(buildOilPatchGlowBands(smoothed).map(fade)));
+  fillSource.setData(bandsToFeatureCollection(buildOilPatchFillBands(smoothed).map(fade)));
 }
 
 export function removeFocusPolygon(map: Map) {
-  [FOCUS_OUTLINE_ID, FOCUS_FILL_ID].forEach(id => {
+  [FOCUS_FILL_ID, FOCUS_GLOW_FILL_ID].forEach((id) => {
     if (map.getLayer(id)) map.removeLayer(id);
   });
-  if (map.getSource(FOCUS_SOURCE_ID)) map.removeSource(FOCUS_SOURCE_ID);
+  [FOCUS_FILL_SOURCE_ID, FOCUS_GLOW_SOURCE_ID].forEach((id) => {
+    if (map.getSource(id)) map.removeSource(id);
+  });
 }

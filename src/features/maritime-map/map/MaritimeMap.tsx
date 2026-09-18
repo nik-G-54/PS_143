@@ -43,10 +43,10 @@ import {
   updateFocusPolygon,
   removeFocusPolygon,
 } from '../../../components/map/layers/DriftTrajectory';
-import { addTimeTickLabels, removeTimeTickLabels, updateTimeTickLabels } from './timeTickLabels';
-import type { TimeTickLabelDatum } from './timeTickLabels';
-import { selectTimeTicks } from '../layers/trajectoryEncoding';
-import { selectForecastTimeTicks } from '../layers/forecastEncoding';
+import { removeTimeTickMarkers, updateTimeTickMarkers } from './timeTickMarkers';
+import type { TimeTickMarkerDatum } from './timeTickMarkers';
+import { selectTimeTicks, driftColorCssAt, driftProgress } from '../layers/trajectoryEncoding';
+import { selectForecastTimeTicks, forecastColorCssAt, forecastProgress } from '../layers/forecastEncoding';
 import { formatUtcTimestamp } from '../utils/formatSpill';
 
 // Explicitly set the worker URL using Vite's ?worker&url syntax
@@ -559,25 +559,42 @@ export function MaritimeMap() {
     updateFocusPolygon(map, focusPolygonRing ? [focusPolygonRing] : null, focusPolygonOpacity);
   }, [backtrackActive, focusPolygonRing, focusPolygonOpacity]);
 
-  // "T-Nh"/"T+Nh" time-tick labels, plus the path endpoints (Probable
+  // "T-Nh"/"T+Nh" time-tick badges, plus the path endpoints (Probable
   // source/Detection for backtrack, Now/Predicted position for forecast).
-  // Rendered as a native maplibre symbol layer — see timeTickLabels.ts for
-  // why this can't be a deck.gl TextLayer on this map. Only one of
-  // backtrack/forecast is ever active, so both branches share one label set.
-  const timeTickLabelData = useMemo<TimeTickLabelDatum[]>(() => {
+  // Rendered as `maplibregl.Marker` HTML pill badges — see timeTickMarkers.ts
+  // for why this can't be a deck.gl TextLayer on this map, and why it's HTML
+  // markers rather than a maplibre symbol layer. Each badge's colour is
+  // sampled from the same gradient its path uses at that point, so the badge
+  // always agrees with the path under it. Only one of backtrack/forecast is
+  // ever active, so both branches share one marker set.
+  const timeTickLabelData = useMemo<TimeTickMarkerDatum[]>(() => {
     if (investigationMode === 'forecast') {
       if (!forecast || forecast.points.length < 2) return [];
       const first = forecast.points[0];
       const last = forecast.points[forecast.points.length - 1];
       const ticks = selectForecastTimeTicks(forecast.points);
       return [
-        { longitude: first.longitude, latitude: first.latitude, text: 'NOW' },
+        {
+          longitude: first.longitude,
+          latitude: first.latitude,
+          title: 'NOW',
+          color: forecastColorCssAt(0),
+          variant: 'endpoint',
+        },
         ...ticks.map((tick) => ({
           longitude: tick.longitude,
           latitude: tick.latitude,
-          text: `T+${Math.round(tick.hoursFromNow)}h`,
+          title: `T+${Math.round(tick.hoursFromNow)}h`,
+          color: forecastColorCssAt(forecastProgress(tick)),
+          variant: 'tick' as const,
         })),
-        { longitude: last.longitude, latitude: last.latitude, text: 'PREDICTED POSITION' },
+        {
+          longitude: last.longitude,
+          latitude: last.latitude,
+          title: 'PREDICTED POSITION',
+          color: forecastColorCssAt(1),
+          variant: 'endpoint',
+        },
       ];
     }
 
@@ -585,7 +602,7 @@ export function MaritimeMap() {
     const oldest = trajectory.points[0];
     const newest = trajectory.points[trajectory.points.length - 1];
     // Same clip the tick dots use (TrajectoryLayer.ts): only label ticks the
-    // playhead has already reached, so labels appear in lockstep with dots
+    // playhead has already reached, so badges appear in lockstep with dots
     // while scrubbing instead of spoiling ticks still ahead of the playhead.
     const pointsForPath =
       backtrackActive && timeline.visiblePoints && timeline.visiblePoints.length >= 2
@@ -596,7 +613,7 @@ export function MaritimeMap() {
     );
     // Same fallback InvestigationPanel's "Est. release" field uses: the
     // backend's own estimate when it has one, else the backtracked path's
-    // own oldest sample — so the map label and the panel never disagree.
+    // own oldest sample — so the map badge and the panel never disagree.
     const releaseTimeMs = selectedSpill?.estimatedReleaseTime
       ? Date.parse(selectedSpill.estimatedReleaseTime)
       : oldest.timestampMs;
@@ -604,17 +621,25 @@ export function MaritimeMap() {
       {
         longitude: oldest.longitude,
         latitude: oldest.latitude,
-        text: `PROBABLE SOURCE\n${formatUtcTimestamp(releaseTimeMs)}`,
+        title: 'PROBABLE SOURCE',
+        subtitle: formatUtcTimestamp(releaseTimeMs),
+        color: driftColorCssAt(0),
+        variant: 'endpoint',
       },
       ...ticks.map((tick) => ({
         longitude: tick.longitude,
         latitude: tick.latitude,
-        text: `T-${Math.round(tick.hoursBeforeDetection)}h`,
+        title: `T-${Math.round(tick.hoursBeforeDetection)}h`,
+        color: driftColorCssAt(driftProgress(tick, trajectory.durationHours)),
+        variant: 'tick' as const,
       })),
       {
         longitude: newest.longitude,
         latitude: newest.latitude,
-        text: `DETECTION\n${formatUtcTimestamp(newest.timestampMs)}`,
+        title: 'DETECTION',
+        subtitle: formatUtcTimestamp(newest.timestampMs),
+        color: driftColorCssAt(1),
+        variant: 'endpoint',
       },
     ];
   }, [
@@ -633,25 +658,24 @@ export function MaritimeMap() {
     if (!map) return;
 
     if (!hasTimeTickLabels) {
-      removeTimeTickLabels(map, 'drift');
+      removeTimeTickMarkers('drift', map);
       return;
     }
 
-    addTimeTickLabels(map, 'drift');
-    updateTimeTickLabels(map, 'drift', timeTickLabelData);
+    updateTimeTickMarkers(map, 'drift', timeTickLabelData);
 
     return () => {
-      removeTimeTickLabels(map, 'drift');
+      removeTimeTickMarkers('drift', map);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial paint only; live content updates handled by the effect below.
   }, [hasTimeTickLabels]);
 
-  // Push content changes (e.g. a new tick label revealed by scrubbing) into
-  // the existing source — no re-add, same pattern as the focus polygon above.
+  // Push content changes (e.g. a new tick badge revealed by scrubbing) into
+  // a fresh marker set — same pattern as the focus polygon above.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !hasTimeTickLabels) return;
-    updateTimeTickLabels(map, 'drift', timeTickLabelData);
+    updateTimeTickMarkers(map, 'drift', timeTickLabelData);
   }, [timeTickLabelData, hasTimeTickLabels]);
 
   const handleRecenter = useCallback(() => {

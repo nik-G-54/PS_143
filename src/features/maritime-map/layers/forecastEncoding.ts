@@ -53,6 +53,18 @@ export function forecastColorAt(progress: number): [number, number, number, numb
   ];
 }
 
+/**
+ * CSS `rgb(...)` string for the same gradient sample — used by the HTML
+ * marker badges (`timeTickMarkers.ts`), mirroring `trajectoryEncoding.ts`'s
+ * `driftColorCssAt` so both modes' badges always agree with their path.
+ */
+export function forecastColorCssAt(progress: number): string {
+  const r = Math.round(lerp(FORECAST_NEAR_RGB[0], FORECAST_FAR_RGB[0], progress));
+  const g = Math.round(lerp(FORECAST_NEAR_RGB[1], FORECAST_FAR_RGB[1], progress));
+  const b = Math.round(lerp(FORECAST_NEAR_RGB[2], FORECAST_FAR_RGB[2], progress));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 /** Vertex width in pixels for a position along the forecast path. */
 export function forecastWidthAt(progress: number): number {
   return lerp(PATH_WIDTH_NEAR_PX, PATH_WIDTH_FAR_PX, progress);

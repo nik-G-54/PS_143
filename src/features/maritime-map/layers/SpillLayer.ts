@@ -11,6 +11,8 @@ import {
   createAreaScale,
   radiusForArea,
 } from './spillEncoding';
+import { buildOilPatchFillBands, buildOilPatchGlowBands, smoothRing } from '../utils/oilPatchGeometry';
+import type { OilPatchBand } from '../utils/oilPatchGeometry';
 
 export interface SpillLayerOptions {
   spills: MapSpill[];
@@ -117,27 +119,45 @@ export function getResolvedSpillPolygon(selected: MapSpill): [number, number][] 
 }
 
 /**
- * Authoritative oil slick boundary polygon for the selected spill detection.
- * In focus mode, renders an organic fluid slick contour instead of a rigid square box.
+ * One flat-colour band of the gradient/glow fake — see `oilPatchGeometry.ts`.
+ * Unstroked: the bands themselves are what reads as an edge (the boundary
+ * band is the most saturated, opaque one), so a separate stroke would just
+ * redraw a hard line back on top of the soft look they're built to replace.
  */
-function createSpillPolygonLayer(selected: MapSpill): PolygonLayer<MapSpill> {
-  const resolvedPolygon = getResolvedSpillPolygon(selected);
-
-  return new PolygonLayer<MapSpill>({
-    id: LAYER_IDS.spillPolygon,
-    data: [selected],
-    getPolygon: () => resolvedPolygon,
+function createBandLayer(idPrefix: string, index: number, band: OilPatchBand): PolygonLayer<OilPatchBand> {
+  return new PolygonLayer<OilPatchBand>({
+    id: `${idPrefix}-${index}`,
+    data: [band],
+    getPolygon: (d) => d.ring,
     filled: true,
-    stroked: true,
-    getFillColor: [...SPILL_RGB, 75],
-    getLineColor: [...SELECTION_RGB, 230],
-    lineWidthUnits: 'pixels',
-    getLineWidth: 2,
+    stroked: false,
+    getFillColor: (d) => [...d.rgb, d.alpha],
     pickable: false,
-    updateTriggers: {
-      getPolygon: [selected.spillId, selected.polygon],
-    },
   });
+}
+
+/**
+ * Authoritative oil slick boundary polygon for the selected spill detection —
+ * a smoothed outline filled with a dark-core/warm-sheen gradient and a soft
+ * outward glow, in place of one flat colour and a hard stroke (see
+ * `oilPatchGeometry.ts` and `spillEncoding.ts`'s `OIL_PATCH_STOPS`/
+ * `OIL_GLOW_STOPS` for why — real oil doesn't render as a single flat tint
+ * with a ruled border). Ordered glow-then-fill, each band widest/faintest
+ * first, so every layer paints correctly under the ones meant to sit on top
+ * of it.
+ */
+function createSpillPolygonLayers(selected: MapSpill): PolygonLayer<OilPatchBand>[] {
+  const resolvedPolygon = getResolvedSpillPolygon(selected);
+  if (resolvedPolygon.length < 4) return [];
+
+  const smoothed = smoothRing(resolvedPolygon);
+  const glowBands = buildOilPatchGlowBands(smoothed);
+  const fillBands = buildOilPatchFillBands(smoothed);
+
+  return [
+    ...glowBands.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-glow`, i, band)),
+    ...fillBands.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-fill`, i, band)),
+  ];
 }
 
 /** Ring drawn around the spill under investigation. */
@@ -243,7 +263,7 @@ export function createSpillLayers(options: SpillLayerOptions): Layer[] {
     // Mode on separately (the two are independent controls; see
     // `backtrackActive`'s docstring above).
     if ((focusMode || backtrackActive) && selected.polygon && selected.polygon.length >= 3) {
-      layers.push(createSpillPolygonLayer(selected));
+      layers.push(...createSpillPolygonLayers(selected));
     }
     layers.push(createSelectionRingLayer(selected, maxSqrtArea));
   }

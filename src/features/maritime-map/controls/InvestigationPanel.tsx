@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -67,17 +67,6 @@ interface InvestigationPanelProps {
   onClear: () => void;
   onRecenter: () => void;
   onScrollToDetails: () => void;
-  /**
-   * `useVesselRevealStage.ts`'s `startCount` — increments every time the
-   * post-timeline vessel-reveal sequence begins (including a Replay), so
-   * this panel collapses out of the way each time, not just on the first
-   * idle->active transition. Keyed off a counter rather than a boolean:
-   * replaying while `stage` is already non-'idle' is a real "collapse again"
-   * moment even though a plain "is the reveal active" boolean never flips.
-   * A nudge, not a lock — `isOpen` stays user-owned between runs, so
-   * re-opening it manually mid-reveal isn't fought until the next run starts.
-   */
-  collapseOnRevealCount?: number;
 }
 
 /** Banner background per severity — the whole point is to be readable at a glance. */
@@ -139,11 +128,11 @@ function CollapsibleSection({
   const [isExpanded, setIsExpanded] = useState(defaultOpen);
 
   return (
-    <div className="border-t border-border pt-2">
+    <div className="maritime-panel-card p-2.5">
       <button
         type="button"
         onClick={() => setIsExpanded((prev) => !prev)}
-        className="flex w-full items-center justify-between py-1 text-left transition-colors hover:text-foreground cursor-pointer select-none group"
+        className="flex w-full items-center justify-between text-left transition-colors hover:text-foreground cursor-pointer select-none group"
         title={isExpanded ? `Collapse ${title}` : `Expand ${title}`}
       >
         <div className="flex items-center gap-1.5 min-w-0">
@@ -163,7 +152,7 @@ function CollapsibleSection({
       </button>
 
       {isExpanded && (
-        <div className="space-y-1.5 pt-1.5">
+        <div className="space-y-1.5 pt-2">
           {children}
         </div>
       )}
@@ -278,13 +267,8 @@ export function InvestigationPanel({
   onClear,
   onRecenter,
   onScrollToDetails,
-  collapseOnRevealCount = 0,
 }: InvestigationPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
-
-  useEffect(() => {
-    if (collapseOnRevealCount > 0) setIsOpen(false);
-  }, [collapseOnRevealCount]);
   const sourceLon = trajectory?.source?.longitude ?? spill.estimatedSourceLongitude;
   const sourceLat = trajectory?.source?.latitude ?? spill.estimatedSourceLatitude;
 
@@ -312,7 +296,7 @@ export function InvestigationPanel({
     : '—';
 
   return (
-    <div className="absolute top-4 right-4 z-10 flex max-h-[calc(100%-2rem)] w-[276px] flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg backdrop-blur-md transition-all duration-200">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground transition-all duration-200">
       <div className={`flex shrink-0 items-center justify-between px-3 py-2 ${isOpen ? 'border-b border-border' : ''}`}>
         <button
           type="button"
@@ -339,15 +323,15 @@ export function InvestigationPanel({
       </div>
 
       {isOpen && (
-        <div className="space-y-2.5 overflow-y-auto px-3 py-3">
-        <div className="flex items-start justify-between gap-2">
+        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3 py-3">
+        <div className="maritime-panel-card flex items-center justify-between gap-2 p-2.5">
           <span className="font-mono text-sm font-semibold text-primary">{spill.spillId}</span>
           <button
             type="button"
             onClick={onRecenter}
             title="Frame this spill and its drift path"
             className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          > 
+          >
             <Crosshair size={13} />
           </button>
         </div>

@@ -25,6 +25,20 @@ export interface ForecastLayerOptions {
    * ground footprint constant instead of shrinking as the camera zooms in.
    */
   zoom: number;
+  /**
+   * True while the camera is actively panning/zooming/rotating (see
+   * `MaritimeMap.tsx`'s `movestart`/`moveend` listeners). `HeatmapLayer` is a
+   * screen-space aggregation layer — unlike the plain `PathLayer`/
+   * `ScatterplotLayer` below it, deck.gl re-runs its full GPU aggregation pass
+   * on every rendered frame the viewport changes, not just when its own props
+   * change. That per-frame cost is what actually made zooming feel laggy the
+   * moment a forecast was active (the `zoom`-prop split above only stopped
+   * *other* layers from rebuilting on zoom — this layer's internal aggregation
+   * runs regardless of that). Dropping it for the gesture's duration and
+   * restoring it once the camera settles keeps the interaction itself smooth
+   * without giving up the density blob at rest.
+   */
+  isInteracting?: boolean;
 }
 
 /**
@@ -111,7 +125,7 @@ function createWaypointsLayer(forecast: SpillForecast): ScatterplotLayer<Forecas
  * density (cool/transparent → hot/opaque), a different channel from the
  * path's red→green time encoding.
  */
-function createHeatmapLayer(forecast: SpillForecast, zoom: number): HeatmapLayer<ForecastPoint> {
+function createHeatmapLayer(forecast: SpillForecast, zoom: number, visible: boolean): HeatmapLayer<ForecastPoint> {
   const centroidLat = (forecast.bounds.minLat + forecast.bounds.maxLat) / 2;
   // Re-derived on every zoom change (via the `zoom` param) so kernels keep
   // overlapping — and gaps don't reopen — however far the camera zooms in.
@@ -125,6 +139,16 @@ function createHeatmapLayer(forecast: SpillForecast, zoom: number): HeatmapLayer
     getPosition: (d) => [d.longitude, d.latitude],
     getWeight: (d) => heatmapWeightAt(forecastProgress(d)),
     radiusPixels,
+    // Toggled via `visible`, not by leaving the layer out of the array —
+    // deck.gl skips an invisible layer's update/render work (including the
+    // aggregation pass this whole thing exists to avoid mid-gesture) without
+    // tearing down and rebuilding its GPU-side aggregation state the way
+    // removing/re-adding the layer instance would.
+    visible,
+    // Default is 2048 — massive overkill for a forecast's few dozen points
+    // spread over a small patch of map. Cuts the aggregation texture's
+    // per-frame GPU cost with no visible loss of quality at this data density.
+    weightsTextureSize: 512,
     // Boosted alongside the wider radius so the now-more-spread-out weight
     // still reaches full saturation at the path's core instead of washing out.
     intensity: 2.2,
@@ -159,12 +183,16 @@ function createHeatmapLayer(forecast: SpillForecast, zoom: number): HeatmapLayer
  * markers on top so they stay clickable.
  */
 export function createForecastLayers(options: ForecastLayerOptions): Layer[] {
-  const { forecast, zoom } = options;
+  const { forecast, zoom, isInteracting } = options;
   if (!forecast || forecast.points.length < 2) return [];
 
   const layers: Layer[] = [];
 
-  layers.push(createHeatmapLayer(forecast, zoom));
+  // Hidden (not omitted) mid-gesture — see `isInteracting`'s doc comment
+  // above and `createHeatmapLayer`'s `visible` note. The path and waypoint
+  // layers are plain PathLayer/ScatterplotLayer, cheap to re-project every
+  // frame, so they stay on throughout.
+  layers.push(createHeatmapLayer(forecast, zoom, !isInteracting));
   layers.push(...createPathLayers(forecast));
   layers.push(createWaypointsLayer(forecast));
 

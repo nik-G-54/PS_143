@@ -18,17 +18,6 @@ export interface UseVesselRevealStageResult {
   /** Move to a specific stage — called by MaritimeMap.tsx's choreography effect once a beat's camera move settles. */
   advance: (next: VesselRevealStage) => void;
   reset: () => void;
-  /**
-   * Increments on every `start()` call, including a Replay while already
-   * mid-sequence or done. `stage` alone can't drive "collapse the
-   * investigation panel" reliably — going 'done' -> 'framing' again on
-   * Replay is a real value change, but a panel the user manually reopened
-   * while stage was already non-'idle' needs its own re-trigger even when
-   * `stage`'s *value* happens to repeat. Consumers that want "collapse every
-   * time a run begins" (see InvestigationPanel.tsx's `collapseOnReveal`)
-   * should key off this instead of `stage !== 'idle'`.
-   */
-  startCount: number;
 }
 
 /**
@@ -40,18 +29,14 @@ export interface UseVesselRevealStageResult {
  */
 export function useVesselRevealStage(resetKey: string | null): UseVesselRevealStageResult {
   const [stage, setStage] = useState<VesselRevealStage>('idle');
-  const [startCount, setStartCount] = useState(0);
 
   useEffect(() => {
     setStage('idle');
   }, [resetKey]);
 
-  const start = useCallback(() => {
-    setStage('framing');
-    setStartCount((count) => count + 1);
-  }, []);
+  const start = useCallback(() => setStage('framing'), []);
   const advance = useCallback((next: VesselRevealStage) => setStage(next), []);
   const reset = useCallback(() => setStage('idle'), []);
 
-  return { stage, start, advance, reset, startCount };
+  return { stage, start, advance, reset };
 }

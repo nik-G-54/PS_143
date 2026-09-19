@@ -209,6 +209,33 @@ export function adaptSpillAttribution(
       typeof rawTrajectory?.verification?.within_backtrack_radius === 'boolean'
         ? rawTrajectory.verification.within_backtrack_radius
         : null,
+    candidateWithinCorridor:
+      typeof rawTrajectory?.verification?.candidate_within_corridor === 'boolean'
+        ? rawTrajectory.verification.candidate_within_corridor
+        : null,
+    attributionQualification:
+      typeof rawTrajectory?.attribution?.attribution_qualification === 'string'
+        ? rawTrajectory.attribution.attribution_qualification
+        : null,
+    searchParameters: rawTrajectory?.verification?.search_parameters
+      ? {
+          driftUncertaintyRadiusKm: isFiniteNumber(
+            rawTrajectory.verification.search_parameters.drift_uncertainty_radius_km
+          )
+            ? rawTrajectory.verification.search_parameters.drift_uncertainty_radius_km
+            : null,
+          candidateSearchCorridorRadiusKm: isFiniteNumber(
+            rawTrajectory.verification.search_parameters.candidate_search_corridor_radius_km
+          )
+            ? rawTrajectory.verification.search_parameters.candidate_search_corridor_radius_km
+            : null,
+          temporalWindowHours: isFiniteNumber(
+            rawTrajectory.verification.search_parameters.temporal_window_hours
+          )
+            ? rawTrajectory.verification.search_parameters.temporal_window_hours
+            : null,
+        }
+      : null,
   };
 }
 

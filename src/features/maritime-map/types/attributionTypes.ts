@@ -68,10 +68,16 @@ export interface RawAttributionTrajectoryResponse {
     top_score?: number | null;
     rank?: number | null;
     candidate_count?: number | null;
+    attribution_qualification?: string | null;
   } | null;
-  /** Only the field the vessel-reveal sequence needs — see `SpillAttribution.withinBacktrackRadius`. */
   verification?: {
     within_backtrack_radius?: boolean | null;
+    candidate_within_corridor?: boolean | null;
+    search_parameters?: {
+      drift_uncertainty_radius_km?: number | null;
+      candidate_search_corridor_radius_km?: number | null;
+      temporal_window_hours?: number | null;
+    } | null;
   } | null;
   vessels?: RawAttributedVessel[] | null;
 }
@@ -127,4 +133,14 @@ export interface SpillAttribution {
    * `VesselInvestigationLayer.ts`).
    */
   withinBacktrackRadius: boolean | null;
+  /** Whether the top candidate's position fell within the (wider) transit search corridor — `verification.candidate_within_corridor`. */
+  candidateWithinCorridor: boolean | null;
+  /** Backend's own plain-language reasoning for the top pick — `attribution.attribution_qualification`. */
+  attributionQualification: string | null;
+  /** `verification.search_parameters` — the thresholds the reasoning panel's checklist is evaluated against. */
+  searchParameters: {
+    driftUncertaintyRadiusKm: number | null;
+    candidateSearchCorridorRadiusKm: number | null;
+    temporalWindowHours: number | null;
+  } | null;
 }

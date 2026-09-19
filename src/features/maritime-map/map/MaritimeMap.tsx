@@ -20,6 +20,7 @@ import { useTheme } from '../../../hooks/useTheme';
 import { BasemapSelector } from '../controls/BasemapSelector';
 import { EnvironmentToggles } from '../controls/EnvironmentToggles';
 import { InvestigationPanel } from '../controls/InvestigationPanel';
+import { VesselReasoningPanel } from '../controls/VesselReasoningPanel';
 import { InvestigationTimeline } from '../controls/InvestigationTimeline';
 import { SpillDetailsSection } from '../drawers/SpillDetailsSection';
 // import { SpillLegend } from '../controls/SpillLegend';
@@ -59,6 +60,7 @@ import {
 import { removeTimeTickMarkers, updateTimeTickMarkers } from './timeTickMarkers';
 import type { TimeTickMarkerDatum } from './timeTickMarkers';
 import { removeVesselRevealMarker, updateVesselRevealMarker } from './vesselRevealMarker';
+import { removeDistanceRuler, updateDistanceRuler } from './vesselDistanceRuler';
 import { selectTimeTicks, driftColorCssAt, driftProgress } from '../layers/trajectoryEncoding';
 import { selectForecastTimeTicks, forecastColorCssAt, forecastProgress } from '../layers/forecastEncoding';
 import { formatUtcTimestamp } from '../utils/formatSpill';
@@ -95,6 +97,14 @@ export function MaritimeMap() {
    * pixel radius alone lets gaps reopen between points once you zoom in.
    */
   const [zoom, setZoom] = useState(MAP_CONFIG.initialCamera.zoom);
+  /**
+   * True while the camera is actively panning/zooming/rotating. Only consumed
+   * by the forecast heatmap layer (see `ForecastLayer.ts`'s `isInteracting`)
+   * to drop its expensive per-frame GPU aggregation for the gesture's
+   * duration — cheap to keep as plain state since it only flips twice per
+   * gesture (movestart/moveend), not once per frame.
+   */
+  const [isCameraInteracting, setIsCameraInteracting] = useState(false);
 
   const { spills, isLoading: isSpillsLoading, error: spillsError, reload } = useSpills();
   const { selectedSpillId, focusMode, selectSpill, clearInvestigation, toggleFocusMode } =
@@ -260,6 +270,34 @@ export function MaritimeMap() {
       removeVesselRevealMarker(map);
     };
   }, [vesselReveal.stage, rank1Vessel, attribution?.withinBacktrackRadius]);
+
+  // Origin/vessel distance ruler — colour-coded endpoint dots plus running
+  // "Nkm" scale labels along the same dashed line VesselInvestigationLayer.ts
+  // draws in deck.gl. Armed by the same stages as that line (see its
+  // `showLine` there) so the two always appear and disappear together.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const showRuler = vesselReveal.stage === 'distance' || vesselReveal.stage === 'closeup' || vesselReveal.stage === 'done';
+    if (!showRuler || !trajectory?.source || !rank1Vessel?.culpritLocation) {
+      removeDistanceRuler(map);
+      return;
+    }
+
+    updateDistanceRuler(map, {
+      origin: { longitude: trajectory.source.longitude, latitude: trajectory.source.latitude },
+      vessel: {
+        longitude: rank1Vessel.culpritLocation.longitude,
+        latitude: rank1Vessel.culpritLocation.latitude,
+      },
+      distanceKm: rank1Vessel.distanceFromOriginKm ?? 0,
+    });
+
+    return () => {
+      removeDistanceRuler(map);
+    };
+  }, [vesselReveal.stage, trajectory?.source, rank1Vessel]);
 
   const focusPoints = useMemo(
     () =>
@@ -432,6 +470,12 @@ export function MaritimeMap() {
       // — the heatmap only needs to be right once the camera settles.
       map.on('zoomend', () => setZoom(map.getZoom()));
 
+      // See `isCameraInteracting`'s doc comment above — covers pan, zoom,
+      // rotate and flyTo alike, so the forecast heatmap drops out for any of
+      // them, not just an explicit zoom gesture.
+      map.on('movestart', () => setIsCameraInteracting(true));
+      map.on('moveend', () => setIsCameraInteracting(false));
+
       mapRef.current = map;
     } catch (e) {
       console.error('Failed to initialize MapLibre:', e);
@@ -544,6 +588,7 @@ export function MaritimeMap() {
         playbackMode,
         forecast,
         zoom,
+        isInteracting: isCameraInteracting,
       }),
     [
       investigationMode,
@@ -554,6 +599,7 @@ export function MaritimeMap() {
       playbackMode,
       forecast,
       zoom,
+      isCameraInteracting,
     ]
   );
 
@@ -884,102 +930,117 @@ export function MaritimeMap() {
 
   return (
     <div className="maritime-map-shell flex h-full min-h-0 w-full flex-col">
-      <div ref={wrapperRef} className="maritime-map-wrapper relative min-h-[70vh] w-full flex-1">
-        <BasemapSelector currentMode={basemapMode} onSelectMode={setBasemapMode} />
+      <div className="maritime-map-body flex w-full flex-1">
+        <div ref={wrapperRef} className="maritime-map-wrapper relative min-h-[70vh] min-w-0 flex-1">
+          <BasemapSelector currentMode={basemapMode} onSelectMode={setBasemapMode} />
 
-        <SpillStatusBadge
-          spillCount={spills.length}
-          isLoading={isSpillsLoading}
-          error={spillsError}
-          onRetry={reload}
-          onResetView={handleResetView}
-        />
+          <SpillStatusBadge
+            spillCount={spills.length}
+            isLoading={isSpillsLoading}
+            error={spillsError}
+            onRetry={reload}
+            onResetView={handleResetView}
+          />
 
+          {selectedSpill && environment && (
+            <EnvironmentToggles
+              environment={environment}
+              showWind={windVisible}
+              showCurrent={currentVisible}
+              onToggleWind={() => setShowWind((v) => !v)}
+              onToggleCurrent={() => setShowCurrent((v) => !v)}
+            />
+          )}
+
+          {selectedSpill && backtrackActive && trajectory && (
+            <InvestigationTimeline
+              progress={timeline.progress}
+              isPlaying={timeline.isPlaying}
+              windowLabel={timeline.windowLabel}
+              onTogglePlay={timeline.togglePlay}
+              onSeek={timeline.setProgress}
+              playbackMode={playbackMode}
+              speed={timeline.speed}
+              onSpeedChange={timeline.setSpeed}
+              atSource={timeline.atSource}
+            />
+          )}
+
+          {selectedSpill && backtrackActive && vesselReveal.stage !== 'idle' && (
+            <button
+              type="button"
+              onClick={vesselReveal.start}
+              className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-card-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-accent"
+              title="Replay the vessel reconstruction"
+            >
+              <RotateCcw size={12} />
+              Replay reconstruction
+            </button>
+          )}
+
+          {/* <SpillLegend /> */}
+
+          {(isLoading || isStyleLoading || isTilesLoading) && !error && (
+            <div className="maritime-map-loading">
+              <span>
+                {isLoading
+                  ? 'Initializing map…'
+                  : isStyleLoading
+                    ? 'Loading style…'
+                    : 'Loading imagery…'}
+              </span>
+            </div>
+          )}
+
+          {error && (
+            <div className="maritime-map-error">
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div ref={mapContainerRef} className="maritime-map-container" />
+        </div>
+
+        {/*
+          Dedicated right-hand column for the investigation data panels —
+          previously these floated as absolute overlays on top of the map
+          itself. The vessel-reveal sequence still takes over this same slot,
+          replacing InvestigationPanel outright with the "why rank #1"
+          reasoning breakdown; mutually exclusive on `vesselReveal.stage`, so
+          exactly one of the two is ever mounted.
+        */}
         {selectedSpill && (
-          <InvestigationPanel
-            key={selectedSpill.spillId}
-            spill={selectedSpill}
-            focusMode={focusMode}
-            trajectory={trajectory}
-            isTrajectoryLoading={isTrajectoryLoading}
-            trajectoryError={trajectoryError}
-            attribution={attribution}
-            isAttributionLoading={isAttributionLoading}
-            backtrackActive={backtrackActive}
-            playbackMode={playbackMode}
-            onSetPlaybackMode={setPlaybackMode}
-            investigationMode={investigationMode}
-            onSetInvestigationMode={setInvestigationMode}
-            isForecastLoading={isForecastLoading}
-            forecastError={forecastError}
-            forecast={forecast}
-            coastline={coastline}
-            onToggleFocusMode={toggleFocusMode}
-            onToggleBacktrack={handleToggleBacktrack}
-            onClear={handleClearInvestigation}
-            onRecenter={handleRecenter}
-            onScrollToDetails={handleScrollToDetails}
-            collapseOnRevealCount={vesselReveal.startCount}
-          />
+          <aside className="maritime-map-sidebar flex shrink-0 flex-col overflow-hidden">
+            {vesselReveal.stage === 'idle' ? (
+              <InvestigationPanel
+                key={selectedSpill.spillId}
+                spill={selectedSpill}
+                focusMode={focusMode}
+                trajectory={trajectory}
+                isTrajectoryLoading={isTrajectoryLoading}
+                trajectoryError={trajectoryError}
+                attribution={attribution}
+                isAttributionLoading={isAttributionLoading}
+                backtrackActive={backtrackActive}
+                playbackMode={playbackMode}
+                onSetPlaybackMode={setPlaybackMode}
+                investigationMode={investigationMode}
+                onSetInvestigationMode={setInvestigationMode}
+                isForecastLoading={isForecastLoading}
+                forecastError={forecastError}
+                forecast={forecast}
+                coastline={coastline}
+                onToggleFocusMode={toggleFocusMode}
+                onToggleBacktrack={handleToggleBacktrack}
+                onClear={handleClearInvestigation}
+                onRecenter={handleRecenter}
+                onScrollToDetails={handleScrollToDetails}
+              />
+            ) : (
+              rank1Vessel && <VesselReasoningPanel vessel={rank1Vessel} attribution={attribution} />
+            )}
+          </aside>
         )}
-
-        {selectedSpill && environment && (
-          <EnvironmentToggles
-            environment={environment}
-            showWind={windVisible}
-            showCurrent={currentVisible}
-            onToggleWind={() => setShowWind((v) => !v)}
-            onToggleCurrent={() => setShowCurrent((v) => !v)}
-          />
-        )}
-
-        {selectedSpill && backtrackActive && trajectory && (
-          <InvestigationTimeline
-            progress={timeline.progress}
-            isPlaying={timeline.isPlaying}
-            windowLabel={timeline.windowLabel}
-            onTogglePlay={timeline.togglePlay}
-            onSeek={timeline.setProgress}
-            playbackMode={playbackMode}
-            speed={timeline.speed}
-            onSpeedChange={timeline.setSpeed}
-            atSource={timeline.atSource}
-          />
-        )}
-
-        {selectedSpill && backtrackActive && vesselReveal.stage !== 'idle' && (
-          <button
-            type="button"
-            onClick={vesselReveal.start}
-            className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-card-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-accent"
-            title="Replay the vessel reconstruction"
-          >
-            <RotateCcw size={12} />
-            Replay reconstruction
-          </button>
-        )}
-
-        {/* <SpillLegend /> */}
-
-        {(isLoading || isStyleLoading || isTilesLoading) && !error && (
-          <div className="maritime-map-loading">
-            <span>
-              {isLoading
-                ? 'Initializing map…'
-                : isStyleLoading
-                  ? 'Loading style…'
-                  : 'Loading imagery…'}
-            </span>
-          </div>
-        )}
-
-        {error && (
-          <div className="maritime-map-error">
-            <span>{error}</span>
-          </div>
-        )}
-
-        <div ref={mapContainerRef} className="maritime-map-container" />
       </div>
 
       {selectedSpill && (

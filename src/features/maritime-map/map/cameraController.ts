@@ -36,6 +36,40 @@ const GLOBE_DURATION_MS = 2200;
 /** Below this span in degrees a bounding box is effectively a point and `fitBounds` would over-zoom. */
 const DEGENERATE_BOUNDS_SPAN = 1e-4;
 
+/**
+ * Caps each padding side to a safe fraction of the map container's own
+ * current size. `fitBounds` padding carves out screen space the bounds must
+ * fit *inside*; the padding constants below (`DRIFT_PADDING`,
+ * `VESSEL_FRAME_PADDING`) are tuned for a full desktop window. On a
+ * narrower/shorter container that padding can exceed the container itself,
+ * leaving `fitBounds` almost no real space to solve for — instead of
+ * failing loudly it silently returns a wildly wrong zoom/center (confirmed
+ * directly: on a 450×210px container, `right: 320` alone eats 71% of the
+ * width, and the resulting camera lands nowhere near the requested bounds).
+ * Capping at 35% per side always leaves at least 30% of the container as
+ * real usable space, with no effect at all on a normal-sized window where
+ * these fixed paddings were already well under that.
+ */
+function clampPaddingToContainer(
+  map: MapLibreMap,
+  padding: FitBoundsOptions['padding']
+): FitBoundsOptions['padding'] {
+  const container = map.getContainer();
+  const maxHorizontal = (container.clientWidth || 1) * 0.35;
+  const maxVertical = (container.clientHeight || 1) * 0.35;
+
+  if (padding == null) return padding;
+  if (typeof padding === 'number') {
+    return Math.min(padding, maxHorizontal, maxVertical);
+  }
+  return {
+    top: Math.min(padding.top ?? 0, maxVertical),
+    bottom: Math.min(padding.bottom ?? 0, maxVertical),
+    left: Math.min(padding.left ?? 0, maxHorizontal),
+    right: Math.min(padding.right ?? 0, maxHorizontal),
+  };
+}
+
 /** `fitBounds` with a centred fallback for boxes too small for it to solve sanely. */
 function fitGeoBounds(
   map: MapLibreMap,
@@ -61,7 +95,7 @@ function fitGeoBounds(
       [bounds.maxLon, bounds.maxLat],
     ],
     {
-      padding: options.padding,
+      padding: clampPaddingToContainer(map, options.padding),
       maxZoom: options.maxZoom,
       duration: options.duration,
       essential: true,

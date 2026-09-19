@@ -11,6 +11,17 @@ export interface VesselLayerOptions {
   vesselPositions: TimelineVesselPosition[];
   /** When false, no vessel geometry is drawn. */
   backtrackActive: boolean;
+  /**
+   * True once the post-timeline vessel-reveal sequence is active
+   * (`useVesselRevealStage.ts`). The moving rank-1 marker sits at the
+   * timeline's *current scrub time* (usually the detection end once Play has
+   * run to completion), while the reveal's ship sits at a different, fixed
+   * moment — the spill-release time (`culpritLocation`). Showing both at once
+   * reads as two contradictory positions for the same vessel, so the moving
+   * marker (not the static track line, which is still useful context) hides
+   * for the duration of the reveal.
+   */
+  hideMovingMarker?: boolean;
 }
 
 /** Rank → colour: #1 gold, #2 silver-blue, #3+ muted. */
@@ -31,7 +42,7 @@ function trackColor(rank: number): [number, number, number, number] {
  * Tracks are static polylines from the backend; markers move with the timeline playhead.
  */
 export function createVesselLayers(options: VesselLayerOptions): Layer[] {
-  const { vessels, vesselPositions, backtrackActive } = options;
+  const { vessels, vesselPositions, backtrackActive, hideMovingMarker = false } = options;
   if (!backtrackActive) return [];
 
   const layers: Layer[] = [];
@@ -60,7 +71,7 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
   }
 
   // Render yellow dot marker exclusively for Rank 1 vessel
-  const rank1Positions = vesselPositions.filter((p) => p.rank === 1);
+  const rank1Positions = hideMovingMarker ? [] : vesselPositions.filter((p) => p.rank === 1);
 
   if (rank1Positions.length > 0) {
     layers.push(

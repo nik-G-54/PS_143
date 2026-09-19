@@ -243,3 +243,113 @@
   font-weight: 600;
   color: rgba(245, 245, 244, 0.92);
 }
+
+/*
+  Vessel-reveal info card ("who did this" sequence) — see
+  `vesselRevealMarker.ts`. Same sideways dot/stem/card layout as the time-tick
+  badges above, but its own classes since this card carries several rows of
+  data instead of one short line.
+*/
+.maritime-vessel-reveal-marker {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5));
+}
+
+.maritime-vessel-reveal-marker__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 6px;
+  background: #facc15;
+  box-shadow:
+    0 0 0 2px rgba(8, 12, 18, 0.85),
+    0 0 8px 1px rgba(250, 204, 21, 0.7);
+  flex-shrink: 0;
+}
+
+.maritime-vessel-reveal-marker__stem {
+  width: 14px;
+  height: 2px;
+  margin-top: 11px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #facc15, rgba(250, 204, 21, 0.15));
+}
+
+.maritime-vessel-reveal-marker__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 168px;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.6rem;
+  background: linear-gradient(180deg, rgba(17, 23, 31, 0.96), rgba(8, 12, 18, 0.96));
+  border: 1px solid rgba(250, 204, 21, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 0 16px 1px rgba(250, 204, 21, 0.22);
+}
+
+.maritime-vessel-reveal-marker__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.maritime-vessel-reveal-marker__name {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #f5f5f4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.maritime-vessel-reveal-marker__rank {
+  flex-shrink: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  color: #facc15;
+}
+
+.maritime-vessel-reveal-marker__row {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  font-weight: 500;
+  color: rgba(245, 245, 244, 0.72);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.maritime-vessel-reveal-marker__row--strong {
+  color: rgba(245, 245, 244, 0.94);
+  font-weight: 600;
+}
+
+.maritime-vessel-reveal-marker__flag {
+  margin-top: 0.15rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  width: fit-content;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.maritime-vessel-reveal-marker__flag--ok {
+  color: #4e9a6e;
+  background: rgba(78, 154, 110, 0.16);
+}
+
+.maritime-vessel-reveal-marker__flag--warn {
+  color: #d99e3a;
+  background: rgba(217, 158, 58, 0.16);
+}

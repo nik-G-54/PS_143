@@ -1,11 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import * as turf from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { MAP_CONFIG } from './mapConfig';
 import type { BasemapMode } from './mapConfig';
-import { flyToSpill, frameDriftPath, resetToGlobe, revealSpillRegion } from './cameraController';
+import {
+  flyToSpill,
+  frameDriftPath,
+  resetToGlobe,
+  revealSpillRegion,
+  frameOriginAndVessel,
+  flyToVessel,
+  closeUpOnVessel,
+  VESSEL_REVEAL_DURATIONS_MS,
+} from './cameraController';
 import { useTheme } from '../../../hooks/useTheme';
 import { BasemapSelector } from '../controls/BasemapSelector';
 import { EnvironmentToggles } from '../controls/EnvironmentToggles';
@@ -18,6 +28,9 @@ import { createDeckOverlay } from '../deck/DeckOverlay';
 import { buildDriftLayers } from '../deck/deckLayers';
 import { createSpillLayers } from '../layers/SpillLayer';
 import { createVesselLayers } from '../layers/VesselLayer';
+import { createVesselRevealLayers } from '../layers/VesselInvestigationLayer';
+import { useVesselRevealStage } from '../investigation/useVesselRevealStage';
+import type { VesselRevealStage } from '../investigation/useVesselRevealStage';
 import { createEnvironmentLayers } from '../layers/EnvironmentLayer';
 import { getSpillBounds } from '../adapters/spillAdapter';
 import { useSpills } from '../hooks/useSpills';
@@ -45,6 +58,7 @@ import {
 } from '../../../components/map/layers/DriftTrajectory';
 import { removeTimeTickMarkers, updateTimeTickMarkers } from './timeTickMarkers';
 import type { TimeTickMarkerDatum } from './timeTickMarkers';
+import { removeVesselRevealMarker, updateVesselRevealMarker } from './vesselRevealMarker';
 import { selectTimeTicks, driftColorCssAt, driftProgress } from '../layers/trajectoryEncoding';
 import { selectForecastTimeTicks, forecastColorCssAt, forecastProgress } from '../layers/forecastEncoding';
 import { formatUtcTimestamp } from '../utils/formatSpill';
@@ -141,6 +155,111 @@ export function MaritimeMap() {
     backtrackActive && Boolean(trajectory),
     playbackMode
   );
+
+  // --- "Who did this" vessel reveal — fires once the investigation timeline
+  // finishes playing (never on a manual scrub to the end) — see the
+  // isPlaying-edge effect and the choreography effect further below, and
+  // `useVesselRevealStage.ts` for why this is split into pure stage state vs
+  // the camera side effects that drive it.
+  const rank1Vessel = useMemo(
+    () => attribution?.vessels.find((v) => v.rank === 1) ?? null,
+    [attribution]
+  );
+  const vesselReveal = useVesselRevealStage(selectedSpillId);
+  const wasTimelinePlayingRef = useRef(false);
+
+  useEffect(() => {
+    const finishedNaturally =
+      wasTimelinePlayingRef.current && !timeline.isPlaying && timeline.progress >= 1;
+    wasTimelinePlayingRef.current = timeline.isPlaying;
+
+    if (
+      finishedNaturally &&
+      backtrackActive &&
+      trajectory?.source &&
+      rank1Vessel?.culpritLocation
+    ) {
+      vesselReveal.start();
+    }
+    // vesselReveal itself is a fresh object every render; vesselReveal.start is the
+    // one stable (useCallback) piece this effect actually calls, and is listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeline.isPlaying, timeline.progress, backtrackActive, trajectory, rank1Vessel, vesselReveal.start]);
+
+  // Camera choreography: one real camera move per stage (see cameraController.ts's
+  // "Vessel-reveal choreography" section for why every beat moves the camera,
+  // not just the first and last), each one scheduling the next stage once its
+  // flight duration elapses.
+  useEffect(() => {
+    const map = mapRef.current;
+    const stage = vesselReveal.stage;
+    if (!map || stage === 'idle' || stage === 'done') return;
+    if (!trajectory?.source || !rank1Vessel?.culpritLocation) return;
+
+    const origin: [number, number] = [trajectory.source.longitude, trajectory.source.latitude];
+    const vessel: [number, number] = [
+      rank1Vessel.culpritLocation.longitude,
+      rank1Vessel.culpritLocation.latitude,
+    ];
+    const SETTLE_BUFFER_MS = 150;
+
+    let timeoutId: number | null = null;
+    const scheduleNext = (next: VesselRevealStage, durationMs: number) => {
+      timeoutId = window.setTimeout(() => vesselReveal.advance(next), durationMs + SETTLE_BUFFER_MS);
+    };
+
+    if (stage === 'framing') {
+      frameOriginAndVessel(map, origin, vessel, 'wide');
+      scheduleNext('ship', VESSEL_REVEAL_DURATIONS_MS.framing);
+    } else if (stage === 'ship') {
+      flyToVessel(map, vessel);
+      scheduleNext('distance', VESSEL_REVEAL_DURATIONS_MS.ship);
+    } else if (stage === 'distance') {
+      frameOriginAndVessel(map, origin, vessel, 'settle');
+      scheduleNext('closeup', VESSEL_REVEAL_DURATIONS_MS.distance);
+    } else if (stage === 'closeup') {
+      closeUpOnVessel(map, vessel);
+      scheduleNext('done', VESSEL_REVEAL_DURATIONS_MS.closeup);
+    }
+
+    return () => {
+      if (timeoutId != null) window.clearTimeout(timeoutId);
+    };
+    // vesselReveal itself is a fresh object every render; vesselReveal.stage/.advance
+    // are the stable pieces this effect actually reads/calls, and are listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vesselReveal.stage, vesselReveal.advance, trajectory, rank1Vessel]);
+
+  // Vessel info card beside the ship — name, MMSI, type, speed and distance/
+  // time-offset all at the spill-release moment (`culpritLocation`, not a
+  // live reading) — see vesselRevealMarker.ts for why this is its own marker
+  // rather than the single-line time-tick badge.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const showCard = vesselReveal.stage === 'distance' || vesselReveal.stage === 'closeup' || vesselReveal.stage === 'done';
+    if (!showCard || !rank1Vessel?.culpritLocation) {
+      removeVesselRevealMarker(map);
+      return;
+    }
+
+    updateVesselRevealMarker(map, {
+      longitude: rank1Vessel.culpritLocation.longitude,
+      latitude: rank1Vessel.culpritLocation.latitude,
+      vesselName: rank1Vessel.vesselName,
+      mmsi: rank1Vessel.mmsi,
+      vesselType: rank1Vessel.vesselType,
+      speedKnots: rank1Vessel.culpritLocation.speed,
+      distanceKm: rank1Vessel.distanceFromOriginKm,
+      timeOffsetHours: rank1Vessel.timeDifferenceHours,
+      withinRadius: attribution?.withinBacktrackRadius ?? null,
+    });
+
+    return () => {
+      removeVesselRevealMarker(map);
+    };
+  }, [vesselReveal.stage, rank1Vessel, attribution?.withinBacktrackRadius]);
 
   const focusPoints = useMemo(
     () =>
@@ -444,8 +563,26 @@ export function MaritimeMap() {
         vessels: attribution?.drawableVessels ?? [],
         vesselPositions: timeline.vesselPositions,
         backtrackActive,
+        hideMovingMarker: vesselReveal.stage !== 'idle',
       }),
-    [attribution, timeline.vesselPositions, backtrackActive]
+    [attribution, timeline.vesselPositions, backtrackActive, vesselReveal.stage]
+  );
+
+  const vesselRevealLayers = useMemo(
+    () =>
+      createVesselRevealLayers({
+        stage: vesselReveal.stage,
+        origin: trajectory?.source ?? null,
+        vessel: rank1Vessel,
+        useShipMesh: true,
+        zoom,
+      }),
+    // zoom is cheap to depend on here (unlike spillLayers/vesselLayers — see
+    // the "Zoom only affects driftLayers" note below): this memo only ever
+    // rebuilds a single ship mesh instance plus a couple of short PathLayers,
+    // not hundreds of markers, so re-deriving `sizeScale` every zoom tick
+    // doesn't reintroduce the lag that split zoom out of the other memos.
+    [vesselReveal.stage, trajectory, rank1Vessel, zoom]
   );
 
   const spillLayers = useMemo(
@@ -469,9 +606,9 @@ export function MaritimeMap() {
     if (!overlay || isLoading) return;
 
     overlay.setProps({
-      layers: [...environmentLayers, ...driftLayers, ...vesselLayers, ...spillLayers],
+      layers: [...environmentLayers, ...driftLayers, ...vesselLayers, ...vesselRevealLayers, ...spillLayers],
     });
-  }, [environmentLayers, driftLayers, vesselLayers, spillLayers, isLoading]);
+  }, [environmentLayers, driftLayers, vesselLayers, vesselRevealLayers, spillLayers, isLoading]);
 
   // Clear framed-drift lock when the selection changes so the next path can reframe.
   useEffect(() => {
@@ -782,6 +919,7 @@ export function MaritimeMap() {
             onClear={handleClearInvestigation}
             onRecenter={handleRecenter}
             onScrollToDetails={handleScrollToDetails}
+            collapseOnRevealCount={vesselReveal.startCount}
           />
         )}
 
@@ -807,6 +945,18 @@ export function MaritimeMap() {
             onSpeedChange={timeline.setSpeed}
             atSource={timeline.atSource}
           />
+        )}
+
+        {selectedSpill && backtrackActive && vesselReveal.stage !== 'idle' && (
+          <button
+            type="button"
+            onClick={vesselReveal.start}
+            className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-card-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-accent"
+            title="Replay the vessel reconstruction"
+          >
+            <RotateCcw size={12} />
+            Replay reconstruction
+          </button>
         )}
 
         {/* <SpillLegend /> */}

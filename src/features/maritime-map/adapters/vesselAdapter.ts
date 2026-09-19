@@ -205,6 +205,10 @@ export function adaptSpillAttribution(
     vessels,
     drawableVessels,
     bounds,
+    withinBacktrackRadius:
+      typeof rawTrajectory?.verification?.within_backtrack_radius === 'boolean'
+        ? rawTrajectory.verification.within_backtrack_radius
+        : null,
   };
 }
 

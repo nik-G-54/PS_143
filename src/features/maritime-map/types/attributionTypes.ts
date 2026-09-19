@@ -69,6 +69,10 @@ export interface RawAttributionTrajectoryResponse {
     rank?: number | null;
     candidate_count?: number | null;
   } | null;
+  /** Only the field the vessel-reveal sequence needs — see `SpillAttribution.withinBacktrackRadius`. */
+  verification?: {
+    within_backtrack_radius?: boolean | null;
+  } | null;
   vessels?: RawAttributedVessel[] | null;
 }
 
@@ -115,4 +119,12 @@ export interface SpillAttribution {
   /** Vessels that have at least one drawable position (track or culprit). */
   drawableVessels: AttributedVessel[];
   bounds: GeoBounds | null;
+  /**
+   * Whether the top candidate's position at the origin time fell within the
+   * drift's own uncertainty radius (`verification.within_backtrack_radius`).
+   * Null when the backend didn't report it. Drives the vessel-reveal
+   * sequence's distance-tag colour (green when true, amber when false — see
+   * `VesselInvestigationLayer.ts`).
+   */
+  withinBacktrackRadius: boolean | null;
 }

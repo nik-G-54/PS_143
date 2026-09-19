@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -67,6 +67,17 @@ interface InvestigationPanelProps {
   onClear: () => void;
   onRecenter: () => void;
   onScrollToDetails: () => void;
+  /**
+   * `useVesselRevealStage.ts`'s `startCount` — increments every time the
+   * post-timeline vessel-reveal sequence begins (including a Replay), so
+   * this panel collapses out of the way each time, not just on the first
+   * idle->active transition. Keyed off a counter rather than a boolean:
+   * replaying while `stage` is already non-'idle' is a real "collapse again"
+   * moment even though a plain "is the reveal active" boolean never flips.
+   * A nudge, not a lock — `isOpen` stays user-owned between runs, so
+   * re-opening it manually mid-reveal isn't fought until the next run starts.
+   */
+  collapseOnRevealCount?: number;
 }
 
 /** Banner background per severity — the whole point is to be readable at a glance. */
@@ -267,8 +278,13 @@ export function InvestigationPanel({
   onClear,
   onRecenter,
   onScrollToDetails,
+  collapseOnRevealCount = 0,
 }: InvestigationPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
+
+  useEffect(() => {
+    if (collapseOnRevealCount > 0) setIsOpen(false);
+  }, [collapseOnRevealCount]);
   const sourceLon = trajectory?.source?.longitude ?? spill.estimatedSourceLongitude;
   const sourceLat = trajectory?.source?.latitude ?? spill.estimatedSourceLatitude;
 

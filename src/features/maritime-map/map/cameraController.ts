@@ -109,6 +109,78 @@ export function frameDriftPath(map: MapLibreMap, bounds: GeoBounds): void {
   });
 }
 
+// --- Vessel-reveal choreography ---------------------------------------
+//
+// Four camera beats for the post-timeline "who did this" sequence (see
+// `useVesselRevealStage.ts` for the stage machine and `MaritimeMap.tsx` for
+// the effect that fires these in order): wide two-point frame, in on the
+// ship as it appears, settle back to show the connecting line, then a tight
+// close-up. Every beat is a real camera move — none of the stage transitions
+// are appearance-only — per the brief that every new beat should have its
+// own "zoom out / zoom in" movement, not just the first and last.
+
+const VESSEL_FRAME_PADDING: FitBoundsOptions['padding'] = { top: 90, bottom: 110, left: 90, right: 320 };
+const VESSEL_FRAME_MAX_ZOOM = 12;
+const VESSEL_FRAME_DURATION_MS = 1700;
+
+const VESSEL_SHIP_ZOOM = 13.5;
+const VESSEL_SHIP_DURATION_MS = 1400;
+
+const VESSEL_SETTLE_MAX_ZOOM = 12.3;
+const VESSEL_SETTLE_DURATION_MS = 1500;
+
+const VESSEL_CLOSEUP_ZOOM = 15;
+const VESSEL_CLOSEUP_DURATION_MS = 1600;
+
+/** Beat A / C: wide shot framing both the origin marker and the vessel together. */
+export function frameOriginAndVessel(
+  map: MapLibreMap,
+  origin: [number, number],
+  vessel: [number, number],
+  variant: 'wide' | 'settle' = 'wide'
+): void {
+  const bounds: GeoBounds = {
+    minLon: Math.min(origin[0], vessel[0]),
+    maxLon: Math.max(origin[0], vessel[0]),
+    minLat: Math.min(origin[1], vessel[1]),
+    maxLat: Math.max(origin[1], vessel[1]),
+  };
+  fitGeoBounds(map, bounds, {
+    padding: VESSEL_FRAME_PADDING,
+    maxZoom: variant === 'wide' ? VESSEL_FRAME_MAX_ZOOM : VESSEL_SETTLE_MAX_ZOOM,
+    duration: variant === 'wide' ? VESSEL_FRAME_DURATION_MS : VESSEL_SETTLE_DURATION_MS,
+  });
+}
+
+/** Beat B: move in toward the vessel as its ship model pops in. */
+export function flyToVessel(map: MapLibreMap, vessel: [number, number]): void {
+  map.flyTo({
+    center: vessel,
+    zoom: Math.max(map.getZoom(), VESSEL_SHIP_ZOOM),
+    duration: VESSEL_SHIP_DURATION_MS,
+    curve: 1.2,
+    essential: true,
+  });
+}
+
+/** Beat D: final tight close-up on the ship. */
+export function closeUpOnVessel(map: MapLibreMap, vessel: [number, number]): void {
+  map.flyTo({
+    center: vessel,
+    zoom: VESSEL_CLOSEUP_ZOOM,
+    duration: VESSEL_CLOSEUP_DURATION_MS,
+    curve: 1.4,
+    essential: true,
+  });
+}
+
+export const VESSEL_REVEAL_DURATIONS_MS = {
+  framing: VESSEL_FRAME_DURATION_MS,
+  ship: VESSEL_SHIP_DURATION_MS,
+  distance: VESSEL_SETTLE_DURATION_MS,
+  closeup: VESSEL_CLOSEUP_DURATION_MS,
+} as const;
+
 /** Return to the opening globe view. */
 export function resetToGlobe(map: MapLibreMap): void {
   const { longitude, latitude, zoom, pitch, bearing } = MAP_CONFIG.initialCamera;

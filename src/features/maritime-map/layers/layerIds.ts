@@ -23,6 +23,8 @@ export const LAYER_IDS = {
   forecastHeatmap: 'forecast-heatmap',
   windArrows: 'env-wind-arrows',
   currentArrows: 'env-current-arrows',
+  oceanFlowWind: 'ocean-flow-wind',
+  oceanFlowCurrent: 'ocean-flow-current',
   vesselTracks: 'vessel-tracks',
   vesselMarkers: 'vessel-markers',
   vesselRevealShip: 'vessel-reveal-ship',

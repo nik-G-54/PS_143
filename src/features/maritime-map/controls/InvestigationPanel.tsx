@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -67,6 +67,15 @@ interface InvestigationPanelProps {
   onClear: () => void;
   onRecenter: () => void;
   onScrollToDetails: () => void;
+  /**
+   * True once the vessel-reveal sequence starts (`vesselReveal.stage !== 'idle'`
+   * in MaritimeMap.tsx). Collapses this panel to just its header the moment
+   * that happens — see the effect below — so `VesselReasoningPanel` has room
+   * to sit underneath it in the same sidebar column instead of replacing it
+   * outright. A one-shot nudge, not a lock: the investigator can still
+   * re-expand this panel by hand afterward.
+   */
+  autoCollapse?: boolean;
 }
 
 /** Banner background per severity — the whole point is to be readable at a glance. */
@@ -267,8 +276,16 @@ export function InvestigationPanel({
   onClear,
   onRecenter,
   onScrollToDetails,
+  autoCollapse = false,
 }: InvestigationPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
+
+  // Collapse the instant the reveal sequence starts (not continuously —
+  // only on the false->true edge — so a manual re-expand afterward sticks).
+  useEffect(() => {
+    if (autoCollapse) setIsOpen(false);
+  }, [autoCollapse]);
+
   const sourceLon = trajectory?.source?.longitude ?? spill.estimatedSourceLongitude;
   const sourceLat = trajectory?.source?.latitude ?? spill.estimatedSourceLatitude;
 
@@ -296,7 +313,11 @@ export function InvestigationPanel({
     : '—';
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground transition-all duration-200">
+    <div
+      className={`flex w-full flex-col overflow-hidden bg-background text-foreground transition-all duration-200 ${
+        isOpen ? 'h-full' : 'shrink-0'
+      }`}
+    >
       <div className={`flex shrink-0 items-center justify-between px-3 py-2 ${isOpen ? 'border-b border-border' : ''}`}>
         <button
           type="button"

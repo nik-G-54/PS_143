@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as turf from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -19,6 +19,7 @@ import {
 import { useTheme } from '../../../hooks/useTheme';
 import { BasemapSelector } from '../controls/BasemapSelector';
 import { EnvironmentToggles } from '../controls/EnvironmentToggles';
+import { OceanFlowToggleButton } from '../controls/OceanFlowToggleButton';
 import { InvestigationPanel } from '../controls/InvestigationPanel';
 import { VesselReasoningPanel } from '../controls/VesselReasoningPanel';
 import { InvestigationTimeline } from '../controls/InvestigationTimeline';
@@ -33,6 +34,7 @@ import { createVesselRevealLayers } from '../layers/VesselInvestigationLayer';
 import { useVesselRevealStage } from '../investigation/useVesselRevealStage';
 import type { VesselRevealStage } from '../investigation/useVesselRevealStage';
 import { createEnvironmentLayers } from '../layers/EnvironmentLayer';
+import { useOceanFlow } from '../hooks/useOceanFlow';
 import { getSpillBounds } from '../adapters/spillAdapter';
 import { useSpills } from '../hooks/useSpills';
 import { useSpillTrajectory } from '../hooks/useSpillTrajectory';
@@ -105,10 +107,25 @@ export function MaritimeMap() {
    * gesture (movestart/moveend), not once per frame.
    */
   const [isCameraInteracting, setIsCameraInteracting] = useState(false);
+  /**
+   * Collapses the right-hand investigation sidebar without clearing the
+   * investigation itself — separate from `handleClearInvestigation`'s "X",
+   * which deselects the spill entirely. Reset to open on every new selection
+   * (see the effect below) so clicking any dot always opens the panel fresh,
+   * matching the brief's "same on any dot click" — a collapse only sticks
+   * for the currently-selected spill, not future ones.
+   */
+  const [isInvestigationPanelOpen, setIsInvestigationPanelOpen] = useState(true);
+
+  const oceanFlow = useOceanFlow(theme);
 
   const { spills, isLoading: isSpillsLoading, error: spillsError, reload } = useSpills();
   const { selectedSpillId, focusMode, selectSpill, clearInvestigation, toggleFocusMode } =
     useInvestigation();
+
+  useEffect(() => {
+    setIsInvestigationPanelOpen(true);
+  }, [selectedSpillId]);
 
   const backtrackActive = backtrackSpillId != null && backtrackSpillId === selectedSpillId;
 
@@ -645,16 +662,23 @@ export function MaritimeMap() {
   );
 
   // --- Push the deck.gl layer stack whenever any of the above change ---
-  // Paint order (bottom → top): environment arrows → drift geometry → vessel
-  // tracks/markers → spill dots.
+  // Paint order (bottom → top): ocean flow particles → environment arrows →
+  // drift geometry → vessel tracks/markers → spill dots.
   useEffect(() => {
     const overlay = deckOverlayRef.current;
     if (!overlay || isLoading) return;
 
     overlay.setProps({
-      layers: [...environmentLayers, ...driftLayers, ...vesselLayers, ...vesselRevealLayers, ...spillLayers],
+      layers: [
+        ...oceanFlow.layers,
+        ...environmentLayers,
+        ...driftLayers,
+        ...vesselLayers,
+        ...vesselRevealLayers,
+        ...spillLayers,
+      ],
     });
-  }, [environmentLayers, driftLayers, vesselLayers, vesselRevealLayers, spillLayers, isLoading]);
+  }, [oceanFlow.layers, environmentLayers, driftLayers, vesselLayers, vesselRevealLayers, spillLayers, isLoading]);
 
   // Clear framed-drift lock when the selection changes so the next path can reframe.
   useEffect(() => {
@@ -930,9 +954,17 @@ export function MaritimeMap() {
 
   return (
     <div className="maritime-map-shell flex h-full min-h-0 w-full flex-col">
-      <div className="maritime-map-body flex w-full flex-1">
-        <div ref={wrapperRef} className="maritime-map-wrapper relative min-h-[70vh] min-w-0 flex-1">
+      <div className="maritime-map-body flex w-full min-w-0 flex-1 flex-col">
+        <div ref={wrapperRef} className="maritime-map-wrapper relative min-w-0 flex-1">
           <BasemapSelector currentMode={basemapMode} onSelectMode={setBasemapMode} />
+
+          <OceanFlowToggleButton
+            visible={oceanFlow.visible}
+            status={oceanFlow.status}
+            error={oceanFlow.error}
+            onToggle={oceanFlow.toggle}
+            onRetry={oceanFlow.retry}
+          />
 
           <SpillStatusBadge
             spillCount={spills.length}
@@ -952,25 +984,11 @@ export function MaritimeMap() {
             />
           )}
 
-          {selectedSpill && backtrackActive && trajectory && (
-            <InvestigationTimeline
-              progress={timeline.progress}
-              isPlaying={timeline.isPlaying}
-              windowLabel={timeline.windowLabel}
-              onTogglePlay={timeline.togglePlay}
-              onSeek={timeline.setProgress}
-              playbackMode={playbackMode}
-              speed={timeline.speed}
-              onSpeedChange={timeline.setSpeed}
-              atSource={timeline.atSource}
-            />
-          )}
-
           {selectedSpill && backtrackActive && vesselReveal.stage !== 'idle' && (
             <button
               type="button"
               onClick={vesselReveal.start}
-              className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-card-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-accent"
+              className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-card-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-accent"
               title="Replay the vessel reconstruction"
             >
               <RotateCcw size={12} />
@@ -999,19 +1017,44 @@ export function MaritimeMap() {
           )}
 
           <div ref={mapContainerRef} className="maritime-map-container" />
-        </div>
 
-        {/*
-          Dedicated right-hand column for the investigation data panels —
-          previously these floated as absolute overlays on top of the map
-          itself. The vessel-reveal sequence still takes over this same slot,
-          replacing InvestigationPanel outright with the "why rank #1"
-          reasoning breakdown; mutually exclusive on `vesselReveal.stage`, so
-          exactly one of the two is ever mounted.
-        */}
-        {selectedSpill && (
-          <aside className="maritime-map-sidebar flex shrink-0 flex-col overflow-hidden">
-            {vesselReveal.stage === 'idle' ? (
+          {/*
+            Floating reopen tab — shown only once the panel's been collapsed
+            (see the edge button inside the aside below). Sits over the map's
+            now-reclaimed right edge, same circular-button language as the
+            aside's own collapse control and the app shell's left Sidebar.
+          */}
+          {selectedSpill && !isInvestigationPanelOpen && (
+            <button
+              type="button"
+              onClick={() => setIsInvestigationPanelOpen(true)}
+              className="absolute right-3 top-5 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-all hover:scale-105 hover:bg-accent hover:text-foreground active:scale-95"
+              title="Open investigation panel"
+              aria-label="Open investigation panel"
+            >
+              <ChevronLeft size={15} strokeWidth={2.5} />
+            </button>
+          )}
+
+          {/*
+            Floats on top of the map instead of taking its own column —
+            keeps the map at full width regardless of whether this panel is
+            open. The vessel-reveal sequence still takes over the same slot,
+            InvestigationPanel auto-collapsing to its header while
+            VesselReasoningPanel ("why rank #1") fills the rest underneath it.
+          */}
+          {selectedSpill && isInvestigationPanelOpen && (
+            <aside className="absolute right-4 top-4 z-10 flex max-h-[calc(100%-2rem)] w-[min(320px,calc(100%-2rem))] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-lg backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => setIsInvestigationPanelOpen(false)}
+                className="absolute -left-3 top-5 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-all hover:scale-105 hover:bg-accent hover:text-foreground active:scale-95"
+                title="Hide investigation panel"
+                aria-label="Hide investigation panel"
+              >
+                <ChevronRight size={13} strokeWidth={2.5} />
+              </button>
+
               <InvestigationPanel
                 key={selectedSpill.spillId}
                 spill={selectedSpill}
@@ -1035,11 +1078,42 @@ export function MaritimeMap() {
                 onClear={handleClearInvestigation}
                 onRecenter={handleRecenter}
                 onScrollToDetails={handleScrollToDetails}
+                autoCollapse={vesselReveal.stage !== 'idle'}
               />
-            ) : (
-              rank1Vessel && <VesselReasoningPanel vessel={rank1Vessel} attribution={attribution} />
-            )}
-          </aside>
+
+              {/*
+                Sits below the (now auto-collapsed) InvestigationPanel header
+                instead of replacing it — see InvestigationPanel's
+                `autoCollapse` prop and VesselReasoningPanel's `flex-1`
+                sizing, which is what leaves this the remaining height to fill.
+              */}
+              {vesselReveal.stage !== 'idle' && rank1Vessel && (
+                <VesselReasoningPanel vessel={rank1Vessel} attribution={attribution} />
+              )}
+            </aside>
+          )}
+        </div>
+
+        {/*
+          Docked below the map instead of floating on top of it as an
+          absolute overlay — same reasoning the investigation panels used to
+          follow before they became a map overlay themselves above; this one
+          stays docked so it doesn't cover the map's own drift-path visuals.
+        */}
+        {selectedSpill && backtrackActive && trajectory && (
+          <div className="maritime-timeline-dock">
+            <InvestigationTimeline
+              progress={timeline.progress}
+              isPlaying={timeline.isPlaying}
+              windowLabel={timeline.windowLabel}
+              onTogglePlay={timeline.togglePlay}
+              onSeek={timeline.setProgress}
+              playbackMode={playbackMode}
+              speed={timeline.speed}
+              onSpeedChange={timeline.setSpeed}
+              atSource={timeline.atSource}
+            />
+          </div>
         )}
       </div>
 

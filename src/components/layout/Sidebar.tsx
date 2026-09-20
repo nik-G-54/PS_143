@@ -1,22 +1,32 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
+import {
+  LayoutDashboard,
   Database,
-  Map, 
-  AlertTriangle, 
+  Map,
+  AlertTriangle,
   Video,
   Scan,
   Box,
   ChevronLeft,
   ChevronRight,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useSidebar } from '../../context/SidebarContext';
+import { useTheme } from '../../context/ThemeContext';
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  /** Shows a theme toggle in the footer — for pages that don't render their own `<Header />` (with its own ThemeToggle) above the sidebar. */
+  showThemeToggle?: boolean;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ showThemeToggle = false }) => {
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   return (
     <aside 
@@ -106,7 +116,28 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* Footer Toggle Button */}
-      <div className="p-2 border-t border-border mt-auto">
+      <div className="p-2 border-t border-border mt-auto space-y-1">
+        {showThemeToggle && (
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`w-full flex items-center gap-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors font-sans cursor-pointer ${
+              isCollapsed ? 'justify-center px-0' : 'px-3'
+            }`}
+            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <span className="shrink-0">
+              {isDark ? <Sun size={18} strokeWidth={1.5} /> : <Moon size={18} strokeWidth={1.5} />}
+            </span>
+            {!isCollapsed && (
+              <span className="whitespace-nowrap overflow-hidden text-ellipsis text-xs font-medium">
+                {isDark ? 'Light Mode' : 'Dark Mode'}
+              </span>
+            )}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={toggleSidebar}

@@ -102,7 +102,7 @@ export function VesselReasoningPanel({ vessel, attribution }: VesselReasoningPan
   const checks = buildChecks(vessel, attribution);
 
   return (
-    <div className="animate-slide-in flex h-full w-full flex-col overflow-hidden border-l-2 border-l-amber-500/40 bg-background text-foreground">
+    <div className="animate-slide-in flex min-h-0 w-full flex-1 flex-col overflow-hidden border-t-2 border-t-amber-500/40 bg-background text-foreground">
       <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2">
         <ShieldQuestion size={13} className="shrink-0 text-amber-500" />
         <span className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">

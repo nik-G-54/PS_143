@@ -32,7 +32,7 @@ export function InvestigationTimeline({
   const rightLabel = isBacktrack ? 'Origin' : 'Detection';
 
   return (
-    <div className="absolute bottom-4 left-1/2 z-10 flex w-[min(560px,calc(100%-2rem))] -translate-x-1/2 flex-col gap-1.5 rounded-lg border border-border bg-card text-card-foreground px-3 py-2.5 shadow-lg backdrop-blur-md">
+    <div className="maritime-panel-card mx-auto flex w-full max-w-[560px] flex-col gap-1.5 px-3 py-2.5 text-card-foreground">
 
       {/* Mode badge */}
       <div className="flex items-center justify-between">

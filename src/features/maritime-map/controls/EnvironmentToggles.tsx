@@ -30,7 +30,7 @@ export function EnvironmentToggles({
     : null;
 
   return (
-    <div className="absolute bottom-28 left-4 z-10 flex flex-col gap-1.5">
+    <div className="flex flex-col items-start gap-1.5">
       {environment.wind && (
         <button
           type="button"

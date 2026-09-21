@@ -6,6 +6,8 @@
  * switch a tooltip off.
  */
 export const LAYER_IDS = {
+  coastline: 'reference-coastline',
+  graticule: 'reference-graticule',
   spillPolygon: 'spill-polygon',
   spillDots: 'spill-dots',
   spillSelectionRing: 'spill-selection-ring',

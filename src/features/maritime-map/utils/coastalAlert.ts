@@ -9,6 +9,7 @@
 import * as turf from '@turf/turf';
 import type { Feature, LineString } from 'geojson';
 import type { loadCoastline } from '../config/coastlineConfig';
+import type { SpillForecast } from '../types/forecastTypes';
 
 /** The parsed coastline GeoJSON `loadCoastline` resolves to, minus the `null` miss case. */
 export type CoastlineGeoJSON = NonNullable<Awaited<ReturnType<typeof loadCoastline>>>;
@@ -73,3 +74,46 @@ export function computeAlertSeverity(distanceKm: number, speedKnots: number): Al
   if (etaHours <= WATCH_ETA_HOURS) return 'watch';
   return 'advisory';
 }
+
+/**
+ * Severity at the forecast's headline answer — `predictedPosition`, the
+ * forecast horizon's endpoint — not "now": the alert is about where the oil
+ * ends up, not where it currently is. Speed comes from that same last
+ * point's own drift reading where the backend reported one, falling back to
+ * the forecast-wide average only when it didn't (see `forecastTypes.ts` on
+ * why the two are distinct).
+ *
+ * Shared by `InvestigationPanel.tsx`'s coastal-alert banner and
+ * `MaritimeMap.tsx`'s predicted-position marker so the two never disagree —
+ * see `alertSeverityColorCss` for the marker's matching colour.
+ */
+export function computeForecastAlertSeverity(
+  forecast: SpillForecast | null,
+  coastline: CoastlineGeoJSON | null
+): AlertSeverity | null {
+  if (!forecast || !coastline) return null;
+  const target = forecast.predictedPosition;
+  if (!target) return null;
+
+  const lastPoint = forecast.points[forecast.points.length - 1];
+  const speedKnots = lastPoint?.driftSpeedKnots ?? forecast.averageSpeedKnots ?? 0;
+
+  const distanceKm = computeDistanceToCoast(target, coastline);
+  return computeAlertSeverity(distanceKm, speedKnots);
+}
+
+/** CSS colour per severity — the predicted-position marker's dot/badge accent, and the HUD legend's swatches. */
+export const ALERT_SEVERITY_CSS: Record<AlertSeverity, string> = {
+  monitor: '#22c55e',
+  advisory: '#3b82f6',
+  watch: '#f59e0b',
+  critical: '#ef4444',
+};
+
+/** Human-readable label per severity, for the legend. */
+export const ALERT_SEVERITY_LABEL: Record<AlertSeverity, string> = {
+  monitor: 'Monitor',
+  advisory: 'Advisory',
+  watch: 'Watch',
+  critical: 'Critical',
+};

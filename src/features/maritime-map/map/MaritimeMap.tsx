@@ -20,6 +20,7 @@ import { useTheme } from '../../../hooks/useTheme';
 import { BasemapSelector } from '../controls/BasemapSelector';
 import { EnvironmentToggles } from '../controls/EnvironmentToggles';
 import { OceanFlowToggleButton } from '../controls/OceanFlowToggleButton';
+import { AlertSeverityLegend } from '../controls/AlertSeverityLegend';
 import { InvestigationPanel } from '../controls/InvestigationPanel';
 import { VesselReasoningPanel } from '../controls/VesselReasoningPanel';
 import { InvestigationTimeline } from '../controls/InvestigationTimeline';
@@ -34,6 +35,7 @@ import { createVesselRevealLayers } from '../layers/VesselInvestigationLayer';
 import { useVesselRevealStage } from '../investigation/useVesselRevealStage';
 import type { VesselRevealStage } from '../investigation/useVesselRevealStage';
 import { createEnvironmentLayers } from '../layers/EnvironmentLayer';
+import { createReferenceLayers } from '../layers/ReferenceLayer';
 import { useOceanFlow } from '../hooks/useOceanFlow';
 import { getSpillBounds } from '../adapters/spillAdapter';
 import { useSpills } from '../hooks/useSpills';
@@ -46,6 +48,7 @@ import { useInvestigationTimeline } from '../timeline/useInvestigationTimeline';
 import type { PlaybackMode } from '../timeline/useInvestigationTimeline';
 import type { InvestigationMode } from '../deck/deckLayers';
 import { loadCoastline } from '../config/coastlineConfig';
+import { computeForecastAlertSeverity, ALERT_SEVERITY_CSS } from '../utils/coastalAlert';
 import type { CoastlineGeoJSON } from '../utils/coastalAlert';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import {
@@ -151,16 +154,16 @@ export function MaritimeMap() {
     error: forecastError,
   } = useSpillForecast(investigationMode === 'forecast' ? selectedSpillId : null);
 
-  // Coastline extract for forecast mode's coastal-alert readout (see
-  // `coastalAlert.ts`), loaded whenever forecast mode arms. State, not a ref:
-  // the InvestigationPanel's coastal-alert banner renders from it.
+  // Coastline extract — doubles as forecast mode's coastal-alert readout
+  // input (see `coastalAlert.ts`) and as the map's spatial-reference line
+  // layer (see `ReferenceLayer.ts`). Loaded once on mount rather than gated
+  // to forecast mode: a 76KB static asset, cheap to keep around, and the
+  // reference layer should orient the eye whenever the map is on screen, not
+  // only once an investigation is armed. State, not a ref: both the
+  // InvestigationPanel's coastal-alert banner and the reference layer memo
+  // render from it.
   const [coastline, setCoastline] = useState<CoastlineGeoJSON | null>(null);
   useEffect(() => {
-    if (investigationMode !== 'forecast' || !selectedSpillId) {
-      setCoastline(null);
-      return;
-    }
-
     let active = true;
     loadCoastline('mediterranean').then((loaded) => {
       if (active) setCoastline(loaded);
@@ -169,7 +172,7 @@ export function MaritimeMap() {
     return () => {
       active = false;
     };
-  }, [investigationMode, selectedSpillId]);
+  }, []);
 
   const {
     attribution,
@@ -240,13 +243,17 @@ export function MaritimeMap() {
       scheduleNext('ship', VESSEL_REVEAL_DURATIONS_MS.framing);
     } else if (stage === 'ship') {
       flyToVessel(map, vessel);
-      scheduleNext('distance', VESSEL_REVEAL_DURATIONS_MS.ship);
-    } else if (stage === 'distance') {
-      frameOriginAndVessel(map, origin, vessel, 'settle');
-      scheduleNext('closeup', VESSEL_REVEAL_DURATIONS_MS.distance);
+      scheduleNext('closeup', VESSEL_REVEAL_DURATIONS_MS.ship);
     } else if (stage === 'closeup') {
       closeUpOnVessel(map, vessel);
-      scheduleNext('done', VESSEL_REVEAL_DURATIONS_MS.closeup);
+      scheduleNext('distance', VESSEL_REVEAL_DURATIONS_MS.closeup);
+    } else if (stage === 'distance') {
+      // Last beat: settle back out to the wide origin+vessel frame so the
+      // sequence ends zoomed OUT, not stuck on the tight close-up — see the
+      // user report this reordering fixes ("last me camera zoom out hona
+      // chahiye, ship pe zoom in nahi").
+      frameOriginAndVessel(map, origin, vessel, 'settle');
+      scheduleNext('done', VESSEL_REVEAL_DURATIONS_MS.distance);
     }
 
     return () => {
@@ -585,14 +592,33 @@ export function MaritimeMap() {
   // one combined effect that rebuilt the whole stack, so every zoom tick
   // also rebuilt the ~377 spill markers and vessel tracks — that's what made
   // zooming feel laggy while a forecast was active.
+  // `environment.longitude/latitude` is the trajectory's own detection
+  // point — in backtrack mode that's one endpoint of the path on screen, so
+  // the wind/current arrow reads as anchored context. In forecast mode the
+  // path runs forward from a different "now" position instead, so the same
+  // arrow renders nowhere near it: an unlabeled, seemingly stray marker with
+  // no visible line back to anything (the connecting line is only ~0.025°
+  // long — easy to miss at the zoom a forecast path is usually framed at).
+  // The EnvironmentToggles HUD buttons stay live in both modes (the
+  // wind/current *readout* is still valid context) — only this on-map arrow
+  // is suppressed, since it's the one thing that looks positionally wrong.
   const environmentLayers = useMemo(
     () =>
       createEnvironmentLayers({
         environment,
-        showWind: windVisible,
-        showCurrent: currentVisible,
+        showWind: windVisible && investigationMode !== 'forecast',
+        showCurrent: currentVisible && investigationMode !== 'forecast',
       }),
-    [environment, windVisible, currentVisible]
+    [environment, windVisible, currentVisible, investigationMode]
+  );
+
+  // Coastline + graticule — a static, non-interactive backdrop, so it's
+  // memoized on `coastline` alone (it never depends on selection, zoom, or
+  // investigation mode) and painted first (see paint-order comment below) so
+  // every other layer sits visibly on top of it.
+  const referenceLayers = useMemo(
+    () => createReferenceLayers({ coastline, showGraticule: true }),
+    [coastline]
   );
 
   const driftLayers = useMemo(
@@ -662,14 +688,16 @@ export function MaritimeMap() {
   );
 
   // --- Push the deck.gl layer stack whenever any of the above change ---
-  // Paint order (bottom → top): ocean flow particles → environment arrows →
-  // drift geometry → vessel tracks/markers → spill dots.
+  // Paint order (bottom → top): coastline/graticule reference → ocean flow
+  // particles → environment arrows → drift geometry → vessel tracks/markers
+  // → spill dots.
   useEffect(() => {
     const overlay = deckOverlayRef.current;
     if (!overlay || isLoading) return;
 
     overlay.setProps({
       layers: [
+        ...referenceLayers,
         ...oceanFlow.layers,
         ...environmentLayers,
         ...driftLayers,
@@ -678,7 +706,7 @@ export function MaritimeMap() {
         ...spillLayers,
       ],
     });
-  }, [oceanFlow.layers, environmentLayers, driftLayers, vesselLayers, vesselRevealLayers, spillLayers, isLoading]);
+  }, [referenceLayers, oceanFlow.layers, environmentLayers, driftLayers, vesselLayers, vesselRevealLayers, spillLayers, isLoading]);
 
   // Clear framed-drift lock when the selection changes so the next path can reframe.
   useEffect(() => {
@@ -766,6 +794,15 @@ export function MaritimeMap() {
     updateFocusPolygon(map, focusPolygonRing ? [focusPolygonRing] : null, focusPolygonOpacity);
   }, [backtrackActive, focusPolygonRing, focusPolygonOpacity]);
 
+  // Drives the predicted-position marker's colour below — see
+  // `computeForecastAlertSeverity`'s doc comment for why this is shared with
+  // `InvestigationPanel.tsx`'s coastal-alert banner rather than computed
+  // twice.
+  const coastalAlertSeverity = useMemo(
+    () => computeForecastAlertSeverity(forecast, coastline),
+    [forecast, coastline]
+  );
+
   // "T-Nh"/"T+Nh" time-tick badges, plus the path endpoints (Probable
   // source/Detection for backtrack, Now/Predicted position for forecast).
   // Rendered as `maplibregl.Marker` HTML pill badges — see timeTickMarkers.ts
@@ -784,7 +821,12 @@ export function MaritimeMap() {
         {
           longitude: first.longitude,
           latitude: first.latitude,
-          title: 'NOW',
+          // "T+0" rather than a plain "NOW" — keeps the origin in the same
+          // T+Nh numbering the mid-path ticks below and the endpoint at the
+          // other end already use, instead of switching notation partway
+          // through the badge set.
+          title: 'T+0',
+          subtitle: formatUtcTimestamp(first.timestampMs),
           color: forecastColorCssAt(0),
           variant: 'endpoint',
         },
@@ -799,7 +841,13 @@ export function MaritimeMap() {
           longitude: last.longitude,
           latitude: last.latitude,
           title: 'PREDICTED POSITION',
-          color: forecastColorCssAt(1),
+          // Reflects the coastal-alert severity at this position (see
+          // `coastalAlert.ts`) instead of always reading green — a
+          // fast-moving slick heading straight for the coast should look
+          // urgent here, not identical to a stalled, harmless one. Falls
+          // back to the path's own end-of-gradient colour only until the
+          // coastline extract (and so severity) has loaded.
+          color: coastalAlertSeverity ? ALERT_SEVERITY_CSS[coastalAlertSeverity] : forecastColorCssAt(1),
           variant: 'endpoint',
         },
       ];
@@ -856,6 +904,7 @@ export function MaritimeMap() {
     backtrackActive,
     timeline.visiblePoints,
     selectedSpill?.estimatedReleaseTime,
+    coastalAlertSeverity,
   ]);
 
   const hasTimeTickLabels = timeTickLabelData.length > 0;
@@ -958,13 +1007,42 @@ export function MaritimeMap() {
         <div ref={wrapperRef} className="maritime-map-wrapper relative min-w-0 flex-1">
           <BasemapSelector currentMode={basemapMode} onSelectMode={setBasemapMode} />
 
-          <OceanFlowToggleButton
-            visible={oceanFlow.visible}
-            status={oceanFlow.status}
-            error={oceanFlow.error}
-            onToggle={oceanFlow.toggle}
-            onRetry={oceanFlow.retry}
-          />
+          {/*
+            One positioned stack for every bottom-left HUD cluster instead of
+            each cluster guessing its own `bottom-N` offset (the previous
+            OceanFlowToggleButton at `bottom-4` / EnvironmentToggles at
+            `bottom-28` approach) — a hardcoded gap between two independently
+            sized panels drifts out of sync the moment either one's content
+            changes height (e.g. the ocean-flow legend row appearing only
+            once loaded, or environment showing wind-only vs wind+current),
+            silently overlapping or pushing a panel toward/past the wrapper's
+            edge. `flex-col-reverse` stacks bottom-up from actual rendered
+            content instead, so panels never overlap and never rely on a
+            guessed pixel budget that can drift off-screen.
+          */}
+          <div className="absolute bottom-4 left-4 z-10 flex flex-col-reverse items-start gap-1.5">
+            <OceanFlowToggleButton
+              visible={oceanFlow.visible}
+              status={oceanFlow.status}
+              error={oceanFlow.error}
+              onToggle={oceanFlow.toggle}
+              onRetry={oceanFlow.retry}
+            />
+
+            {selectedSpill && environment && (
+              <EnvironmentToggles
+                environment={environment}
+                showWind={windVisible}
+                showCurrent={currentVisible}
+                onToggleWind={() => setShowWind((v) => !v)}
+                onToggleCurrent={() => setShowCurrent((v) => !v)}
+              />
+            )}
+
+            {/* Only meaningful once a forecast is actually on screen — the
+                predicted-position marker it explains doesn't exist otherwise. */}
+            {selectedSpill && investigationMode === 'forecast' && forecast && <AlertSeverityLegend />}
+          </div>
 
           <SpillStatusBadge
             spillCount={spills.length}
@@ -973,16 +1051,6 @@ export function MaritimeMap() {
             onRetry={reload}
             onResetView={handleResetView}
           />
-
-          {selectedSpill && environment && (
-            <EnvironmentToggles
-              environment={environment}
-              showWind={windVisible}
-              showCurrent={currentVisible}
-              onToggleWind={() => setShowWind((v) => !v)}
-              onToggleCurrent={() => setShowCurrent((v) => !v)}
-            />
-          )}
 
           {selectedSpill && backtrackActive && vesselReveal.stage !== 'idle' && (
             <button

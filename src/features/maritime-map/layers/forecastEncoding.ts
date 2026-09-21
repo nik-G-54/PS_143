@@ -138,17 +138,19 @@ export function heatmapWeightAt(progress: number): number {
  *
  * This re-derives `radiusPixels` from a fixed ground radius instead, so the
  * kernel's footprint stays constant in meters as the camera zooms, not in
- * pixels. `HEATMAP_RADIUS_METERS` is chosen to reproduce the previously tuned
- * 90px at zoom ≈13.5 (`cameraController.ts`'s `DRIFT_MAX_ZOOM`, where
- * `frameDriftPath` settles for a short forecast) and ~35°N — the exact
- * conditions that tuning was validated against — then holds that same ground
- * radius at every other zoom instead of a constant pixel radius.
+ * pixels. `HEATMAP_RADIUS_METERS` holds that ground radius at every zoom
+ * instead of a constant pixel radius.
+ *
+ * Tuned down from an earlier 1000m/90px pass, which read as one big diffuse
+ * blob swallowing the actual spill extent rather than a bounded hazard zone —
+ * see `ForecastLayer.ts`'s `createHeatmapLayer` for the matching
+ * intensity/threshold pass that went with this.
  */
-const HEATMAP_RADIUS_METERS = 1000;
+const HEATMAP_RADIUS_METERS = 450;
 
 /** deck.gl clamps `HeatmapLayer.radiusPixels` to this range regardless; going outside it is a silent no-op. */
-const MIN_HEATMAP_RADIUS_PIXELS = 20;
-const MAX_HEATMAP_RADIUS_PIXELS = 100;
+const MIN_HEATMAP_RADIUS_PIXELS = 12;
+const MAX_HEATMAP_RADIUS_PIXELS = 48;
 
 /** Heatmap kernel radius, screen pixels, that currently covers `HEATMAP_RADIUS_METERS` of ground at this latitude/zoom. */
 export function heatmapRadiusPixelsForZoom(latitude: number, zoom: number): number {

@@ -25,6 +25,8 @@ export interface RawForecastPoint {
   drift_speed_knots?: number | null;
   /** Instantaneous drift heading at this point, degrees. */
   drift_heading_deg?: number | null;
+  /** Backend-reported distance from the forecast start, km — the adapter recomputes `cumulativeKm` itself (see below) rather than trusting this, but it's kept on the raw type for parity checks. */
+  distance_from_start_km?: number | null;
 }
 
 /** Backend's headline answer: where the oil is predicted to end up at the
@@ -35,6 +37,14 @@ export interface RawPredictedPosition {
 }
 
 export interface RawPredictResponse {
+  spill_id?: string | null;
+  /** Requested forecast horizon, hours — the adapter derives its own `durationHours` from the trajectory span, so this is informational (e.g. for a "forecast to +Nh" label). */
+  forecast_hours?: number | null;
+  initial_position?: {
+    latitude?: number | null;
+    longitude?: number | null;
+    timestamp?: string | null;
+  } | null;
   trajectory?: RawForecastPoint[] | null;
   predicted_position?: RawPredictedPosition | null;
   /** Straight-line distance from the forecast start to `predicted_position`, km. */

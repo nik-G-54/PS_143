@@ -25,8 +25,7 @@ import type { InvestigationMode } from '../deck/deckLayers';
 import {
   type AlertSeverity,
   type CoastlineGeoJSON,
-  computeAlertSeverity,
-  computeDistanceToCoast,
+  computeForecastAlertSeverity,
 } from '../utils/coastalAlert';
 import {
   formatArea,
@@ -289,22 +288,13 @@ export function InvestigationPanel({
   const sourceLon = trajectory?.source?.longitude ?? spill.estimatedSourceLongitude;
   const sourceLat = trajectory?.source?.latitude ?? spill.estimatedSourceLatitude;
 
-  // Severity at the forecast's headline answer — predicted_position, +6h —
-  // not at "now": the alert is about where the oil ends up, not where it is.
-  // Speed comes from that same last point's own drift reading where the
-  // backend reported one, falling back to the forecast-wide average only
-  // when it didn't (see `forecastTypes.ts` on why the two are distinct).
-  const coastalAlertSeverity = useMemo<AlertSeverity | null>(() => {
-    if (!forecast || !coastline) return null;
-    const target = forecast.predictedPosition;
-    if (!target) return null;
-
-    const lastPoint = forecast.points[forecast.points.length - 1];
-    const speedKnots = lastPoint?.driftSpeedKnots ?? forecast.averageSpeedKnots ?? 0;
-
-    const distanceKm = computeDistanceToCoast(target, coastline);
-    return computeAlertSeverity(distanceKm, speedKnots);
-  }, [forecast, coastline]);
+  // See `computeForecastAlertSeverity` — shared with `MaritimeMap.tsx`'s
+  // predicted-position marker so the banner here and that marker's colour
+  // never disagree.
+  const coastalAlertSeverity = useMemo<AlertSeverity | null>(
+    () => computeForecastAlertSeverity(forecast, coastline),
+    [forecast, coastline]
+  );
   const sourceRadius = trajectory?.source?.radiusKm ?? spill.estimatedSourceRadiusKm;
   const releaseTime = spill.estimatedReleaseTime
     ? formatUtcTimestamp(Date.parse(spill.estimatedReleaseTime))

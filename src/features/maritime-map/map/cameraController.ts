@@ -148,10 +148,12 @@ export function frameDriftPath(map: MapLibreMap, bounds: GeoBounds): void {
 // Four camera beats for the post-timeline "who did this" sequence (see
 // `useVesselRevealStage.ts` for the stage machine and `MaritimeMap.tsx` for
 // the effect that fires these in order): wide two-point frame, in on the
-// ship as it appears, settle back to show the connecting line, then a tight
-// close-up. Every beat is a real camera move — none of the stage transitions
-// are appearance-only — per the brief that every new beat should have its
-// own "zoom out / zoom in" movement, not just the first and last.
+// ship as it appears, a tight close-up, then settle back out to the wide
+// origin+vessel frame as the final beat — the sequence must end zoomed OUT,
+// not parked on a tight zoom-in on the ship. Every beat is a real camera
+// move — none of the stage transitions are appearance-only — per the brief
+// that every new beat should have its own "zoom out / zoom in" movement,
+// not just the first and last.
 
 const VESSEL_FRAME_PADDING: FitBoundsOptions['padding'] = { top: 90, bottom: 110, left: 90, right: 320 };
 const VESSEL_FRAME_MAX_ZOOM = 12;
@@ -166,7 +168,7 @@ const VESSEL_SETTLE_DURATION_MS = 1500;
 const VESSEL_CLOSEUP_ZOOM = 15;
 const VESSEL_CLOSEUP_DURATION_MS = 1600;
 
-/** Beat A / C: wide shot framing both the origin marker and the vessel together. */
+/** Beat A / D: wide shot framing both the origin marker and the vessel together (D is the final, zoomed-out beat). */
 export function frameOriginAndVessel(
   map: MapLibreMap,
   origin: [number, number],
@@ -197,7 +199,7 @@ export function flyToVessel(map: MapLibreMap, vessel: [number, number]): void {
   });
 }
 
-/** Beat D: final tight close-up on the ship. */
+/** Beat C: tight close-up on the ship (not the final beat — the camera settles back out after this). */
 export function closeUpOnVessel(map: MapLibreMap, vessel: [number, number]): void {
   map.flyTo({
     center: vessel,

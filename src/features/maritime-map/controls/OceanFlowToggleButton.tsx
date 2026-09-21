@@ -19,7 +19,7 @@ export function OceanFlowToggleButton({ visible, status, error, onToggle, onRetr
   const isError = status === 'error';
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 flex flex-col items-start gap-1.5">
+    <div className="flex flex-col items-start gap-1.5">
       {visible && status === 'ready' && (
         <div className="flex items-center gap-3 rounded-md border border-border bg-card px-2.5 py-1.5 text-[10px] font-medium text-muted-foreground shadow-md backdrop-blur-md">
           <span className="flex items-center gap-1.5">

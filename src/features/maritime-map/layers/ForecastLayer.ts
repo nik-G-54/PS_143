@@ -1,4 +1,4 @@
-import { PathLayer, ScatterplotLayer } from '@deck.gl/layers';
+import { PathLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import type { Layer } from '@deck.gl/core';
 import type { ForecastPoint, SpillForecast } from '../types/forecastTypes';
@@ -14,6 +14,7 @@ import {
   waypointOpacity,
   waypointRadiusPx,
 } from './forecastEncoding';
+import { metersPerPixel } from '../utils/geo';
 
 export interface ForecastLayerOptions {
   /** Forward drift forecast for the spill under investigation, or null when there is none. */
@@ -85,35 +86,117 @@ function createPathLayers(forecast: SpillForecast): PathLayer<SpillForecast>[] {
   ];
 }
 
+const DEG_PER_RAD = 180 / Math.PI;
+const RAD_PER_DEG = Math.PI / 180;
+/** WGS84-ish approximations, matching `utils/geo.ts`'s private constants. */
+const METERS_PER_DEGREE_LAT = 110_574;
+const METERS_PER_DEGREE_LON_AT_EQUATOR = 111_320;
+
+/** Chevron half-angle (from the heading line to each wing), degrees. */
+const ARROW_WING_ANGLE_DEG = 28;
+/** Wing length as a fraction of the tip length — shorter wings read as a sharper arrowhead. */
+const ARROW_WING_LENGTH_SCALE = 0.62;
+
 /**
- * Forecast waypoints, each sized and dimmed by its own `driftSpeedKnots` (see
- * `forecastEncoding.ts`'s header note on this layer) — a sluggish stretch of
- * drift reads as lower-confidence right where it happens, rather than the
- * whole path sharing one forecast-wide confidence level.
+ * Convert a desired on-screen length (pixels) at `latitude`/`zoom` into a
+ * [dLon, dLat] offset in degrees — the geographic-space equivalent of a
+ * constant-pixel size, the same trick `forecastEncoding.ts`'s
+ * `heatmapRadiusPixelsForZoom` uses in reverse for the heatmap kernel.
  */
-function createWaypointsLayer(forecast: SpillForecast): ScatterplotLayer<ForecastPoint> {
-  return new ScatterplotLayer<ForecastPoint>({
+function pixelOffsetToDegrees(
+  latitude: number,
+  zoom: number,
+  lengthPx: number,
+  bearingDeg: number
+): [number, number] {
+  const lengthM = lengthPx * metersPerPixel(latitude, zoom);
+  const bearingRad = bearingDeg * RAD_PER_DEG;
+  const dLat = (lengthM * Math.cos(bearingRad)) / METERS_PER_DEGREE_LAT;
+  const dLon =
+    (lengthM * Math.sin(bearingRad)) / (METERS_PER_DEGREE_LON_AT_EQUATOR * Math.max(0.01, Math.cos(latitude * RAD_PER_DEG)));
+  return [dLon, dLat];
+}
+
+/**
+ * Forecast waypoints — a small rotated chevron at each point, sized and
+ * dimmed by its own `driftSpeedKnots` (see `forecastEncoding.ts`'s header
+ * note on this layer: a sluggish stretch of drift reads as lower-confidence
+ * right where it happens, rather than the whole path sharing one
+ * forecast-wide confidence level) and rotated to its own `driftHeadingDeg` —
+ * so the path shows which way the oil is moving at each point, not just
+ * where it is.
+ *
+ * Built from `PathLayer` geometry (a 3-point "wingL → tip → wingR" polyline
+ * per point, computed in real lon/lat offsets) rather than an `IconLayer`
+ * texture-based marker: this deck.gl/WebGL setup was verified — by pushing
+ * an isolated `IconLayer` directly through the live overlay outside this
+ * app's own layer stack — to never rasterize `IconLayer` icons at all (no
+ * console error, no pixel output, regardless of atlas vs. auto-packed icon
+ * mode), while every vector layer already in this codebase (`PathLayer`,
+ * `ScatterplotLayer`, `LineLayer`) renders correctly. A vector chevron sidesteps
+ * that gap entirely.
+ *
+ * `driftHeadingDeg` is degrees clockwise from north (see
+ * `EnvironmentLayer.ts`'s matching note on the backend's wind/current
+ * vectors). Null headings (backend didn't report one for that sample) fall
+ * back to pointing along the path's own bearing to the next point, so a
+ * marker is never left arbitrarily pointing north.
+ */
+function createWaypointsLayer(forecast: SpillForecast, zoom: number): PathLayer<ForecastPoint> {
+  const points = forecast.points;
+
+  const fallbackBearingDeg = (index: number): number => {
+    const a = points[index];
+    const b = points[index + 1] ?? points[index - 1];
+    if (!b || a === b) return 0;
+    const dLon = b.longitude - a.longitude;
+    const dLat = b.latitude - a.latitude;
+    return Math.atan2(dLon, dLat) * DEG_PER_RAD;
+  };
+
+  const buildChevron = (d: ForecastPoint, index: number): [number, number][] => {
+    const headingDeg = d.driftHeadingDeg ?? fallbackBearingDeg(index);
+    const tipLengthPx = waypointRadiusPx(d.driftSpeedKnots) * 2.2;
+    const wingLengthPx = tipLengthPx * ARROW_WING_LENGTH_SCALE;
+
+    const [tipDLon, tipDLat] = pixelOffsetToDegrees(d.latitude, zoom, tipLengthPx, headingDeg);
+    const [leftDLon, leftDLat] = pixelOffsetToDegrees(
+      d.latitude,
+      zoom,
+      wingLengthPx,
+      headingDeg + 180 - ARROW_WING_ANGLE_DEG
+    );
+    const [rightDLon, rightDLat] = pixelOffsetToDegrees(
+      d.latitude,
+      zoom,
+      wingLengthPx,
+      headingDeg + 180 + ARROW_WING_ANGLE_DEG
+    );
+
+    return [
+      [d.longitude + leftDLon, d.latitude + leftDLat],
+      [d.longitude + tipDLon, d.latitude + tipDLat],
+      [d.longitude + rightDLon, d.latitude + rightDLat],
+    ];
+  };
+
+  return new PathLayer<ForecastPoint>({
     id: LAYER_IDS.forecastWaypoints,
-    data: forecast.points,
-    getPosition: (d) => [d.longitude, d.latitude],
-    getRadius: (d) => waypointRadiusPx(d.driftSpeedKnots),
-    radiusUnits: 'pixels',
-    // The smallest a marker can shrink to (the low-confidence radius), not a
-    // per-point value — deck.gl applies this as a single scalar floor.
-    radiusMinPixels: waypointRadiusPx(0),
-    filled: true,
-    stroked: true,
-    getFillColor: (d) => {
+    data: points,
+    getPath: (d, { index }) => buildChevron(d, index),
+    getColor: (d) => {
       const [r, g, b] = forecastColorAt(forecastProgress(d));
       return [r, g, b, waypointOpacity(d.driftSpeedKnots)];
     },
-    getLineColor: [255, 255, 255, 200],
-    lineWidthUnits: 'pixels',
-    getLineWidth: 1,
+    getWidth: 2,
+    widthUnits: 'pixels',
+    widthMinPixels: 1.5,
+    jointRounded: true,
+    capRounded: true,
     pickable: true,
     updateTriggers: {
-      getRadius: [forecast.spillId],
-      getFillColor: [forecast.spillId],
+      getPath: [forecast.spillId, zoom],
+      getColor: [forecast.spillId],
     },
   });
 }
@@ -149,13 +232,19 @@ function createHeatmapLayer(forecast: SpillForecast, zoom: number, visible: bool
     // spread over a small patch of map. Cuts the aggregation texture's
     // per-frame GPU cost with no visible loss of quality at this data density.
     weightsTextureSize: 512,
-    // Boosted alongside the wider radius so the now-more-spread-out weight
-    // still reaches full saturation at the path's core instead of washing out.
-    intensity: 2.2,
-    // Low, rather than the HeatmapLayer default: a high threshold snaps
-    // low-density edges straight to fully transparent, which is what reads as
-    // a hard cutoff. This lets the fade extend further into the low end.
-    threshold: 0.01,
+    // Left at the HeatmapLayer default (1): the wide-radius/low-threshold
+    // pass this used to pair with (see `forecastEncoding.ts`'s
+    // `HEATMAP_RADIUS_METERS`) is what turned this into one big diffuse blob
+    // that obscured the actual spill extent instead of reading as a bounded
+    // hazard zone. A tighter kernel needs no extra intensity boost to reach
+    // saturation at the path's core.
+    intensity: 1,
+    // Raised back toward the HeatmapLayer default: a very low threshold is
+    // what let the low-density fade extend far past the kernel radius,
+    // reading as a soft glow with no real edge. This keeps the cutoff close
+    // to where the kernel itself falls off, so the heatmap reads as a
+    // bounded zone rather than a halo.
+    threshold: 0.05,
     // Alpha ramps 0 → 255 across the stops (the previous range left every
     // stop fully opaque), so density fades smoothly into the basemap instead
     // of jumping straight to a solid, hard-edged pale ring at the threshold.
@@ -194,7 +283,7 @@ export function createForecastLayers(options: ForecastLayerOptions): Layer[] {
   // frame, so they stay on throughout.
   layers.push(createHeatmapLayer(forecast, zoom, !isInteracting));
   layers.push(...createPathLayers(forecast));
-  layers.push(createWaypointsLayer(forecast));
+  layers.push(createWaypointsLayer(forecast, zoom));
 
   return layers;
 }

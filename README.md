@@ -2,6 +2,12 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
+## Ocean flow (wind & current) overlay data
+
+Run `node scripts/generateOceanFlowData.js` once before each deploy to refresh
+`public/ocean-flow-data.json`. This fetches wind/current data from Open-Meteo
+offline — the app itself never calls Open-Meteo at runtime, only this static file.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)

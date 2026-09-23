@@ -66,12 +66,12 @@ export const SampleImagesPicker: React.FC<SampleImagesPickerProps> = ({ onSelect
   };
 
   return (
-    <div className="rounded-2xl p-6 bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-md space-y-6">
-      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-        <h3 className="text-sm font-bold font-sans text-slate-900 dark:text-slate-100 uppercase tracking-wide">
+    <div className="rounded-2xl p-6 bg-card border border-border shadow-xs space-y-6">
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <h3 className="text-sm font-bold font-sans text-foreground uppercase tracking-wide">
           Try Sample Images
         </h3>
-        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+        <span className="text-[11px] font-mono text-muted-foreground bg-muted px-2.5 py-0.5 rounded-md border border-border">
           Dataset Benchmark
         </span>
       </div>
@@ -84,14 +84,14 @@ export const SampleImagesPicker: React.FC<SampleImagesPickerProps> = ({ onSelect
         </div>
 
         <div className="relative group">
-          <div className="flex items-center gap-2.5 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-border">
             {OIL_SPILL_SAMPLES.map((sample) => (
               <button
                 key={sample.id}
                 type="button"
                 disabled={loadingSampleId === sample.id}
                 onClick={() => handleSampleClick(sample)}
-                className="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700/80 hover:border-red-500 dark:hover:border-red-400 hover:scale-105 active:scale-95 transition-all bg-black cursor-pointer shadow-xs hover:shadow-md disabled:opacity-50"
+                className="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 border-border hover:border-red-500 dark:hover:border-red-400 hover:scale-105 active:scale-95 transition-all bg-black cursor-pointer shadow-xs hover:shadow-md disabled:opacity-50"
                 title={`Analyze ${sample.label}`}
               >
                 <img
@@ -119,14 +119,14 @@ export const SampleImagesPicker: React.FC<SampleImagesPickerProps> = ({ onSelect
         </div>
 
         <div className="relative group">
-          <div className="flex items-center gap-2.5 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-border">
             {CLEAN_OCEAN_SAMPLES.map((sample) => (
               <button
                 key={sample.id}
                 type="button"
                 disabled={loadingSampleId === sample.id}
                 onClick={() => handleSampleClick(sample)}
-                className="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700/80 hover:border-emerald-500 dark:hover:border-emerald-400 hover:scale-105 active:scale-95 transition-all bg-black cursor-pointer shadow-xs hover:shadow-md disabled:opacity-50"
+                className="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 border-border hover:border-emerald-500 dark:hover:border-emerald-400 hover:scale-105 active:scale-95 transition-all bg-black cursor-pointer shadow-xs hover:shadow-md disabled:opacity-50"
                 title={`Analyze ${sample.label}`}
               >
                 <img

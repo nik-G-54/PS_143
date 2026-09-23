@@ -239,7 +239,7 @@ const StepperTitle = React.forwardRef<
   HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
-  <h3 ref={ref} className={cn("text-xs font-bold font-sans tracking-wide uppercase text-slate-900 dark:text-slate-100", className)} {...props} />
+  <h3 ref={ref} className={cn("text-sm sm:text-base font-bold font-sans tracking-wide text-slate-900 dark:text-slate-100", className)} {...props} />
 ));
 StepperTitle.displayName = "StepperTitle";
 
@@ -250,7 +250,7 @@ const StepperDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-xs text-slate-600 dark:text-slate-400 font-sans", className)}
+    className={cn("text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-sans", className)}
     {...props}
   />
 ));

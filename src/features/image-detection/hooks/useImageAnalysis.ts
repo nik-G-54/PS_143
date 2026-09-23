@@ -109,8 +109,8 @@ export function useImageAnalysis() {
       setStatus('scanning');
       console.log('[useImageAnalysis] State transition: uploading -> scanning');
 
-      // Phase 2: Dispatch to ML API + Scanning animation delay (minimum 2.5s)
-      const scanDelay = new Promise(r => setTimeout(r, 2500));
+      // Phase 2: Dispatch to ML API + Scanning animation delay (3.0s full sonar cycle)
+      const scanDelay = new Promise(r => setTimeout(r, 3000));
       const [prediction] = await Promise.all([
         analyzeImage(selectedFile),
         scanDelay,
@@ -176,8 +176,8 @@ export function useImageAnalysis() {
       await new Promise(r => setTimeout(r, 600));
       setStatus('scanning');
 
-      // Phase 2: ML API prediction + scanning delay (1.2s)
-      const scanDelay = new Promise(r => setTimeout(r, 1200));
+      // Phase 2: ML API prediction + scanning delay (3.0s full sonar cycle)
+      const scanDelay = new Promise(r => setTimeout(r, 3000));
       const [prediction] = await Promise.all([
         analyzeImage(file),
         scanDelay,

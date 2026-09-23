@@ -11,10 +11,10 @@ export function DetectionRegionList({ regions }: Props) {
   return (
     <div className="space-y-3">
       {/* Row-Column Table Container */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
         <table className="w-full text-left border-collapse text-xs font-mono">
           <thead>
-            <tr className="bg-slate-100/90 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700/80 font-bold uppercase tracking-wider text-[11px]">
+            <tr className="bg-muted/80 text-muted-foreground border-b border-border font-bold uppercase tracking-wider text-[11px]">
               <th className="py-2.5 px-3 text-center w-12">#</th>
               <th className="py-2.5 px-4">Spill ID</th>
               <th className="py-2.5 px-4 text-right">Surface Area</th>
@@ -23,7 +23,7 @@ export function DetectionRegionList({ regions }: Props) {
               <th className="py-2.5 px-4">Centroid Coordinates</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
+          <tbody className="divide-y divide-border text-foreground">
             {regions.map((region, idx) => {
               const confPct = Math.round(Number(region.confidence || 0) * 100);
               const areaVal = Number(region.area_km2 || 0).toFixed(2);
@@ -33,8 +33,8 @@ export function DetectionRegionList({ regions }: Props) {
                 : 'N/A';
 
               return (
-                <tr key={region.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <td className="py-3 px-3 text-center font-bold text-slate-500 dark:text-slate-400">
+                <tr key={region.id} className="hover:bg-accent/50 transition-colors">
+                  <td className="py-3 px-3 text-center font-bold text-muted-foreground">
                     #{idx + 1}
                   </td>
                   <td className="py-3 px-4 font-bold text-red-600 dark:text-red-400 whitespace-nowrap">
@@ -48,10 +48,10 @@ export function DetectionRegionList({ regions }: Props) {
                       {confPct}%
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-center whitespace-nowrap font-medium text-slate-600 dark:text-slate-400">
+                  <td className="py-3 px-4 text-center whitespace-nowrap font-medium text-muted-foreground">
                     {ageVal}
                   </td>
-                  <td className="py-3 px-4 whitespace-nowrap text-slate-600 dark:text-slate-400">
+                  <td className="py-3 px-4 whitespace-nowrap text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                       <span>{latLon}</span>

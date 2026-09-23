@@ -1,113 +1,81 @@
-import { useEffect, useState } from 'react';
-import { CheckCircle2, Loader2, Circle } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 
 interface Props {
   imageUrl: string;
 }
 
-const PIPELINE_STAGES = [
-  'Image uploaded',
-  'SAR imagery validated',
-  'Running oil-spill detection',
-  'Analysing detected regions',
-  'Preparing incident data',
-];
-
 export function ScanningPreview({ imageUrl }: Props) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(2); // Start at step 3
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setCurrentStepIndex(3), 1200);
-    const t2 = setTimeout(() => setCurrentStepIndex(4), 2200);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, []);
-
   return (
-    <div className="rounded-2xl p-6 bg-card border border-border shadow-lg space-y-6 animate-in fade-in-50 duration-300">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold font-sans text-foreground">
-            Analyzing Image
-          </h2>
+    <div className="rounded-2xl p-6 bg-card border border-border shadow-md space-y-6 font-sans animate-in fade-in-50 duration-300">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-5 h-5 text-indigo-500 animate-pulse" />
+            <h2 className="text-lg font-bold font-sans text-foreground">
+              Analyzing SAR Satellite Image
+            </h2>
+          </div>
           <p className="text-xs text-muted-foreground font-sans">
-            AI model is scanning SAR satellite imagery for oil spill signatures
+            AI neural vision model processing Sentinel-1 satellite imagery
           </p>
         </div>
-        <div className="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-primary/10 border border-primary/20 text-primary flex items-center gap-2">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          <span>Processing</span>
+        <div className="px-3.5 py-1.5 rounded-full text-xs font-mono font-bold bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20 flex items-center gap-2 shadow-xs">
+          <Loader2 className="w-3.5 h-3.5 text-indigo-500 animate-spin" />
+          <span>Processing AI Vision</span>
         </div>
       </div>
 
-      {/* Image with Subtle Scanning Line Treatment (Full Width with Elevated Height & Clear Fit) */}
-      <div className="relative w-full h-72 sm:h-80 md:h-96 rounded-xl overflow-hidden bg-black border-2 border-slate-300 dark:border-slate-700 shadow-md">
+      {/* Image Container with Glassmorphism Shimmer Sweep */}
+      <div className="relative w-full h-72 sm:h-80 md:h-96 rounded-2xl overflow-hidden bg-black border border-border shadow-md flex items-center justify-center group select-none">
+        {/* Base SAR Satellite Image */}
         <img
           src={imageUrl}
           alt="Scanning SAR"
-          className="w-full h-full object-contain opacity-80"
+          className="w-full h-full object-contain opacity-85 transition-opacity duration-500"
         />
 
-        {/* Subtle Scanning Radar Overlay */}
-        <div className="absolute inset-0 bg-black/30 pointer-events-none" />
+        {/* Subtle Backdrop Dimmer */}
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px] pointer-events-none" />
 
-        {/* Scanning horizontal laser line */}
+        {/* Soft Glassmorphic Light Shimmer Sweep */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div
-            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-90"
-            style={{
-              boxShadow: '0 0 15px rgba(99, 102, 241, 0.9)',
-              animation: 'scanLine 2.4s ease-in-out infinite',
-            }}
-          />
+          <div className="glass-shimmer-bar absolute -inset-y-10 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/20 dark:via-indigo-400/25 to-transparent blur-md" />
+        </div>
+
+        {/* Floating Minimal Glassmorphic Status HUD */}
+        <div className="relative z-10 px-5 py-3.5 rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-2xl flex items-center gap-3.5 text-foreground max-w-xs sm:max-w-sm">
+          <div className="relative flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-full border-2 border-indigo-400/30 border-t-indigo-400 animate-spin" />
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400 absolute" />
+          </div>
+          <div className="space-y-0.5 text-left">
+            <div className="text-xs sm:text-sm font-bold font-sans text-white tracking-wide">
+              Analyzing Surface Signatures
+            </div>
+            <div className="text-[11px] font-sans text-slate-300/80">
+              Extracting backscatter anomalies & geometry...
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Analysis Pipeline Progress */}
-      <div className="p-4 rounded-xl bg-accent/40 border border-border/60 space-y-3 font-mono text-xs">
-        <div className="flex items-center justify-between text-muted-foreground font-semibold pb-1 border-b border-border/40">
-          <span>ANALYSIS PIPELINE</span>
-          <span>STAGE {Math.min(currentStepIndex + 1, 5)} / 5</span>
-        </div>
-
-        <div className="space-y-2">
-          {PIPELINE_STAGES.map((stage, idx) => {
-            const isDone = idx < currentStepIndex;
-            const isCurrent = idx === currentStepIndex;
-
-            return (
-              <div
-                key={stage}
-                className={`flex items-center gap-2.5 transition-all duration-300 ${
-                  isDone
-                    ? 'text-emerald-500 font-semibold'
-                    : isCurrent
-                    ? 'text-primary font-bold animate-pulse'
-                    : 'text-muted-foreground/40'
-                }`}
-              >
-                {isDone ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                ) : isCurrent ? (
-                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
-                ) : (
-                  <Circle className="w-4 h-4 shrink-0" />
-                )}
-                <span>{stage}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
+      {/* Glassmorphic Shimmer Animation Keyframe */}
       <style>{`
-        @keyframes scanLine {
-          0% { top: 0%; }
-          50% { top: 96%; }
-          100% { top: 0%; }
+        @keyframes glassShimmer {
+          0% {
+            transform: translateX(-150%) skewX(-12deg);
+          }
+          50% {
+            transform: translateX(250%) skewX(-12deg);
+          }
+          100% {
+            transform: translateX(250%) skewX(-12deg);
+          }
+        }
+
+        .glass-shimmer-bar {
+          animation: glassShimmer 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
       `}</style>
     </div>

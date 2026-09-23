@@ -74,8 +74,8 @@ export function ImageUploader({ onFileSelect, disabled }: Props) {
         onClick={() => !disabled && inputRef.current?.click()}
         className={`group relative rounded-2xl border-2 border-dashed p-10 text-center transition-all duration-300 cursor-pointer flex flex-col items-center justify-center min-h-[360px] ${
           isDragging
-            ? 'border-indigo-500 bg-indigo-500/10 scale-[1.01]'
-            : 'border-slate-300 dark:border-slate-700/80 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900/90 shadow-md hover:shadow-xl'
+            ? 'border-primary bg-primary/10 scale-[1.01]'
+            : 'border-border hover:border-primary/60 bg-card shadow-xs hover:shadow-md'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <input
@@ -88,15 +88,15 @@ export function ImageUploader({ onFileSelect, disabled }: Props) {
         />
 
         {/* Floating Upload Cloud Icon */}
-        <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4 group-hover:scale-110 transition-all duration-300 shadow-sm">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-all duration-300 shadow-xs">
           <Upload className="w-7 h-7 stroke-[1.75]" />
         </div>
 
-        <h3 className="text-base font-bold font-sans text-slate-900 dark:text-slate-100 mb-1.5 tracking-tight">
+        <h3 className="text-base font-bold font-sans text-foreground mb-1.5 tracking-tight">
           Drop a SAR image or GeoTIFF (.tif) here or click to upload
         </h3>
         
-        <p className="text-xs text-slate-600 dark:text-slate-400 font-sans max-w-md leading-relaxed font-medium">
+        <p className="text-xs text-muted-foreground font-sans max-w-md leading-relaxed font-medium">
           Accepts .tif, .tiff, .jpg, .png (Auto-calibrates 32-bit Sentinel-1 dB)
         </p>
       </div>

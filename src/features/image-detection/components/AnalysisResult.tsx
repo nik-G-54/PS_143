@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle, CheckSquare, RefreshCw, FileText, Layers, Clock, Compass } from 'lucide-react';
+import { AlertTriangle, CheckCircle, CheckSquare, RefreshCw, FileText, Layers, Clock, Compass, Download } from 'lucide-react';
 import type { AnalysisResult as ResultType } from '../types/image-analysis';
 import { DetectionRegionList } from './DetectionRegionList';
 import { StepVerificationPipeline } from './StepVerificationPipeline';
+import { generateDetectionReport } from '../utils/generateDetectionReport';
 
 interface Props {
   result: ResultType;
@@ -28,6 +29,17 @@ function formatDateFormatted(dateStr?: string): string {
 export function AnalysisResult({ result, onReset }: Props) {
   const navigate = useNavigate();
   const [showPipeline, setShowPipeline] = useState(false);
+  const pipelineRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showPipeline && pipelineRef.current) {
+      const timer = setTimeout(() => {
+        pipelineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [showPipeline]);
+
   const prediction = result.prediction;
   const isReal = prediction.is_oil_spill;
   const peakConfidence = Math.min(100, Math.max(0, Math.round((prediction.peak_confidence || 0) * 100)));
@@ -57,14 +69,14 @@ export function AnalysisResult({ result, onReset }: Props) {
   const confidenceText = `${(prediction.peak_confidence ? prediction.peak_confidence * 100 : peakConfidence).toFixed(1)}%`;
 
   return (
-    <div className="rounded-2xl p-6 bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6 animate-in fade-in-50 duration-300">
+    <div className="rounded-2xl p-6 bg-card border border-border shadow-md space-y-6 animate-in fade-in-50 duration-300 font-sans">
       {/* Header Bar */}
-      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+      <div className="flex items-center justify-between border-b border-border pb-3">
         <div>
-          <h2 className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase">
+          <h2 className="text-xs font-mono font-bold text-muted-foreground tracking-wider uppercase">
             ANALYSIS RESULT
           </h2>
-          <p className="text-xs text-slate-800 dark:text-slate-200 font-sans font-medium">
+          <p className="text-xs text-foreground font-sans font-medium">
             Verified AI detection output for SAR image
           </p>
         </div>
@@ -72,32 +84,32 @@ export function AnalysisResult({ result, onReset }: Props) {
 
       {/* Primary Outcome Banner matching PS143 design tokens */}
       {!isReal || totalArea === 0 ? (
-        <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-500/40 text-emerald-950 dark:text-emerald-100 flex items-center justify-between shadow-md">
+        <div className="p-5 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/40 text-emerald-950 dark:text-emerald-300 flex items-center justify-between shadow-xs">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
               <CheckSquare className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <h2 className="text-xl font-bold font-sans tracking-wide text-emerald-800 dark:text-emerald-300 uppercase">
+              <h2 className="text-xl font-bold font-sans tracking-wide text-emerald-700 dark:text-emerald-300 uppercase">
                 CLEAN OCEAN
               </h2>
             </div>
-            <p className="text-xs font-sans text-emerald-800/90 dark:text-emerald-200/90 font-medium">
+            <p className="text-xs font-mono text-emerald-700 dark:text-emerald-300 font-medium">
               Confidence: {confidenceText} &nbsp;&nbsp; Inference Time: {inferenceTimeText}
             </p>
           </div>
-          <div className="text-4xl font-bold font-mono text-emerald-800 dark:text-emerald-300">
+          <div className="text-4xl font-bold font-mono text-emerald-700 dark:text-emerald-300">
             {peakConfidence || 99}%
           </div>
         </div>
       ) : (
-        <div className="p-5 rounded-2xl bg-red-50 dark:bg-red-950/60 border-2 border-red-500/40 text-red-950 dark:text-red-100 flex items-center justify-between shadow-md">
+        <div className="p-5 rounded-2xl bg-red-500/10 border-2 border-red-500/40 text-red-950 dark:text-red-300 flex items-center justify-between shadow-xs">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
               <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 shrink-0 animate-pulse" />
-              <h2 className="text-xl font-bold font-sans tracking-wide text-red-800 dark:text-red-300 uppercase">
+              <h2 className="text-xl font-bold font-sans tracking-wide text-red-700 dark:text-red-300 uppercase">
                 OIL SPILL DETECTED
               </h2>
             </div>
-            <p className="text-xs font-sans text-red-800/90 dark:text-red-200/90 font-medium">
+            <p className="text-xs font-mono text-red-700 dark:text-red-300 font-medium">
               Confidence: {confidenceText} &nbsp;&nbsp; Inference Time: {inferenceTimeText}
             </p>
           </div>
@@ -113,7 +125,7 @@ export function AnalysisResult({ result, onReset }: Props) {
             >
               {severity}
             </span>
-            <div className="text-4xl font-bold font-mono text-red-800 dark:text-red-300">
+            <div className="text-4xl font-bold font-mono text-red-700 dark:text-red-300">
               {peakConfidence}%
             </div>
           </div>
@@ -121,7 +133,7 @@ export function AnalysisResult({ result, onReset }: Props) {
       )}
 
       {/* Uploaded SAR Image Preview (Full Width with Elevated Height & Clear Fit) */}
-      <div className="relative w-full h-72 sm:h-80 md:h-96 rounded-xl overflow-hidden bg-black border-2 border-slate-300 dark:border-slate-700 shadow-md group">
+      <div className="relative w-full h-72 sm:h-80 md:h-96 rounded-xl overflow-hidden bg-black border-2 border-border shadow-xs group">
         <img
           src={result.image_url}
           alt={fileName}
@@ -129,20 +141,18 @@ export function AnalysisResult({ result, onReset }: Props) {
         />
       </div>
 
-
-
       {/* Detected Regions Breakdown Table */}
       {isReal && prediction.detections && prediction.detections.length > 0 && (
         <DetectionRegionList regions={prediction.detections} />
       )}
 
       {/* Source Image & Timestamp Metadata Footer */}
-      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-xs font-mono flex items-center justify-between text-slate-600 dark:text-slate-400">
+      <div className="p-3.5 rounded-xl bg-muted border border-border text-xs font-mono flex items-center justify-between text-muted-foreground">
         <div className="flex items-center gap-2 truncate max-w-[65%]" title={fileName}>
           <FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
           <span className="truncate">Source: {truncatedFileName}</span>
         </div>
-        <div className="shrink-0 font-bold text-slate-900 dark:text-slate-100">
+        <div className="shrink-0 font-bold font-mono text-foreground">
           {formatDateFormatted(result.analyzed_at)}
         </div>
       </div>
@@ -153,15 +163,25 @@ export function AnalysisResult({ result, onReset }: Props) {
           <button
             type="button"
             onClick={() => setShowPipeline((prev) => !prev)}
-            className="flex-1 w-full py-3.5 px-5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+            className="flex-1 w-full py-3.5 px-5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer font-sans"
           >
             <Compass className="w-4 h-4" />
             <span>{showPipeline ? 'Hide 8-Step Reconstruction Pipeline' : 'Run 8-Step Reconstruction & Culprit Attribution'}</span>
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={() => generateDetectionReport(result)}
+          className="py-3.5 px-5 rounded-xl text-xs font-bold font-sans border border-border bg-muted/60 text-foreground hover:bg-accent active:scale-[0.99] transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
+        >
+          <Download className="w-4 h-4 text-indigo-500" />
+          <span>Download Audit Report</span>
+        </button>
+
         <button
           onClick={onReset}
-          className={`py-3.5 px-5 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-[0.99] transition-all shadow-sm cursor-pointer ${
+          className={`py-3.5 px-5 rounded-xl text-xs font-bold font-sans border border-border bg-card text-foreground hover:bg-accent active:scale-[0.99] transition-all shadow-xs cursor-pointer ${
             isReal ? 'w-full sm:w-auto' : 'w-full'
           }`}
         >
@@ -170,9 +190,9 @@ export function AnalysisResult({ result, onReset }: Props) {
         </button>
       </div>
 
-      {/* Interactive 8-Step Sequential Verification Pipeline (Rendered upon button click) */}
+      {/* Interactive 8-Step Sequential Verification Pipeline (Rendered upon button click with smooth scroll into view) */}
       {isReal && showPipeline && (
-        <div className="pt-2 animate-in slide-in-from-top-4 duration-300">
+        <div ref={pipelineRef} className="pt-2 animate-in slide-in-from-top-4 duration-300 scroll-mt-6">
           <StepVerificationPipeline
             spillId={primarySpillId}
             totalArea={totalArea}

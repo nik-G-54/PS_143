@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Collapsible Sidebar - Demo</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+      <!-- Brand -->
+      <div class="brand">
+        <span class="brand-mark">
+          <svg class="lucide" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polygon points="12 6 16 14 8 14" />
+          </svg>
+        </span>
+        <span class="brand-name label">Dashboard</span>
+      </div>
+
+      <!-- Collapse Toggle Button -->
+      <button
+        type="button"
+        class="collapse-btn"
+        id="collapseBtn"
+        aria-label="Toggle sidebar"
+      >
+        <i data-lucide="panel-left"></i>
+      </button>
+
+      <hr class="divider" />
+
+      <!-- Profile -->
+      <div class="profile">
+        <span class="avatar">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256" alt="Ajendra S." />
+        </span>
+        <span class="profile-text label">
+          <span class="profile-name">Ajendra S.</span>
+          <span class="profile-role">UI/UX Designer</span>
+        </span>
+      </div>
+
+      <!-- Navigation List -->
+      <nav class="nav">
+        <div class="indicator"></div>
+        <button type="button" class="active">
+          <i data-lucide="layout-dashboard"></i>
+          <span class="label">Dashboard</span>
+        </button>
+        <button type="button">
+          <i data-lucide="bar-chart-3"></i>
+          <span class="label">Analytics</span>
+        </button>
+        <button type="button">
+          <i data-lucide="folder-kanban"></i>
+          <span class="label">Projects</span>
+        </button>
+        <button type="button">
+          <i data-lucide="message-square"></i>
+          <span class="label">Messages</span>
+        </button>
+        <button type="button">
+          <i data-lucide="settings"></i>
+          <span class="label">Settings</span>
+        </button>
+      </nav>
+
+      <!-- Theme Switcher -->
+      <div style="margin-top: auto; padding: 0 var(--pad);">
+        <button type="button" id="themeToggle" class="theme-toggle" aria-pressed="false" style="display: flex; align-items: center; justify-content: space-between; width: 100%; border: none; background: var(--surface); padding: 10px 14px; border-radius: 12px; cursor: pointer; color: var(--text);">
+          <span class="label" style="font-size: 13px; font-weight: 500;">Dark Theme</span>
+          <span class="switch" style="width: 36px; height: 20px; background: var(--muted); border-radius: 10px; position: relative; transition: 0.25s;">
+            <span class="knob" style="position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: 0.25s;"></span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <script src="main.js"></script>
+</body>
+</html>

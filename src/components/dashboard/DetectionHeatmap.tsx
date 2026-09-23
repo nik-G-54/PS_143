@@ -198,15 +198,18 @@ export const DetectionHeatmap: React.FC = () => {
     }
   };
 
-  const showTooltip = (e: React.MouseEvent<SVGRectElement>, day: CalendarDay) => {
-    const svg = e.currentTarget.ownerSVGElement;
-    if (!svg) return;
+  const showTooltip = (day: CalendarDay) => {
+    // Cell center X
+    const cellCenterX = day.x + BOX / 2;
+    // Clamp tooltip X inside calendar bounds so it never triggers scrollbars or overflow
+    const clampedX = Math.max(10, Math.min(cellCenterX - 75, calendar.width - 165));
+    // Position tooltip above cell, or below cell if hovering top rows
+    const clampedY = day.y < 55 ? day.y + BOX + 6 : day.y - 70;
 
-    const rect = svg.getBoundingClientRect();
     setHovered({
       day,
-      x: e.clientX - rect.left + 14,
-      y: e.clientY - rect.top - 12,
+      x: clampedX,
+      y: clampedY,
     });
   };
 
@@ -317,12 +320,11 @@ export const DetectionHeatmap: React.FC = () => {
                     strokeWidth={fill.strokeWidth}
                     className={
                       day.hasData && day.count > 0
-                        ? 'cursor-pointer transition-all duration-150'
-                        : 'transition-all duration-150'
+                        ? 'cursor-pointer transition-colors duration-150'
+                        : 'transition-colors duration-150'
                     }
                     onClick={() => handleDayClick(day)}
-                    onMouseEnter={(e) => showTooltip(e, day)}
-                    onMouseMove={(e) => showTooltip(e, day)}
+                    onMouseEnter={() => showTooltip(day)}
                     onMouseLeave={() => setHovered(null)}
                   />
                 );

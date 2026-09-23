@@ -123,18 +123,20 @@ export const MonthlyTrend: React.FC<MonthlyTrendProps> = ({ data }) => {
     return 'fill-[#c96442] stroke-[#b05730] dark:fill-[#d97757] dark:stroke-[#b05730]';
   };
 
-  const handleMouseMove = (e: React.MouseEvent<SVGElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setTooltipPos({
-      x: e.clientX - rect.left + 12,
-      y: e.clientY - rect.top - 32,
-    });
-  };
-
   const boxSize = 10;
   const gap = 2;
   const paddingLeft = 32;
   const paddingTop = 20;
+
+  const totalSvgWidth = 53 * (boxSize + gap) + paddingLeft;
+
+  const handleCellMouseEnter = (day: DayCell, x: number, y: number) => {
+    setHoveredCell(day);
+    const cellCenterX = x + boxSize / 2;
+    const clampedX = Math.max(10, Math.min(cellCenterX - 60, totalSvgWidth - 150));
+    const clampedY = y < 35 ? y + boxSize + 6 : y - 36;
+    setTooltipPos({ x: clampedX, y: clampedY });
+  };
 
   return (
     <div className="flex flex-col h-full w-full relative">
@@ -161,9 +163,8 @@ export const MonthlyTrend: React.FC<MonthlyTrendProps> = ({ data }) => {
       {/* Grid Container */}
       <div className="flex-1 w-full relative overflow-x-auto select-none mt-2">
         <svg
-          viewBox={`0 0 ${53 * (boxSize + gap) + paddingLeft} 120`}
+          viewBox={`0 0 ${totalSvgWidth} 120`}
           className="w-full min-w-[620px] h-full overflow-visible"
-          onMouseMove={handleMouseMove}
         >
           <text x={0} y={paddingTop + 0 * (boxSize + gap) + 8} className="text-[8px] font-bold fill-muted-foreground font-mono">Sun</text>
           <text x={0} y={paddingTop + 1 * (boxSize + gap) + 8} className="text-[8px] font-bold fill-muted-foreground font-mono">Mon</text>
@@ -201,11 +202,8 @@ export const MonthlyTrend: React.FC<MonthlyTrendProps> = ({ data }) => {
                       width={boxSize}
                       height={boxSize}
                       rx={1.5}
-                      className={`${colorClass} cursor-pointer transition-all duration-100 hover:scale-[1.2]`}
-                      style={{
-                        transformOrigin: `${x + boxSize / 2}px ${y + boxSize / 2}px`
-                      }}
-                      onMouseEnter={() => setHoveredCell(day)}
+                      className={`${colorClass} cursor-pointer transition-colors duration-150 hover:opacity-80`}
+                      onMouseEnter={() => handleCellMouseEnter(day, x, y)}
                       onMouseLeave={() => setHoveredCell(null)}
                     />
                   );

@@ -19,8 +19,8 @@
   --primary: oklch(0.5144 0.1605 267.44);
   --sidebar: oklch(1.00 0 267.51);
   --spacing: 0.25rem;
-  --font-mono: Geist Mono, monospace;
-  --font-sans: Geist, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --font-sans: 'Outfit', sans-serif;
   --secondary: oklch(0.94 0 0);
   --background: oklch(0.9851 0 0);
   --font-serif: Noto Serif Georgian, ui-serif, serif;
@@ -66,8 +66,8 @@
   --primary: oklch(0.5144 0.1605 267.44);
   --sidebar: oklch(0.2103 0 267.51);
   --spacing: 0.25rem;
-  --font-mono: Geist Mono, monospace;
-  --font-sans: Geist, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --font-sans: 'Outfit', sans-serif;
   --secondary: oklch(0.25 0 0);
   --background: oklch(0 0 0);
   --font-serif: Noto Serif Georgian, ui-serif, serif;

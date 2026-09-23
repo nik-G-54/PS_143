@@ -4,6 +4,7 @@ import type { DetectionRegion } from '../types/image-analysis';
 
 interface Props {
   region: DetectionRegion;
+  index?: number;
 }
 
 function formatDateFormatted(dateStr?: string): string {
@@ -21,7 +22,7 @@ function formatDateFormatted(dateStr?: string): string {
   }
 }
 
-export function DetectionRegionItem({ region }: Props) {
+export function DetectionRegionItem({ region, index }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
   const confidencePct = Math.round(Number(region.confidence || 0) * 100);
@@ -32,33 +33,33 @@ export function DetectionRegionItem({ region }: Props) {
     : 'Centroid Calculated';
 
   return (
-    <div className="rounded-xl border border-border/80 bg-accent/20 hover:bg-accent/40 transition-all overflow-hidden font-sans">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all overflow-hidden font-sans shadow-xs">
       {/* Header / Summary row */}
       <button
         onClick={() => setIsOpen(prev => !prev)}
         className="w-full p-4 flex items-center justify-between gap-3 text-left cursor-pointer"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive font-mono font-bold text-xs">
-            {region.id.split(' ').pop() || '01'}
+          <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-600 dark:text-red-400 font-mono font-bold text-xs shrink-0">
+            #{index ?? 1}
           </div>
           <div>
-            <h4 className="text-sm font-bold text-foreground font-mono">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">
               {region.id}
             </h4>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-mono">
               <span>{areaFormatted} km²</span>
-              <span className="opacity-30">•</span>
+              <span className="opacity-40">•</span>
               <span>{ageFormatted}</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-destructive/15 text-destructive border border-destructive/30">
-            {confidencePct}%
+          <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30 shadow-xs">
+            {confidencePct}% Confidence
           </span>
-          <div className="text-muted-foreground hover:text-foreground">
+          <div className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100">
             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </div>
         </div>

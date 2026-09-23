@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent, type ChangeEvent } from 'react';
-import { Upload, FileImage, AlertCircle } from 'lucide-react';
+import { Upload, AlertCircle } from 'lucide-react';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/tiff', 'image/webp'];
 const MAX_SIZE = 50 * 1024 * 1024; // 50MB
@@ -75,7 +75,7 @@ export function ImageUploader({ onFileSelect, disabled }: Props) {
         className={`group relative rounded-2xl border-2 border-dashed p-10 text-center transition-all duration-300 cursor-pointer flex flex-col items-center justify-center min-h-[360px] ${
           isDragging
             ? 'border-primary bg-primary/10 scale-[1.01]'
-            : 'border-border/80 hover:border-primary/60 bg-card/60 hover:bg-card shadow-sm hover:shadow-md'
+            : 'border-border hover:border-primary/60 bg-card shadow-xs hover:shadow-md'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <input
@@ -87,35 +87,18 @@ export function ImageUploader({ onFileSelect, disabled }: Props) {
           className="hidden"
         />
 
-        {/* Floating Upload Icon */}
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-5 group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300 shadow-sm">
-          <Upload className="w-8 h-8" />
+        {/* Floating Upload Cloud Icon */}
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-all duration-300 shadow-xs">
+          <Upload className="w-7 h-7 stroke-[1.75]" />
         </div>
 
-        <h3 className="text-xl font-bold font-sans text-foreground mb-1.5 tracking-tight">
-          Upload SAR Image
+        <h3 className="text-base font-bold font-sans text-foreground mb-1.5 tracking-tight">
+          Drop a SAR image or GeoTIFF (.tif) here or click to upload
         </h3>
         
-        <p className="text-sm text-muted-foreground font-sans max-w-sm mb-6 leading-relaxed">
-          Drag & drop your satellite image here or browse from your device
+        <p className="text-xs text-muted-foreground font-sans max-w-md leading-relaxed font-medium">
+          Accepts .tif, .tiff, .jpg, .png (Auto-calibrates 32-bit Sentinel-1 dB)
         </p>
-
-        {/* File Types & Size Tag */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-mono bg-accent/60 border border-border/80 text-muted-foreground mb-6">
-          <FileImage className="w-3.5 h-3.5 text-primary" />
-          <span>JPG · PNG · TIFF · WEBP</span>
-          <span className="opacity-40">•</span>
-          <span>Max 50 MB</span>
-        </div>
-
-        {/* Browse Button */}
-        <button
-          type="button"
-          disabled={disabled}
-          className="px-6 py-2.5 rounded-xl text-xs font-bold text-primary-foreground bg-primary hover:bg-primary/90 shadow-md group-hover:shadow-lg active:scale-95 transition-all cursor-pointer"
-        >
-          Browse Image
-        </button>
       </div>
 
       {/* Validation Error Alert */}

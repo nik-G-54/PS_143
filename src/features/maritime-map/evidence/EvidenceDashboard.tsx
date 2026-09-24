@@ -29,6 +29,7 @@ import { formatArea, formatConfidence, formatDetectedAt, formatLatLon, formatUtc
 import { formatDistanceKm, formatDriftWindow, formatUncertaintyRadius } from '../utils/formatTrajectory';
 import { DiagnosticPlotViewer } from '../../../components/common/DiagnosticPlotViewer';
 import { VesselApproachChart } from '../charts/VesselCharts';
+import { EvidenceMiniMap } from './EvidenceMiniMap';
 import {
   AreaDistributionChart,
   CandidateRadarOverlay,
@@ -232,6 +233,18 @@ export function EvidenceDashboard({
   // Contents mount when the dossier opens (so charts animate in as it rises)
   // and unmount only after the closing slide has finished.
   const [contentMounted, setContentMounted] = useState(open);
+  // Heavy content (charts, the mini-map's WebGL context) waits until the
+  // opening slide has finished, so the motion never competes with chart
+  // layout on the main thread; placeholders hold the space meanwhile.
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setSettled(false);
+      return;
+    }
+    const t = window.setTimeout(() => setSettled(true), 720);
+    return () => window.clearTimeout(t);
+  }, [open]);
   useEffect(() => {
     if (open) {
       setContentMounted(true);
@@ -293,7 +306,7 @@ export function EvidenceDashboard({
   // Scroll-spy for the section nav.
   useEffect(() => {
     const root = scrollRef.current;
-    if (!root || !open || !contentMounted) return;
+    if (!root || !open || !settled) return;
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
@@ -306,7 +319,7 @@ export function EvidenceDashboard({
       if (el) observer.observe(el);
     });
     return () => observer.disconnect();
-  }, [open, contentMounted]);
+  }, [open, settled]);
 
   // Opening always starts at the top of the dossier.
   useEffect(() => {
@@ -375,7 +388,23 @@ export function EvidenceDashboard({
         </div>
 
         {contentMounted && (
-        <div className="mx-auto max-w-[1180px] space-y-10 px-6 pb-16 pt-6">
+        <div className="mx-auto grid max-w-[1480px] gap-8 px-6 pb-16 pt-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+          {/* Situation column: small 2D map + the handful of facts it shows. */}
+          <aside className="maritime-evidence-section space-y-3 self-start lg:sticky lg:top-[118px]" style={{ animationDelay: '60ms' }}>
+            {settled ? (
+              <EvidenceMiniMap spill={spill} trajectory={trajectory} prime={prime} onExpand={onClose} />
+            ) : (
+              <div className="h-[290px] rounded-xl border border-border bg-card" aria-hidden />
+            )}
+            <dl className="rounded-xl border border-border bg-card px-3 py-2">
+              <Fact label="Detected" value={formatDetectedAt(spill)} />
+              <Fact label="Est. release" value={releaseMs != null && Number.isFinite(releaseMs) ? formatUtcTimestamp(releaseMs) : '—'} />
+              <Fact label="Origin ± radius" value={formatUncertaintyRadius(origin?.radiusKm ?? null)} />
+              <Fact label="Prime candidate" value={prime ? `#${prime.rank} · ${formatConfidence(prime.score)}` : '—'} />
+            </dl>
+          </aside>
+
+          <div className="min-w-0 space-y-10">
           {/* Assessment summary */}
           <div className="maritime-evidence-section space-y-4" style={{ animationDelay: '120ms' }}>
             <div className="rounded-xl border border-border bg-card p-4">
@@ -417,6 +446,8 @@ export function EvidenceDashboard({
             </div>
           </div>
 
+          {settled ? (
+          <>
           {/* 01 Detection */}
           <Section
             id="ev-detection"
@@ -719,6 +750,15 @@ export function EvidenceDashboard({
             positions) and archive counts. Ranking and scoring are backend-owned. Candidates marked <em>Comparison</em> are
             synthetic baselines included for contrast.
           </footer>
+          </>
+          ) : (
+            <div className="space-y-4" aria-hidden>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-56 animate-pulse rounded-xl border border-border bg-card" />
+              ))}
+            </div>
+          )}
+          </div>
         </div>
         )}
       </div>

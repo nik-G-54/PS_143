@@ -41,10 +41,28 @@ const MIN_SHIP_SIZE_SCALE = 8;
 // view) caps the ship at a large-but-finite size instead of growing without limit.
 const MAX_SHIP_SIZE_SCALE = 900;
 
+/**
+ * On-screen hull length for a zoom level: the full ~90px close in (zoom ≥ 13,
+ * the reveal close-up), easing down to a small ~14px glyph by zoom 8. A
+ * constant screen size made the ship *grow* relative to everything else as
+ * the user zoomed out — the slick, path and origin shrank while the ship
+ * stayed 90px and swamped them. Shrinking with zoom (but more gently than
+ * true scale, which would vanish) keeps it proportionate at every zoom.
+ */
+const SHIP_MIN_SCREEN_LENGTH_PX = 14;
+const SHIP_FULL_SIZE_ZOOM = 13;
+const SHIP_MIN_SIZE_ZOOM = 8;
+
+function shipScreenLengthForZoom(zoom: number): number {
+  const t = Math.min(1, Math.max(0, (zoom - SHIP_MIN_SIZE_ZOOM) / (SHIP_FULL_SIZE_ZOOM - SHIP_MIN_SIZE_ZOOM)));
+  const eased = t * t * (3 - 2 * t);
+  return SHIP_MIN_SCREEN_LENGTH_PX + (SHIP_TARGET_SCREEN_LENGTH_PX - SHIP_MIN_SCREEN_LENGTH_PX) * eased;
+}
+
 function shipSizeScaleForZoom(latitude: number, zoom: number, hullLengthUnits: number): number {
   const metersPerPx = metersPerPixel(latitude, zoom);
   if (!(metersPerPx > 0) || !(hullLengthUnits > 0)) return MIN_SHIP_SIZE_SCALE;
-  const desiredLengthMeters = SHIP_TARGET_SCREEN_LENGTH_PX * metersPerPx;
+  const desiredLengthMeters = shipScreenLengthForZoom(zoom) * metersPerPx;
   const scale = desiredLengthMeters / hullLengthUnits;
   return Math.min(MAX_SHIP_SIZE_SCALE, Math.max(MIN_SHIP_SIZE_SCALE, scale));
 }

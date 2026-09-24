@@ -1,6 +1,6 @@
 /**
  * Colour key for the ambient wind + current particle overlay. The toggle
- * itself lives in `MapRightSidebar`; this stays on the map so the key sits
+ * itself lives in `MapTopBar`; this stays on the map so the key sits
  * next to what it explains instead of inside the control rail.
  */
 export function OceanFlowLegend() {

@@ -1,16 +1,16 @@
 // src/features/maritime-map/map/vesselRevealMarker.ts
 //
-// The info card for the "who did this" vessel-reveal sequence: identity,
-// kinematics at the spill moment, and a timing comparison between the spill
-// release and the vessel's pass over the origin. A dedicated marker rather
-// than reusing `timeTickMarkers.ts`'s pill badge — that one-line format has
-// no room for a multi-section card.
+// Compact info card for the "who did this" vessel reveal: who it is and the
+// three numbers that matter at the spill moment (speed, distance to origin,
+// timing vs release), plus the drift-radius verdict. Full identity and the
+// timing breakdown live in the Vessel details module and the evidence
+// dossier — this card only labels the ship, so it stays small enough not to
+// cover the path, origin and slick around it.
 //
-// Layout: an anchor dot sits exactly on the vessel, a straight leader runs
-// out past the ship model's footprint (~90px long, see
-// `VesselInvestigationLayer.ts`'s SHIP_TARGET_SCREEN_LENGTH_PX), then the
-// card. Flat, theme-token colours only — no gradients or glows — so it reads
-// as an instrument readout in both light and dark mode.
+// Layout: an anchor dot on the vessel, a short leader clearing the ship
+// model, then the card. Below `CARD_MIN_ZOOM` the card and leader tuck away
+// and only the dot remains — at wide zoom the card would dwarf the scene it
+// describes (the ship itself shrinks with zoom, see VesselInvestigationLayer).
 
 import * as maplibregl from 'maplibre-gl';
 import type { Map as MapLibreMap } from 'maplibre-gl';
@@ -41,19 +41,12 @@ export interface VesselRevealMarkerDatum {
   driftRadiusKm: number | null;
 }
 
-let marker: maplibregl.Marker | null = null;
+/** Below this zoom only the anchor dot shows. */
+const CARD_MIN_ZOOM = 10.5;
 
-const TIME_FORMAT = new Intl.DateTimeFormat('en-GB', {
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: 'UTC',
-});
-const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
+let marker: maplibregl.Marker | null = null;
+let zoomHandler: (() => void) | null = null;
+let boundMap: MapLibreMap | null = null;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string) {
   const node = document.createElement(tag);
@@ -62,63 +55,18 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
   return node;
 }
 
-function row(label: string, value: string, strong = false): HTMLDivElement {
-  const r = el('div', 'vrm-row');
-  r.appendChild(el('span', 'vrm-row__label', label));
-  r.appendChild(el('span', `vrm-row__value${strong ? ' vrm-row__value--strong' : ''}`, value));
-  return r;
+function stat(label: string, value: string): HTMLDivElement {
+  const s = el('div', 'vrm-stat');
+  s.appendChild(el('span', 'vrm-stat__value', value));
+  s.appendChild(el('span', 'vrm-stat__label', label));
+  return s;
 }
 
 function formatOffset(hours: number): string {
   const abs = Math.abs(hours);
-  if (abs < 1 / 60) return 'At release';
-  const magnitude = abs < 1 ? `${Math.round(abs * 60)} min` : `${abs.toFixed(1)} h`;
+  if (abs < 1 / 60) return 'at release';
+  const magnitude = abs < 1 ? `${Math.round(abs * 60)}m` : `${abs.toFixed(1)}h`;
   return `${magnitude} ${hours < 0 ? 'before' : 'after'}`;
-}
-
-/**
- * Two-point time axis: the spill release and the vessel's pass, placed to
- * scale inside a window padded around both, so "43 min before" is visible
- * as a gap rather than only read as text.
- */
-function buildTimingAxis(offsetHours: number): HTMLDivElement {
-  const axis = el('div', 'vrm-axis');
-  const halfWindow = Math.max(Math.abs(offsetHours) * 1.4, 0.5);
-  const pos = (h: number) => `${((h + halfWindow) / (2 * halfWindow)) * 100}%`;
-
-  axis.appendChild(el('span', 'vrm-axis__line'));
-
-  const span = el('span', 'vrm-axis__span');
-  const a = Math.min(0, offsetHours);
-  const b = Math.max(0, offsetHours);
-  span.style.left = pos(a);
-  span.style.width = `${((b - a) / (2 * halfWindow)) * 100}%`;
-  axis.appendChild(span);
-
-  const release = el('span', 'vrm-axis__mark vrm-axis__mark--release');
-  release.style.left = pos(0);
-  release.title = 'Spill release';
-  axis.appendChild(release);
-
-  const vessel = el('span', 'vrm-axis__mark vrm-axis__mark--vessel');
-  vessel.style.left = pos(offsetHours);
-  vessel.title = 'Vessel at origin';
-  axis.appendChild(vessel);
-
-  const legend = el('div', 'vrm-axis__legend');
-  const l1 = el('span', 'vrm-legend');
-  l1.appendChild(el('span', 'vrm-legend__swatch vrm-legend__swatch--vessel'));
-  l1.appendChild(document.createTextNode('Vessel'));
-  const l2 = el('span', 'vrm-legend');
-  l2.appendChild(el('span', 'vrm-legend__swatch vrm-legend__swatch--release'));
-  l2.appendChild(document.createTextNode('Release'));
-  legend.appendChild(l1);
-  legend.appendChild(l2);
-
-  const wrap = el('div', 'vrm-axis-wrap');
-  wrap.appendChild(axis);
-  wrap.appendChild(legend);
-  return wrap;
 }
 
 function buildElement(d: VesselRevealMarkerDatum): HTMLDivElement {
@@ -129,63 +77,31 @@ function buildElement(d: VesselRevealMarkerDatum): HTMLDivElement {
 
   const card = el('div', 'maritime-vessel-reveal-marker__card');
 
-  // Header
   const header = el('div', 'vrm-header');
   const titleBlock = el('div', 'vrm-header__title');
-  titleBlock.appendChild(el('span', 'vrm-eyebrow', 'Prime candidate'));
   titleBlock.appendChild(el('span', 'vrm-name', d.vesselName));
+  const sub = [d.vesselType, d.country].filter(Boolean).join(' · ');
+  const subLine = el('span', 'vrm-sub', sub || '—');
+  if (d.identifiersSynthetic) {
+    const tag = el('span', 'vrm-tag', 'SYN');
+    tag.title = 'Synthetic identifiers — MMSI, IMO and name are generated placeholders.';
+    subLine.appendChild(tag);
+  }
+  titleBlock.appendChild(subLine);
   header.appendChild(titleBlock);
   header.appendChild(el('span', 'vrm-rank', `#${d.rank}`));
   card.appendChild(header);
 
-  const sub = [d.vesselType, d.country].filter(Boolean).join(' · ');
-  if (sub || d.identifiersSynthetic) {
-    const subRow = el('div', 'vrm-sub');
-    if (sub) subRow.appendChild(el('span', '', sub));
-    if (d.identifiersSynthetic) {
-      const tag = el('span', 'vrm-tag', 'Synthetic IDs');
-      tag.title = 'MMSI, IMO and name are generated placeholders, not registry identifiers.';
-      subRow.appendChild(tag);
-    }
-    card.appendChild(subRow);
-  }
-
-  // Identity
-  const identity = el('div', 'vrm-section');
-  identity.appendChild(row('Vessel ID', d.vesselId));
-  identity.appendChild(row('MMSI', d.mmsi ?? '—'));
-  if (d.imo) identity.appendChild(row('IMO', d.imo));
-  card.appendChild(identity);
-
-  // At spill time
-  const motion = el('div', 'vrm-section');
-  motion.appendChild(el('span', 'vrm-section__title', 'At spill time'));
-  motion.appendChild(row('Speed', d.speedKnots != null ? `${d.speedKnots.toFixed(1)} kn` : '—', true));
-  motion.appendChild(row('Course', d.courseDeg != null ? `${Math.round(d.courseDeg)}°` : '—'));
-  motion.appendChild(row('Distance to origin', d.distanceKm != null ? `${d.distanceKm.toFixed(2)} km` : '—', true));
-  card.appendChild(motion);
-
-  // Timing comparison
-  if (d.timeOffsetHours != null) {
-    const timing = el('div', 'vrm-section');
-    timing.appendChild(el('span', 'vrm-section__title', 'Timing vs spill'));
-    timing.appendChild(buildTimingAxis(d.timeOffsetHours));
-    if (d.releaseTimeMs != null && Number.isFinite(d.releaseTimeMs)) {
-      const passMs = d.releaseTimeMs + d.timeOffsetHours * 3_600_000;
-      timing.appendChild(row('Spill release', `${TIME_FORMAT.format(d.releaseTimeMs)} UTC`));
-      timing.appendChild(row('Vessel at origin', `${TIME_FORMAT.format(passMs)} UTC`));
-      timing.appendChild(el('span', 'vrm-date', DATE_FORMAT.format(d.releaseTimeMs)));
-    }
-    timing.appendChild(row('Offset', formatOffset(d.timeOffsetHours), true));
-    card.appendChild(timing);
-  }
+  const stats = el('div', 'vrm-stats');
+  stats.appendChild(stat('speed', d.speedKnots != null ? `${d.speedKnots.toFixed(1)} kn` : '—'));
+  stats.appendChild(stat('to origin', d.distanceKm != null ? `${d.distanceKm.toFixed(1)} km` : '—'));
+  stats.appendChild(stat('release', d.timeOffsetHours != null ? formatOffset(d.timeOffsetHours) : '—'));
+  card.appendChild(stats);
 
   if (d.withinRadius != null) {
-    const flag = el(
-      'div',
-      `vrm-flag vrm-flag--${d.withinRadius ? 'ok' : 'warn'}`,
-      d.withinRadius ? 'Within drift radius' : 'Outside drift radius'
-    );
+    const flag = el('div', `vrm-flag vrm-flag--${d.withinRadius ? 'ok' : 'warn'}`);
+    flag.appendChild(el('span', 'vrm-flag__dot'));
+    flag.appendChild(document.createTextNode(d.withinRadius ? 'Within drift radius' : 'Outside drift radius'));
     if (d.driftRadiusKm != null) flag.title = `Drift uncertainty radius ± ${d.driftRadiusKm.toFixed(1)} km`;
     card.appendChild(flag);
   }
@@ -194,17 +110,34 @@ function buildElement(d: VesselRevealMarkerDatum): HTMLDivElement {
   return root;
 }
 
+function applyZoomClass(map: MapLibreMap) {
+  const element = marker?.getElement().querySelector<HTMLElement>('.maritime-vessel-reveal-marker');
+  element?.classList.toggle('is-far', map.getZoom() < CARD_MIN_ZOOM);
+}
+
+function unbindZoom() {
+  if (boundMap && zoomHandler) boundMap.off('zoom', zoomHandler);
+  boundMap = null;
+  zoomHandler = null;
+}
+
 /** Add/replace the single vessel-reveal marker. Rebuilds from scratch each call — see `timeTickMarkers.ts` for why that's fine at this scale. */
 export function updateVesselRevealMarker(map: MapLibreMap, datum: VesselRevealMarkerDatum): void {
   removeStaleMarkerElements(map);
   marker?.remove();
+  unbindZoom();
 
   const element = buildElement(datum);
-  // Anchored on the dot's centre (5px = half its width) so the leader starts
-  // exactly at the vessel; the stem length (CSS) clears the ship model.
-  marker = new maplibregl.Marker({ element, anchor: 'top-left', offset: [-5, -5] })
+  // Anchored on the dot's centre (4px = half its width) so the leader starts exactly at the vessel.
+  marker = new maplibregl.Marker({ element, anchor: 'top-left', offset: [-4, -4] })
     .setLngLat([datum.longitude, datum.latitude])
     .addTo(map);
+
+  zoomHandler = () => applyZoomClass(map);
+  boundMap = map;
+  map.on('zoom', zoomHandler);
+  applyZoomClass(map);
+
   // Time-tick badges step aside for the card rather than sit underneath it.
   refreshTimeTickDeclutter(map);
 }
@@ -212,6 +145,7 @@ export function updateVesselRevealMarker(map: MapLibreMap, datum: VesselRevealMa
 export function removeVesselRevealMarker(map?: MapLibreMap): void {
   marker?.remove();
   marker = null;
+  unbindZoom();
   if (map) {
     removeStaleMarkerElements(map);
     refreshTimeTickDeclutter(map);
@@ -232,5 +166,6 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     marker?.remove();
     marker = null;
+    unbindZoom();
   });
 }

@@ -4,6 +4,7 @@ import type { VisualizationData } from '../../../types/detail';
 import {
   buildOilPatchFillBands,
   buildOilPatchGlowBands,
+  buildOilPatchIsolines,
   smoothRing,
 } from '../../../features/maritime-map/utils/oilPatchGeometry';
 import type { OilPatchBand } from '../../../features/maritime-map/utils/oilPatchGeometry';
@@ -129,6 +130,10 @@ const FOCUS_GLOW_SOURCE_ID = 'drift-focus-glow-source';
 const FOCUS_GLOW_FILL_ID = 'drift-focus-glow-fill';
 const FOCUS_FILL_SOURCE_ID = 'drift-focus-fill-source';
 const FOCUS_FILL_ID = 'drift-focus-fill';
+/** Outline-only isolines (fed through the glow source, `kind: 'line'`). */
+const FOCUS_ISOLINE_ID = 'drift-focus-isolines';
+/** Hairline contour step on each inner fill band. */
+const FOCUS_CONTOUR_ID = 'drift-focus-contours';
 
 /** GeoJSON Polygon coordinates: one ring, [lon, lat] pairs, closed. */
 export type FocusPolygonCoordinates = number[][][];
@@ -152,8 +157,12 @@ function bandsToFeatureCollection(bands: OilPatchBand[]): GeoJSON.FeatureCollect
       type: 'Feature',
       geometry: { type: 'Polygon', coordinates: [band.ring] },
       properties: {
+        kind: band.kind,
         color: `rgb(${band.rgb[0]}, ${band.rgb[1]}, ${band.rgb[2]})`,
         opacity: band.alpha / 255,
+        hasLine: band.line != null,
+        lineColor: band.line ? `rgb(${band.line.rgb[0]}, ${band.line.rgb[1]}, ${band.line.rgb[2]})` : 'rgb(0,0,0)',
+        lineOpacity: band.line ? band.line.alpha / 255 : 0,
       },
     })),
   };
@@ -175,11 +184,26 @@ export function addFocusPolygon(map: Map) {
   // rank markers (gold #facc15, slate-blue #94a3b8, orange #fb923c — see
   // VesselLayer.ts's rankColor) so the oil-slick polygon never gets visually
   // confused with either.
+  if (!map.getLayer(FOCUS_ISOLINE_ID)) {
+    map.addLayer({
+      id: FOCUS_ISOLINE_ID,
+      type: 'line',
+      source: FOCUS_GLOW_SOURCE_ID,
+      filter: ['==', ['get', 'kind'], 'line'],
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-opacity': ['get', 'opacity'],
+        'line-width': 1,
+      },
+    });
+  }
+
   if (!map.getLayer(FOCUS_GLOW_FILL_ID)) {
     map.addLayer({
       id: FOCUS_GLOW_FILL_ID,
       type: 'fill',
       source: FOCUS_GLOW_SOURCE_ID,
+      filter: ['==', ['get', 'kind'], 'fill'],
       paint: {
         'fill-color': ['get', 'color'],
         'fill-opacity': ['get', 'opacity'],
@@ -195,6 +219,20 @@ export function addFocusPolygon(map: Map) {
       paint: {
         'fill-color': ['get', 'color'],
         'fill-opacity': ['get', 'opacity'],
+      },
+    });
+  }
+
+  if (!map.getLayer(FOCUS_CONTOUR_ID)) {
+    map.addLayer({
+      id: FOCUS_CONTOUR_ID,
+      type: 'line',
+      source: FOCUS_FILL_SOURCE_ID,
+      filter: ['==', ['get', 'hasLine'], true],
+      paint: {
+        'line-color': ['get', 'lineColor'],
+        'line-opacity': ['get', 'lineOpacity'],
+        'line-width': 0.8,
       },
     });
   }
@@ -235,14 +273,20 @@ export function updateFocusPolygon(
 
   const clampedMultiplier = Math.min(1, Math.max(0, opacityMultiplier));
   const smoothed = smoothRing(ring);
-  const fade = (band: OilPatchBand): OilPatchBand => ({ ...band, alpha: band.alpha * clampedMultiplier });
+  const fade = (band: OilPatchBand): OilPatchBand => ({
+    ...band,
+    alpha: band.alpha * clampedMultiplier,
+    line: band.line ? { ...band.line, alpha: band.line.alpha * clampedMultiplier } : undefined,
+  });
 
-  glowSource.setData(bandsToFeatureCollection(buildOilPatchGlowBands(smoothed).map(fade)));
+  glowSource.setData(
+    bandsToFeatureCollection([...buildOilPatchIsolines(smoothed), ...buildOilPatchGlowBands(smoothed)].map(fade))
+  );
   fillSource.setData(bandsToFeatureCollection(buildOilPatchFillBands(smoothed).map(fade)));
 }
 
 export function removeFocusPolygon(map: Map) {
-  [FOCUS_FILL_ID, FOCUS_GLOW_FILL_ID].forEach((id) => {
+  [FOCUS_CONTOUR_ID, FOCUS_FILL_ID, FOCUS_GLOW_FILL_ID, FOCUS_ISOLINE_ID].forEach((id) => {
     if (map.getLayer(id)) map.removeLayer(id);
   });
   [FOCUS_FILL_SOURCE_ID, FOCUS_GLOW_SOURCE_ID].forEach((id) => {

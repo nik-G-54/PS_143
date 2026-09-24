@@ -8,7 +8,7 @@ export type PlaybackMode = 'forward' | 'backtrack';
 /** Selectable playback speed multipliers for the investigation timeline. */
 export const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 1.5, 2] as const;
 export type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
-const DEFAULT_PLAYBACK_SPEED: PlaybackSpeed = 1;
+const DEFAULT_PLAYBACK_SPEED: PlaybackSpeed = 0.5;
 
 export interface TimelineVesselPosition {
   vesselId: string;

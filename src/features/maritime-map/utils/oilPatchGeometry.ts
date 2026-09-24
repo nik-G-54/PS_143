@@ -9,13 +9,24 @@
 // animation-frame progress tick) turn the returned bands into their own
 // layer idiom — see below for why this file deliberately avoids turf.
 
-import { OIL_GLOW_STOPS, OIL_PATCH_FILL_ALPHA, OIL_PATCH_STOPS } from '../layers/spillEncoding';
+import {
+  OIL_CONTOUR_LINE,
+  OIL_GLOW_STOPS,
+  OIL_ISOLINE_STOPS,
+  OIL_PATCH_DISPLAY_SCALE,
+  OIL_PATCH_FILL_ALPHA,
+  OIL_PATCH_STOPS,
+} from '../layers/spillEncoding';
 
 export interface OilPatchBand {
   ring: number[][];
   rgb: [number, number, number];
   /** 0-255, matching this codebase's deck.gl RGBA convention. */
   alpha: number;
+  /** 'fill' paints the ring's area; 'line' strokes its outline only (isolines). */
+  kind: 'fill' | 'line';
+  /** Optional outline drawn on top of a fill band (contour step). */
+  line?: { rgb: [number, number, number]; alpha: number };
 }
 
 /**
@@ -52,6 +63,15 @@ function scaleRing(ring: number[][], centre: [number, number], factor: number): 
   return ring.map(([x, y]) => [cx + (x - cx) * factor, cy + (y - cy) * factor]);
 }
 
+/** Keep every `step`-th vertex of a closed ring (re-closed), never dropping below 8 vertices. */
+function decimateRing(ring: number[][], step: number): number[][] {
+  const open = ring.slice(0, -1);
+  if (open.length / step < 8) return ring;
+  const kept = open.filter((_, i) => i % step === 0);
+  kept.push([kept[0][0], kept[0][1]]);
+  return kept;
+}
+
 /**
  * Chaikin corner-cutting: repeatedly replace each vertex pair with two points
  * 1/4 and 3/4 of the way along their segment, which rounds every sharp joint
@@ -82,19 +102,46 @@ export function smoothRing(ring: number[][], iterations = 2): number[][] {
 /** Fill bands, boundary-first (outermost/brightest) to core-last (innermost/darkest) — render in this order so the core paints on top. */
 export function buildOilPatchFillBands(ring: number[][]): OilPatchBand[] {
   const centre = ringCentroid(ring);
-  return OIL_PATCH_STOPS.map((stop) => ({
-    ring: scaleRing(ring, centre, 1 - stop.insetFraction),
+  return OIL_PATCH_STOPS.map((stop, i) => ({
+    ring: scaleRing(ring, centre, OIL_PATCH_DISPLAY_SCALE * (1 - stop.insetFraction)),
     rgb: stop.rgb,
     alpha: OIL_PATCH_FILL_ALPHA,
+    kind: 'fill' as const,
+    // The outermost band's edge is the patch boundary itself — the fringe
+    // handles that; contour lines only on the inner steps.
+    line: i === 0 ? undefined : OIL_CONTOUR_LINE,
   }));
 }
 
-/** Glow bands, widest/faintest first — render in this order so the narrower, brighter ring near the boundary paints on top. */
+/** Edge fringe bands, widest/faintest first — render in this order so the narrower, brighter ring near the boundary paints on top. */
 export function buildOilPatchGlowBands(ring: number[][]): OilPatchBand[] {
   const centre = ringCentroid(ring);
   return OIL_GLOW_STOPS.map((stop) => ({
-    ring: scaleRing(ring, centre, 1 + stop.outsetFraction),
+    ring: scaleRing(ring, centre, OIL_PATCH_DISPLAY_SCALE * (1 + stop.outsetFraction)),
     rgb: stop.rgb,
     alpha: stop.alpha,
+    kind: 'fill' as const,
+  }));
+}
+
+/**
+ * Outline-only isolines rippling out around the patch. Each is a smoothed
+ * copy of the boundary so the outer rings round off with distance instead of
+ * repeating every ragged edge detail — the way contour lines relax away from
+ * a feature.
+ */
+export function buildOilPatchIsolines(ring: number[][]): OilPatchBand[] {
+  const centre = ringCentroid(ring);
+  // Thin the vertex set first (every 4th + 2 per ring further out) so repeated
+  // Chaikin passes relax the shape without multiplying the vertex count —
+  // this runs every animation frame for the traveling polygon.
+  return OIL_ISOLINE_STOPS.map((stop, i) => ({
+    ring: smoothRing(
+      decimateRing(scaleRing(ring, centre, OIL_PATCH_DISPLAY_SCALE * (1 + stop.outsetFraction)), 4 + 2 * i),
+      2
+    ),
+    rgb: stop.rgb,
+    alpha: stop.alpha,
+    kind: 'line' as const,
   }));
 }

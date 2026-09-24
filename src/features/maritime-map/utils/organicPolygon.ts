@@ -7,8 +7,12 @@
 
 import * as turf from '@turf/turf';
 
-/** Fixed vertex count so keyframe polygons can be interpolated index-wise. */
-export const DEFAULT_VERTEX_COUNT = 16;
+/**
+ * Fixed vertex count so keyframe polygons can be interpolated index-wise.
+ * High enough (Nyquist 48) to carry the fractal edge octave below without
+ * aliasing it into jagged spikes.
+ */
+export const DEFAULT_VERTEX_COUNT = 96;
 
 /**
  * Mulberry32 — a tiny deterministic PRNG. Same seed always produces the same
@@ -98,6 +102,21 @@ export function generateOrganicPolygon(
     { freq: 17 + Math.floor(rand() * 5), amp: 0.02 + rand() * 0.02, phase: rand() * Math.PI * 2 },
   ];
 
+  // Octave 3: fine fractal fringe. Seeded from the seed's stable prefix (the
+  // part before any ":<keyframe>" suffix — see oilSlickKeyframes.ts) rather
+  // than the full per-keyframe seed, so the fine edge texture stays put while
+  // the big lobes morph between keyframes instead of shimmering every frame.
+  // Only applied when the ring has enough vertices to carry it.
+  const fineRand = mulberry32(hashSeed(String(seed).split(':')[0]));
+  const fractalHarmonics =
+    count >= 64
+      ? [
+          { freq: 23 + Math.floor(fineRand() * 5), amp: 0.022 + fineRand() * 0.014, phase: fineRand() * Math.PI * 2 },
+          { freq: 31 + Math.floor(fineRand() * 6), amp: 0.014 + fineRand() * 0.01, phase: fineRand() * Math.PI * 2 },
+          { freq: 41 + Math.floor(fineRand() * 5), amp: 0.008 + fineRand() * 0.006, phase: fineRand() * Math.PI * 2 },
+        ]
+      : [];
+
   const hasDrift = driftBearingDeg != null && Number.isFinite(driftBearingDeg);
   const driftRad = hasDrift ? ((driftBearingDeg as number) * Math.PI) / 180 : 0;
   const strength = Math.max(0, elongationStrength);
@@ -111,6 +130,9 @@ export function generateOrganicPolygon(
       wobble += h.amp * Math.sin(angle * h.freq + h.phase);
     }
     for (const h of tendrilHarmonics) {
+      wobble += h.amp * Math.sin(angle * h.freq + h.phase);
+    }
+    for (const h of fractalHarmonics) {
       wobble += h.amp * Math.sin(angle * h.freq + h.phase);
     }
     wobble = Math.max(0.45, wobble);

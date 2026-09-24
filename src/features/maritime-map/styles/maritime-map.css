@@ -20,6 +20,42 @@
   animation: maritime-reasoning-row-in 280ms ease-out forwards;
 }
 
+/* Score-breakdown bars in the Vessel details module fill left→right, staggered per row via inline `animationDelay`. */
+@keyframes maritime-score-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.maritime-score-fill {
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation: maritime-score-fill 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maritime-score-fill {
+    animation: none;
+    transform: none;
+  }
+}
+
+/*
+  Primary tints. `primary` is `var(--primary)` in tailwind.config.js, so
+  Tailwind's `bg-primary/15` opacity modifier silently resolves to
+  transparent — mix the token instead.
+*/
+.maritime-primary-tint {
+  background-color: color-mix(in oklch, var(--primary) 15%, transparent);
+}
+
+.maritime-primary-soft {
+  background-color: color-mix(in oklch, var(--primary) 60%, transparent);
+}
+
 .maritime-map-page-content {
   display: flex;
   flex-direction: column;
@@ -32,6 +68,31 @@
   flex-direction: column;
   width: 100%;
   min-height: 100%;
+}
+
+/*
+  Right icon rail + its module panel, floating over the map's right edge so
+  the map keeps its full width. The wrapper itself ignores pointer events so
+  the empty space between/below the cards still pans the map.
+*/
+.maritime-right-sidebar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.maritime-right-sidebar > * {
+  pointer-events: auto;
+}
+
+/* The module panel that opens beside the right icon rail. */
+.maritime-right-module {
+  width: 320px;
+  max-width: calc(100vw - 10rem);
+  max-height: 100%;
 }
 
 .maritime-map-body {
@@ -136,7 +197,12 @@
   appearance: none;
   height: 4px;
   border-radius: 999px;
-  background: var(--border, #e5e7eb);
+  /* Hard-stop fill (no blend): played portion in primary, remainder in the neutral track colour. */
+  background: linear-gradient(
+    to right,
+    var(--primary) 0 var(--fill, 0%),
+    color-mix(in oklch, var(--muted-foreground) 35%, transparent) var(--fill, 0%) 100%
+  );
   outline: none;
   cursor: pointer;
 }
@@ -253,7 +319,13 @@
   flex-direction: row;
   align-items: center;
   pointer-events: none;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.4));
+  transition: opacity 160ms ease-out;
+}
+
+/* Set by timeTickMarkers.ts's declutter pass when this badge would crowd a higher-priority one. */
+.maritime-time-marker--hidden {
+  opacity: 0;
 }
 
 /* Sits exactly on the path point; the badge itself reads off to the side, clear of the line. */
@@ -274,10 +346,10 @@
 }
 
 .maritime-time-marker__stem {
-  width: 14px;
-  height: 2px;
+  width: 20px;
+  height: 1.5px;
   flex-shrink: 0;
-  background: linear-gradient(90deg, var(--marker-color), color-mix(in srgb, var(--marker-color) 15%, transparent));
+  background: color-mix(in srgb, var(--marker-color) 70%, transparent);
 }
 
 .maritime-time-marker__badge {
@@ -286,11 +358,8 @@
   gap: 0.375rem;
   padding: 0.3rem 0.65rem;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(17, 23, 31, 0.94), rgba(8, 12, 18, 0.94));
+  background: rgba(12, 17, 24, 0.94);
   border: 1px solid color-mix(in srgb, var(--marker-color) 65%, transparent);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-    0 0 14px 1px color-mix(in srgb, var(--marker-color) 45%, transparent);
   white-space: nowrap;
 }
 
@@ -323,7 +392,7 @@
 }
 
 .maritime-time-marker--tick .maritime-time-marker__badge {
-  background: linear-gradient(180deg, rgba(17, 23, 31, 0.88), rgba(8, 12, 18, 0.88));
+  background: rgba(12, 17, 24, 0.9);
 }
 
 .maritime-time-marker--tick .maritime-time-marker__title {
@@ -343,103 +412,263 @@
   flex-direction: row;
   align-items: flex-start;
   pointer-events: none;
-  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5));
 }
 
+/* Sits exactly on the vessel position. */
 .maritime-vessel-reveal-marker__dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  margin-top: 6px;
-  background: #facc15;
-  box-shadow:
-    0 0 0 2px rgba(8, 12, 18, 0.85),
-    0 0 8px 1px rgba(250, 204, 21, 0.7);
   flex-shrink: 0;
+  background: #d99e3a;
+  border: 2px solid var(--card);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
+/* Leader line long enough to clear the ~90px ship model centred on the dot. */
 .maritime-vessel-reveal-marker__stem {
-  width: 14px;
-  height: 2px;
-  margin-top: 11px;
+  width: 84px;
+  height: 1px;
+  margin-top: 4.5px;
   flex-shrink: 0;
-  background: linear-gradient(90deg, #facc15, rgba(250, 204, 21, 0.15));
+  background: var(--muted-foreground);
+  opacity: 0.8;
 }
 
 .maritime-vessel-reveal-marker__card {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  min-width: 168px;
-  padding: 0.5rem 0.65rem;
-  border-radius: 0.6rem;
-  background: linear-gradient(180deg, rgba(17, 23, 31, 0.96), rgba(8, 12, 18, 0.96));
-  border: 1px solid rgba(250, 204, 21, 0.45);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-    0 0 16px 1px rgba(250, 204, 21, 0.22);
-}
-
-.maritime-vessel-reveal-marker__header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.maritime-vessel-reveal-marker__name {
-  font-family: var(--font-mono, monospace);
+  gap: 8px;
+  width: 232px;
+  margin-top: -6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-left: 2px solid #d99e3a;
+  box-shadow: 0 6px 20px -6px rgba(0, 0, 0, 0.45);
   font-size: 11px;
+  line-height: 1.35;
+}
+
+.vrm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vrm-header__title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vrm-eyebrow,
+.vrm-section__title {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.vrm-name {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #f5f5f4;
+  color: var(--foreground);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.maritime-vessel-reveal-marker__rank {
+.vrm-rank {
   flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
   font-family: var(--font-mono, monospace);
   font-size: 10px;
   font-weight: 700;
-  color: #facc15;
+  color: var(--primary-foreground);
+  background: var(--primary);
 }
 
-.maritime-vessel-reveal-marker__row {
-  font-family: var(--font-mono, monospace);
-  font-size: 9.5px;
-  font-weight: 500;
-  color: rgba(245, 245, 244, 0.72);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+.vrm-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: -4px;
+  font-size: 10px;
+  color: var(--muted-foreground);
 }
 
-.maritime-vessel-reveal-marker__row--strong {
-  color: rgba(245, 245, 244, 0.94);
+.vrm-tag {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border: 1px solid #d99e3a;
+  border-radius: 3px;
+  font-size: 8.5px;
   font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a86b12;
 }
 
-.maritime-vessel-reveal-marker__flag {
-  margin-top: 0.15rem;
-  padding: 0.15rem 0.4rem;
-  border-radius: 999px;
-  width: fit-content;
+.dark .vrm-tag {
+  color: #e0b25c;
+}
+
+.vrm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.vrm-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vrm-row__label {
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.vrm-row__value {
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vrm-row__value--strong {
+  font-weight: 700;
+}
+
+.vrm-date {
+  align-self: flex-end;
   font-family: var(--font-mono, monospace);
   font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
+}
+
+/* Two-point timing axis: release (diamond) vs vessel pass (dot), gap highlighted. */
+.vrm-axis-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 2px;
+}
+
+.vrm-axis {
+  position: relative;
+  height: 12px;
+}
+
+.vrm-axis__line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--border);
+}
+
+.vrm-axis__span {
+  position: absolute;
+  top: calc(50% - 1.5px);
+  height: 3px;
+  border-radius: 2px;
+  background: #d99e3a;
+  opacity: 0.55;
+}
+
+.vrm-axis__mark {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  transform: translate(-50%, -50%);
+}
+
+.vrm-axis__mark--vessel {
+  border-radius: 50%;
+  background: #d99e3a;
+  border: 1.5px solid var(--card);
+}
+
+.vrm-axis__mark--release {
+  background: var(--foreground);
+  transform: translate(-50%, -50%) rotate(45deg) scale(0.85);
+}
+
+.vrm-axis__legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--muted-foreground);
+}
+
+.vrm-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vrm-legend__swatch {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+}
+
+.vrm-legend__swatch--vessel {
+  border-radius: 50%;
+  background: #d99e3a;
+}
+
+.vrm-legend__swatch--release {
+  background: var(--foreground);
+  transform: rotate(45deg) scale(0.85);
+}
+
+.vrm-flag {
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  text-align: center;
 }
 
-.maritime-vessel-reveal-marker__flag--ok {
-  color: #4e9a6e;
-  background: rgba(78, 154, 110, 0.16);
+.vrm-flag--ok {
+  color: #2f7a52;
+  border-color: #4e9a6e;
 }
 
-.maritime-vessel-reveal-marker__flag--warn {
-  color: #d99e3a;
-  background: rgba(217, 158, 58, 0.16);
+.vrm-flag--warn {
+  color: #a86b12;
+  border-color: #d99e3a;
+}
+
+.dark .vrm-flag--ok {
+  color: #6fbf8f;
+}
+
+.dark .vrm-flag--warn {
+  color: #e0b25c;
 }
 
 /*

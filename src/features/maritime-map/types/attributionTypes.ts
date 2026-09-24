@@ -27,8 +27,16 @@ export interface RawAttributedVessel {
   vessel_id?: string | null;
   is_mock?: boolean | null;
   is_mock_comparison?: boolean | null;
+  /** MMSI/IMO/name are generated placeholders, not real registry identifiers. */
+  identifiers_synthetic?: boolean | null;
   rank?: number | null;
   score?: number | null;
+  proximity_score?: number | null;
+  temporal_score?: number | null;
+  slowdown_score?: number | null;
+  loiter_score?: number | null;
+  approach_score?: number | null;
+  departure_score?: number | null;
   vessel_name?: string | null;
   mmsi?: string | null;
   imo?: string | null;
@@ -93,18 +101,33 @@ export interface VesselTrackPoint {
   heading: number | null;
 }
 
+/** Backend's per-signal components of a vessel's overall `score`, each 0–1. */
+export interface VesselSubScores {
+  proximity: number | null;
+  temporal: number | null;
+  approach: number | null;
+  departure: number | null;
+  loiter: number | null;
+  slowdown: number | null;
+}
+
 /** Ranked candidate vessel ready for map + panel rendering. */
 export interface AttributedVessel {
   vesselId: string;
   isMock: boolean;
+  /** True when MMSI/IMO/name are generated placeholders (`identifiers_synthetic`). */
+  identifiersSynthetic: boolean;
   rank: number;
   rawRank?: number | null;
   score: number | null;
+  subScores: VesselSubScores;
   vesselName: string;
   mmsi: string | null;
   imo: string | null;
   country: string | null;
   vesselType: string | null;
+  /** Full AIS ship-type label, e.g. "Cargo, all ships of this type". */
+  shiptypeName: string | null;
   speed: number | null;
   course: number | null;
   heading: number | null;

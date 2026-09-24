@@ -202,3 +202,19 @@ export function waypointOpacity(speedKnots: number | null): number {
   }
   return Math.round(lerp(MIN_WAYPOINT_OPACITY, MAX_WAYPOINT_OPACITY, speedScale(speedKnots)));
 }
+
+const MIN_SCATTER_RADIUS_M = 90;
+const MAX_SCATTER_RADIUS_M = 380;
+
+/**
+ * Scatter cloud's forward/lateral reach in meters around a forecast
+ * waypoint, scaled by the same drift-speed confidence signal as
+ * `waypointRadiusPx` — but as a fixed ground distance rather than a
+ * screen-pixel size, so the cloud's footprint stays constant in meters as
+ * the camera zooms (like `HEATMAP_RADIUS_METERS` above), instead of needing
+ * to be rebuilt on every zoom change.
+ */
+export function waypointScatterRadiusMeters(speedKnots: number | null): number {
+  if (speedKnots == null || speedKnots < LOW_CONFIDENCE_SPEED_KNOTS) return MIN_SCATTER_RADIUS_M;
+  return lerp(MIN_SCATTER_RADIUS_M, MAX_SCATTER_RADIUS_M, speedScale(speedKnots));
+}

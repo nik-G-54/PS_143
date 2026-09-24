@@ -67,15 +67,25 @@ function adaptVessel(raw: RawAttributedVessel): AttributedVessel | null {
   return {
     vesselId,
     isMock: Boolean(raw.is_mock),
+    identifiersSynthetic: Boolean(raw.identifiers_synthetic),
     rank,
     rawRank,
     score: isFiniteNumber(raw.score) ? raw.score : null,
+    subScores: {
+      proximity: isFiniteNumber(raw.proximity_score) ? raw.proximity_score : null,
+      temporal: isFiniteNumber(raw.temporal_score) ? raw.temporal_score : null,
+      approach: isFiniteNumber(raw.approach_score) ? raw.approach_score : null,
+      departure: isFiniteNumber(raw.departure_score) ? raw.departure_score : null,
+      loiter: isFiniteNumber(raw.loiter_score) ? raw.loiter_score : null,
+      slowdown: isFiniteNumber(raw.slowdown_score) ? raw.slowdown_score : null,
+    },
     vesselName:
       (typeof raw.vessel_name === 'string' && raw.vessel_name.trim()) || vesselId,
     mmsi: raw.mmsi != null && String(raw.mmsi).trim() !== '' ? String(raw.mmsi).trim() : null,
     imo: raw.imo != null && String(raw.imo).trim() !== '' ? String(raw.imo).trim() : null,
     country: typeof raw.country === 'string' ? raw.country : null,
     vesselType: typeof raw.vessel_type === 'string' ? raw.vessel_type : null,
+    shiptypeName: typeof raw.shiptype_name === 'string' ? raw.shiptype_name : null,
     speed: isFiniteNumber(raw.speed) ? raw.speed : null,
     course: isFiniteNumber(raw.course) ? raw.course : null,
     heading: isFiniteNumber(raw.heading) ? raw.heading : null,
@@ -137,6 +147,16 @@ export function adaptSpillAttribution(
       distance_to_origin_km: candidate?.distance_to_origin_km ?? item.distance_to_origin_km,
       time_difference_hours: candidate?.time_difference_hours ?? item.time_difference_hours,
       trajectory_correlation: candidate?.trajectory_correlation ?? item.trajectory_correlation,
+      // Sub-scores and identity flags only come from `/vessels` — keep them
+      // even if the trajectory item carries nulls for the same keys.
+      identifiers_synthetic: candidate?.identifiers_synthetic ?? item.identifiers_synthetic,
+      shiptype_name: candidate?.shiptype_name ?? item.shiptype_name,
+      proximity_score: candidate?.proximity_score ?? item.proximity_score,
+      temporal_score: candidate?.temporal_score ?? item.temporal_score,
+      approach_score: candidate?.approach_score ?? item.approach_score,
+      departure_score: candidate?.departure_score ?? item.departure_score,
+      loiter_score: candidate?.loiter_score ?? item.loiter_score,
+      slowdown_score: candidate?.slowdown_score ?? item.slowdown_score,
       trajectory: item.trajectory ?? candidate?.trajectory,
     };
     const vessel = adaptVessel(mergedRaw);

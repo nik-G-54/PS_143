@@ -69,10 +69,30 @@ function lerpRgb(a: [number, number, number], b: [number, number, number], t: nu
   ];
 }
 
-/** Warm amber-orange sheen right at the patch's true boundary. */
-const OIL_SHEEN_RGB: [number, number, number] = [210, 98, 46];
-/** Near-black weathered crude at the patch's deepest interior. */
-const OIL_CORE_RGB: [number, number, number] = [24, 9, 8];
+/** Bright amber-orange sheen right at the patch's true boundary. */
+const OIL_SHEEN_RGB: [number, number, number] = [214, 104, 44];
+/** Deep rust-brown weathered crude at the patch's interior — dark, but still reads as oil, not a hole. */
+const OIL_CORE_RGB: [number, number, number] = [112, 40, 22];
+
+/**
+ * On-map footprint relative to the source geometry. The detected polygon /
+ * area-equivalent radius is the full SAR detection extent; drawn 1:1 with a
+ * soft fringe on top it dominated the investigation view and covered the
+ * path, badges and vessel around it. Every band (fill, fringe, isolines) is
+ * scaled by this about the patch centre, so shape and proportions are kept —
+ * only the drawn size shrinks. Set to 1 to draw the true detection extent.
+ */
+export const OIL_PATCH_DISPLAY_SCALE = 0.7;
+
+/**
+ * Thin darker outline on every fill band — with the bands spaced evenly
+ * (below) these read as the topographic "contour" steps inside the slick,
+ * the way thickness bands show in a processed SAR/optical slick image.
+ */
+export const OIL_CONTOUR_LINE: { rgb: [number, number, number]; alpha: number } = {
+  rgb: [72, 24, 12],
+  alpha: 90,
+};
 
 /**
  * Oil-patch gradient — a weathered dark core narrowing to a warm sheen right
@@ -92,42 +112,44 @@ const OIL_CORE_RGB: [number, number, number] = [24, 9, 8];
  * edge reads as a visible ring — a bullseye, not a smooth fade. More/smaller
  * steps push those transitions below what's easy to pick out from real
  * viewing distance/zoom, at negligible extra cost (they're just polygons).
- * Bands cluster tightly near the boundary (the `t ** 1.3` ease below) so the
- * bright sheen reads as a thin rim over a large dark body, matching how a
- * real slick photographs, rather than spreading evenly to the core.
+ * Bands are spaced near-evenly (a mild `t ** 1.1`) so, with their contour
+ * outlines (`OIL_CONTOUR_LINE`), they read as layered thickness steps from a
+ * bright rim into a rust-brown body rather than a smooth airbrushed fade.
  */
-const OIL_PATCH_BAND_COUNT = 10;
+const OIL_PATCH_BAND_COUNT = 9;
 export const OIL_PATCH_STOPS: { insetFraction: number; rgb: [number, number, number] }[] = Array.from(
   { length: OIL_PATCH_BAND_COUNT },
   (_, i) => {
     const t = i / (OIL_PATCH_BAND_COUNT - 1);
-    return { insetFraction: 0.82 * t ** 1.3, rgb: lerpRgb(OIL_SHEEN_RGB, OIL_CORE_RGB, t) };
+    return { insetFraction: 0.8 * t ** 1.1, rgb: lerpRgb(OIL_SHEEN_RGB, OIL_CORE_RGB, t ** 0.7) };
   }
 );
 
 /** Alpha shared by every fill band above — the gradient does the work, not per-band transparency. */
-export const OIL_PATCH_FILL_ALPHA = 235;
-
-const OIL_GLOW_RGB: [number, number, number] = [214, 120, 58];
+export const OIL_PATCH_FILL_ALPHA = 232;
 
 /**
- * Soft glow bled outward from the patch's true boundary into the surrounding
- * water, in place of a hard stroke — built the same way as the fill bands
- * above (see `oilPatchGeometry.ts`) but scaled *outward* with falling alpha.
- * Ordered widest/faintest first so it paints under the narrower, brighter
- * rings closer to the boundary. Kept fairly tight (maxes out under half the
- * patch's own radius) and low-alpha throughout — a glow that reaches too far
- * or too bright stops reading as a soft bloom and starts reading as another,
- * lighter-coloured ring of the patch itself.
+ * Edge fringe just outside the boundary: a thin bright-amber lip, then a
+ * cool teal halo where sheen meets water — the characteristic edge of a slick
+ * in processed imagery. Deliberately tight (≤ 9% of the radius): it outlines
+ * the patch instead of inflating it. Widest/faintest first so narrower,
+ * brighter rings paint on top.
  */
-const OIL_GLOW_BAND_COUNT = 5;
-export const OIL_GLOW_STOPS: { outsetFraction: number; rgb: [number, number, number]; alpha: number }[] =
-  Array.from({ length: OIL_GLOW_BAND_COUNT }, (_, i) => {
-    const t = i / (OIL_GLOW_BAND_COUNT - 1); // 0 = nearest the boundary, 1 = furthest out
-    return {
-      outsetFraction: 0.04 + 0.32 * t,
-      rgb: OIL_GLOW_RGB,
-      alpha: Math.round(58 * (1 - t) ** 1.6),
-    };
-  }).reverse();
+export const OIL_GLOW_STOPS: { outsetFraction: number; rgb: [number, number, number]; alpha: number }[] = [
+  { outsetFraction: 0.09, rgb: [64, 128, 136], alpha: 26 },
+  { outsetFraction: 0.05, rgb: [72, 162, 150], alpha: 62 },
+  { outsetFraction: 0.018, rgb: [236, 150, 78], alpha: 170 },
+];
+
+/**
+ * Faint concentric isolines rippling out into the water around the slick —
+ * outline only, no fill — fading with distance. They give the patch the
+ * "contoured field" context of the reference imagery without adding any
+ * filled area.
+ */
+export const OIL_ISOLINE_STOPS: { outsetFraction: number; rgb: [number, number, number]; alpha: number }[] = [
+  { outsetFraction: 0.2, rgb: [128, 156, 176], alpha: 46 },
+  { outsetFraction: 0.38, rgb: [128, 156, 176], alpha: 30 },
+  { outsetFraction: 0.58, rgb: [128, 156, 176], alpha: 16 },
+];
 

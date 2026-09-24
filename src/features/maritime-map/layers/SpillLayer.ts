@@ -11,7 +11,12 @@ import {
   createAreaScale,
   radiusForArea,
 } from './spillEncoding';
-import { buildOilPatchFillBands, buildOilPatchGlowBands, smoothRing } from '../utils/oilPatchGeometry';
+import {
+  buildOilPatchFillBands,
+  buildOilPatchGlowBands,
+  buildOilPatchIsolines,
+  smoothRing,
+} from '../utils/oilPatchGeometry';
 import type { OilPatchBand } from '../utils/oilPatchGeometry';
 
 export interface SpillLayerOptions {
@@ -89,13 +94,19 @@ function createOrganicSlickContour(
   for (let i = 0; i < numPoints; i++) {
     const theta = (i / numPoints) * 2 * Math.PI;
 
-    // Multi-frequency harmonic perturbation simulating hydrographic fluid spreading
+    // Multi-frequency harmonic perturbation simulating hydrographic fluid
+    // spreading: low-frequency lobes/tendrils plus fractal high-frequency
+    // edge detail, so the rim reads ragged like real sheen, not a blob.
     const wave1 = Math.sin(3 * theta + s1 * 6.28) * 0.16;
     const wave2 = Math.cos(5 * theta + s2 * 6.28) * 0.1;
     const wave3 = Math.sin(7 * theta + s3 * 6.28) * 0.05;
+    const fractal =
+      Math.sin(13 * theta + s2 * 11.3) * 0.035 +
+      Math.sin(23 * theta + s1 * 7.7) * 0.025 +
+      Math.sin(37 * theta + s3 * 5.1) * 0.016;
 
     // Keep radius comfortably inside the SAR bounding box
-    const r = Math.min(0.96, Math.max(0.65, 0.84 + wave1 + wave2 + wave3));
+    const r = Math.min(0.97, Math.max(0.58, 0.84 + wave1 + wave2 + wave3 + fractal));
 
     const lon = centerLon + rx * r * Math.cos(theta);
     const lat = centerLat + ry * r * Math.sin(theta);
@@ -111,7 +122,7 @@ export function getResolvedSpillPolygon(selected: MapSpill): [number, number][] 
   if (!selected.polygon || selected.polygon.length < 3) return [];
 
   if (isBoundingBoxPolygon(selected.polygon)) {
-    return createOrganicSlickContour(selected.polygon, selected.spillId);
+    return createOrganicSlickContour(selected.polygon, selected.spillId, 120);
   }
 
   // If already an organic multi-vertex polygon (> 5 points), return as-is
@@ -119,19 +130,25 @@ export function getResolvedSpillPolygon(selected: MapSpill): [number, number][] 
 }
 
 /**
- * One flat-colour band of the gradient/glow fake — see `oilPatchGeometry.ts`.
- * Unstroked: the bands themselves are what reads as an edge (the boundary
- * band is the most saturated, opaque one), so a separate stroke would just
- * redraw a hard line back on top of the soft look they're built to replace.
+ * One flat-colour band of the gradient/fringe fake — see `oilPatchGeometry.ts`.
+ * Inner fill bands carry a hairline contour outline (`band.line`) so the
+ * thickness steps read as contours; isolines (`kind: 'line'`) are outline
+ * only. The boundary itself stays unstroked — the fringe bands draw it.
  */
 function createBandLayer(idPrefix: string, index: number, band: OilPatchBand): PolygonLayer<OilPatchBand> {
+  const isLine = band.kind === 'line';
+  const line = isLine ? { rgb: band.rgb, alpha: band.alpha } : band.line;
   return new PolygonLayer<OilPatchBand>({
     id: `${idPrefix}-${index}`,
     data: [band],
     getPolygon: (d) => d.ring,
-    filled: true,
-    stroked: false,
+    filled: !isLine,
+    stroked: line != null,
     getFillColor: (d) => [...d.rgb, d.alpha],
+    getLineColor: line ? [...line.rgb, line.alpha] : [0, 0, 0, 0],
+    lineWidthUnits: 'pixels',
+    getLineWidth: isLine ? 1 : 0.8,
+    lineWidthMinPixels: 0.6,
     pickable: false,
   });
 }
@@ -153,8 +170,10 @@ function createSpillPolygonLayers(selected: MapSpill): PolygonLayer<OilPatchBand
   const smoothed = smoothRing(resolvedPolygon);
   const glowBands = buildOilPatchGlowBands(smoothed);
   const fillBands = buildOilPatchFillBands(smoothed);
+  const isolines = buildOilPatchIsolines(smoothed);
 
   return [
+    ...isolines.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-iso`, i, band)),
     ...glowBands.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-glow`, i, band)),
     ...fillBands.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-fill`, i, band)),
   ];

@@ -1,4 +1,4 @@
-import { PathLayer } from '@deck.gl/layers';
+import { PathLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import type { Layer } from '@deck.gl/core';
 import type { ForecastPoint, SpillForecast } from '../types/forecastTypes';
@@ -12,9 +12,8 @@ import {
   heatmapRadiusPixelsForZoom,
   heatmapWeightAt,
   waypointOpacity,
-  waypointRadiusPx,
+  waypointScatterRadiusMeters,
 } from './forecastEncoding';
-import { metersPerPixel } from '../utils/geo';
 
 export interface ForecastLayerOptions {
   /** Forward drift forecast for the spill under investigation, or null when there is none. */
@@ -92,24 +91,16 @@ const RAD_PER_DEG = Math.PI / 180;
 const METERS_PER_DEGREE_LAT = 110_574;
 const METERS_PER_DEGREE_LON_AT_EQUATOR = 111_320;
 
-/** Chevron half-angle (from the heading line to each wing), degrees. */
-const ARROW_WING_ANGLE_DEG = 28;
-/** Wing length as a fraction of the tip length — shorter wings read as a sharper arrowhead. */
-const ARROW_WING_LENGTH_SCALE = 0.62;
-
 /**
- * Convert a desired on-screen length (pixels) at `latitude`/`zoom` into a
- * [dLon, dLat] offset in degrees — the geographic-space equivalent of a
- * constant-pixel size, the same trick `forecastEncoding.ts`'s
- * `heatmapRadiusPixelsForZoom` uses in reverse for the heatmap kernel.
+ * Convert a ground distance (meters) at `latitude` into a [dLon, dLat]
+ * offset in degrees along `bearingDeg`. Zoom-independent — unlike a
+ * pixel-based offset, the same call returns the same real-world offset at
+ * any zoom, so callers whose spread should hold a constant ground footprint
+ * (the scatter cloud below, mirroring `heatmapRadiusPixelsForZoom`'s fixed
+ * `HEATMAP_RADIUS_METERS` footprint) don't need to rebuild their geometry on
+ * every zoom change.
  */
-function pixelOffsetToDegrees(
-  latitude: number,
-  zoom: number,
-  lengthPx: number,
-  bearingDeg: number
-): [number, number] {
-  const lengthM = lengthPx * metersPerPixel(latitude, zoom);
+function metersOffsetToDegrees(latitude: number, lengthM: number, bearingDeg: number): [number, number] {
   const bearingRad = bearingDeg * RAD_PER_DEG;
   const dLat = (lengthM * Math.cos(bearingRad)) / METERS_PER_DEGREE_LAT;
   const dLon =
@@ -117,32 +108,61 @@ function pixelOffsetToDegrees(
   return [dLon, dLat];
 }
 
+/** Scatter dots drawn around each forecast waypoint. */
+const SCATTER_DOTS_PER_WAYPOINT = 200;
 /**
- * Forecast waypoints — a small rotated chevron at each point, sized and
- * dimmed by its own `driftSpeedKnots` (see `forecastEncoding.ts`'s header
- * note on this layer: a sluggish stretch of drift reads as lower-confidence
- * right where it happens, rather than the whole path sharing one
- * forecast-wide confidence level) and rotated to its own `driftHeadingDeg` —
- * so the path shows which way the oil is moving at each point, not just
- * where it is.
- *
- * Built from `PathLayer` geometry (a 3-point "wingL → tip → wingR" polyline
- * per point, computed in real lon/lat offsets) rather than an `IconLayer`
- * texture-based marker: this deck.gl/WebGL setup was verified — by pushing
- * an isolated `IconLayer` directly through the live overlay outside this
- * app's own layer stack — to never rasterize `IconLayer` icons at all (no
- * console error, no pixel output, regardless of atlas vs. auto-packed icon
- * mode), while every vector layer already in this codebase (`PathLayer`,
- * `ScatterplotLayer`, `LineLayer`) renders correctly. A vector chevron sidesteps
- * that gap entirely.
+ * Half-angle of the forward-biased scatter cone around the drift heading,
+ * degrees. Wide enough — combined with the triangular (not uniform) angle
+ * distribution below — that the cloud reads as a fuzzy directional drift, not
+ * a confirmed single-line path.
+ */
+const SCATTER_CONE_HALF_ANGLE_DEG = 55;
+
+/** Deterministic, fast PRNG so the scatter cloud doesn't reshuffle on every re-render. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Stable per-waypoint seed from the forecast id and point index, so the cloud is reproducible across re-renders of the same forecast. */
+function scatterSeed(spillId: string, index: number): number {
+  let hash = 2166136261 ^ index;
+  for (let i = 0; i < spillId.length; i += 1) {
+    hash = Math.imul(hash ^ spillId.charCodeAt(i), 16777619);
+  }
+  return hash >>> 0;
+}
+
+interface ScatterDot {
+  longitude: number;
+  latitude: number;
+  color: [number, number, number, number];
+  radiusPx: number;
+}
+
+/**
+ * Forecast waypoints — instead of a single rotated arrow at each point, a
+ * cloud of `SCATTER_DOTS_PER_WAYPOINT` dots scattered around it, biased
+ * toward its own `driftHeadingDeg` (see `forecastEncoding.ts`'s header note
+ * on this layer: a sluggish stretch of drift reads as lower-confidence right
+ * where it happens, rather than the whole path sharing one forecast-wide
+ * confidence level). The dots thin out and fade with distance from the
+ * point, so each cloud reads as "oil drifting this way, roughly" rather than
+ * a single confirmed line — deliberately fuzzier than the old chevron, since
+ * a forecast heading is an estimate, not a certainty.
  *
  * `driftHeadingDeg` is degrees clockwise from north (see
  * `EnvironmentLayer.ts`'s matching note on the backend's wind/current
  * vectors). Null headings (backend didn't report one for that sample) fall
  * back to pointing along the path's own bearing to the next point, so a
- * marker is never left arbitrarily pointing north.
+ * cloud is never left arbitrarily centered on north.
  */
-function createWaypointsLayer(forecast: SpillForecast, zoom: number): PathLayer<ForecastPoint> {
+function buildScatterCloud(forecast: SpillForecast): ScatterDot[] {
   const points = forecast.points;
 
   const fallbackBearingDeg = (index: number): number => {
@@ -154,49 +174,56 @@ function createWaypointsLayer(forecast: SpillForecast, zoom: number): PathLayer<
     return Math.atan2(dLon, dLat) * DEG_PER_RAD;
   };
 
-  const buildChevron = (d: ForecastPoint, index: number): [number, number][] => {
+  const dots: ScatterDot[] = [];
+
+  points.forEach((d, index) => {
     const headingDeg = d.driftHeadingDeg ?? fallbackBearingDeg(index);
-    const tipLengthPx = waypointRadiusPx(d.driftSpeedKnots) * 2.2;
-    const wingLengthPx = tipLengthPx * ARROW_WING_LENGTH_SCALE;
+    const [r, g, b] = forecastColorAt(forecastProgress(d));
+    const baseOpacity = waypointOpacity(d.driftSpeedKnots);
+    const maxReachM = waypointScatterRadiusMeters(d.driftSpeedKnots);
+    const rand = mulberry32(scatterSeed(forecast.spillId, index));
 
-    const [tipDLon, tipDLat] = pixelOffsetToDegrees(d.latitude, zoom, tipLengthPx, headingDeg);
-    const [leftDLon, leftDLat] = pixelOffsetToDegrees(
-      d.latitude,
-      zoom,
-      wingLengthPx,
-      headingDeg + 180 - ARROW_WING_ANGLE_DEG
-    );
-    const [rightDLon, rightDLat] = pixelOffsetToDegrees(
-      d.latitude,
-      zoom,
-      wingLengthPx,
-      headingDeg + 180 + ARROW_WING_ANGLE_DEG
-    );
+    for (let i = 0; i < SCATTER_DOTS_PER_WAYPOINT; i += 1) {
+      // Triangular distribution (sum of two uniforms) concentrates dots near
+      // the heading line while still letting some drift wide of it.
+      const angleDeg = headingDeg + (rand() + rand() - 1) * SCATTER_CONE_HALF_ANGLE_DEG;
+      // sqrt bias spreads dots evenly by area rather than piling them up at
+      // the center point.
+      const t = Math.sqrt(rand());
+      const distanceM = maxReachM * t;
+      const [dLon, dLat] = metersOffsetToDegrees(d.latitude, distanceM, angleDeg);
 
-    return [
-      [d.longitude + leftDLon, d.latitude + leftDLat],
-      [d.longitude + tipDLon, d.latitude + tipDLat],
-      [d.longitude + rightDLon, d.latitude + rightDLat],
-    ];
-  };
+      dots.push({
+        longitude: d.longitude + dLon,
+        latitude: d.latitude + dLat,
+        color: [r, g, b, Math.round(baseOpacity * (1 - t) * (0.5 + 0.5 * rand()))],
+        radiusPx: 1 + rand() * 1.5,
+      });
+    }
+  });
 
-  return new PathLayer<ForecastPoint>({
+  return dots;
+}
+
+function createWaypointsLayer(forecast: SpillForecast): ScatterplotLayer<ScatterDot> {
+  const pathKey = `${forecast.spillId}:${forecast.points.length}:${forecast.points[forecast.points.length - 1]?.timestampMs ?? 0}`;
+
+  return new ScatterplotLayer<ScatterDot>({
     id: LAYER_IDS.forecastWaypoints,
-    data: points,
-    getPath: (d, { index }) => buildChevron(d, index),
-    getColor: (d) => {
-      const [r, g, b] = forecastColorAt(forecastProgress(d));
-      return [r, g, b, waypointOpacity(d.driftSpeedKnots)];
-    },
-    getWidth: 2,
-    widthUnits: 'pixels',
-    widthMinPixels: 1.5,
-    jointRounded: true,
-    capRounded: true,
-    pickable: true,
+    data: buildScatterCloud(forecast),
+    getPosition: (d) => [d.longitude, d.latitude],
+    getFillColor: (d) => d.color,
+    getRadius: (d) => d.radiusPx,
+    radiusUnits: 'pixels',
+    radiusMinPixels: 1,
+    radiusMaxPixels: 3,
+    stroked: false,
+    filled: true,
+    pickable: false,
     updateTriggers: {
-      getPath: [forecast.spillId, zoom],
-      getColor: [forecast.spillId],
+      getPosition: [pathKey],
+      getFillColor: [pathKey],
+      getRadius: [pathKey],
     },
   });
 }
@@ -268,8 +295,8 @@ function createHeatmapLayer(forecast: SpillForecast, zoom: number, visible: bool
  * Layers for the forward drift forecast of the spill under investigation.
  *
  * Ordered bottom-to-top: the heatmap spread sits under everything as an
- * ambient extent cue, then the path casing and path, then the waypoint
- * markers on top so they stay clickable.
+ * ambient extent cue, then the path casing and path, then the per-waypoint
+ * scatter clouds on top.
  */
 export function createForecastLayers(options: ForecastLayerOptions): Layer[] {
   const { forecast, zoom, isInteracting } = options;
@@ -283,7 +310,7 @@ export function createForecastLayers(options: ForecastLayerOptions): Layer[] {
   // frame, so they stay on throughout.
   layers.push(createHeatmapLayer(forecast, zoom, !isInteracting));
   layers.push(...createPathLayers(forecast));
-  layers.push(createWaypointsLayer(forecast, zoom));
+  layers.push(createWaypointsLayer(forecast));
 
   return layers;
 }

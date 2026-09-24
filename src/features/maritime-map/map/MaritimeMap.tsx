@@ -18,7 +18,6 @@ import {
 } from './cameraController';
 import { useTheme } from '../../../hooks/useTheme';
 import { OceanFlowLegend } from '../controls/OceanFlowLegend';
-import { MapLayersControl } from '../controls/MapLayersControl';
 import { RegionInsetMap } from './RegionInsetMap';
 import { AlertSeverityLegend } from '../controls/AlertSeverityLegend';
 import { InvestigationPanel } from '../controls/InvestigationPanel';
@@ -1076,6 +1075,23 @@ export function MaritimeMap() {
     setEvidenceOpen(true);
   }, []);
 
+  // PDF evidence report. The generator (and jsPDF) is loaded on first use so
+  // it never weighs on the map's initial bundle; it fetches any backend data
+  // not already loaded here (forecast, AIS tracks) itself.
+  const [isReportBusy, setIsReportBusy] = useState(false);
+  const handleDownloadReport = useCallback(async () => {
+    if (!selectedSpill || isReportBusy) return;
+    setIsReportBusy(true);
+    try {
+      const { downloadEvidenceReport } = await import('../evidence/report/buildEvidenceReport');
+      await downloadEvidenceReport({ spill: selectedSpill, spills, trajectory, environment, attribution, forecast, coastline });
+    } catch (cause) {
+      console.error('[MaritimeMap] evidence report generation failed', cause);
+    } finally {
+      setIsReportBusy(false);
+    }
+  }, [selectedSpill, isReportBusy, spills, trajectory, environment, attribution, forecast, coastline]);
+
   // --- Evidence dossier / docked map ----------------------------------
   const evidenceDocked = evidenceOpen && selectedSpill != null;
 
@@ -1154,21 +1170,6 @@ export function MaritimeMap() {
             `bottom-N` offsets.
           */}
           <div className="maritime-stage-chrome absolute bottom-4 left-4 z-10 flex flex-col-reverse items-start gap-1.5">
-            <MapLayersControl
-              oceanFlow={{
-                visible: oceanFlow.visible,
-                status: oceanFlow.status,
-                error: oceanFlow.error,
-                onToggle: oceanFlow.toggle,
-                onRetry: oceanFlow.retry,
-              }}
-              environment={selectedSpill ? environment : null}
-              showWind={windVisible}
-              showCurrent={currentVisible}
-              onToggleWind={() => setShowWind((v) => !v)}
-              onToggleCurrent={() => setShowCurrent((v) => !v)}
-            />
-
             {oceanFlow.visible && oceanFlow.status === 'ready' && <OceanFlowLegend />}
 
             {/* Only meaningful once a forecast is actually on screen — the
@@ -1243,6 +1244,8 @@ export function MaritimeMap() {
             onOccupiedWidthChange={setRightInset}
             evidenceOpen={evidenceDocked}
             onOpenEvidence={handleScrollToDetails}
+            onDownloadReport={handleDownloadReport}
+            reportBusy={isReportBusy}
             renderModule={(module) => {
               if (!selectedSpill) return null;
               switch (module) {
@@ -1278,7 +1281,6 @@ export function MaritimeMap() {
                       spill={selectedSpill}
                       attribution={attribution}
                       isLoading={isAttributionLoading}
-                      reasoningVessel={isRevealing ? rank1Vessel : null}
                       trajectory={trajectory}
                     />
                   );
@@ -1349,6 +1351,8 @@ export function MaritimeMap() {
           isForecastLoading={isForecastLoading}
           forecastError={forecastError}
           coastline={coastline}
+          onDownloadReport={handleDownloadReport}
+          reportBusy={isReportBusy}
         />
       )}
     </div>

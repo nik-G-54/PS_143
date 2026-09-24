@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import {
   CheckCircle2,
   ChevronLeft,
+  FileDown,
+  Loader2,
   CloudSun,
   Crosshair,
   FileSearch,
@@ -60,6 +62,8 @@ interface EvidenceDashboardProps {
   isForecastLoading: boolean;
   forecastError: string | null;
   coastline: CoastlineGeoJSON | null;
+  onDownloadReport?: () => void;
+  reportBusy?: boolean;
 }
 
 const SECTIONS = [
@@ -227,6 +231,8 @@ export function EvidenceDashboard({
   isForecastLoading,
   forecastError,
   coastline,
+  onDownloadReport,
+  reportBusy = false,
 }: EvidenceDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState<string>(SECTIONS[0].id);
@@ -356,14 +362,28 @@ export function EvidenceDashboard({
                 </h2>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-accent"
-            >
-              <ChevronLeft size={14} />
-              Back to map
-            </button>
+            <div className="flex items-center gap-2">
+              {onDownloadReport && (
+                <button
+                  type="button"
+                  onClick={onDownloadReport}
+                  disabled={reportBusy}
+                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
+                  title="Download this dossier as a PDF report, with the full data tables"
+                >
+                  {reportBusy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+                  {reportBusy ? 'Preparing report…' : 'Download PDF report'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-accent"
+              >
+                <ChevronLeft size={14} />
+                Back to map
+              </button>
+            </div>
           </div>
           <nav className="flex gap-1 overflow-x-auto px-5 pb-2" aria-label="Dossier sections">
             {SECTIONS.map((s, i) => {

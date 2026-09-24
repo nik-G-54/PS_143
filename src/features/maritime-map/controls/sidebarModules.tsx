@@ -21,7 +21,6 @@ import {
 import { DiagnosticPlotViewer } from '../../../components/common/DiagnosticPlotViewer';
 import { TrajectoryChart } from '../charts/TrajectoryChart';
 import { CandidateScoreChart, VesselApproachChart, VesselScoreRadar } from '../charts/VesselCharts';
-import { VesselReasoningPanel } from './VesselReasoningPanel';
 
 export function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -308,14 +307,11 @@ export function VesselsModule({
   spill,
   attribution,
   isLoading,
-  reasoningVessel,
   trajectory,
 }: {
   spill: MapSpill;
   attribution: SpillAttribution | null;
   isLoading: boolean;
-  /** Rank-1 vessel while the reveal sequence runs — shows the "why rank #1" breakdown. */
-  reasoningVessel: AttributedVessel | null;
   /** Backtrack solution — supplies the origin estimate and release time the approach chart is measured against. */
   trajectory: SpillTrajectory | null;
 }) {
@@ -335,11 +331,6 @@ export function VesselsModule({
 
   return (
     <>
-      {reasoningVessel && (
-        <div className="maritime-panel-card flex max-h-[420px] flex-col overflow-hidden p-0">
-          <VesselReasoningPanel vessel={reasoningVessel} attribution={attribution} />
-        </div>
-      )}
 
       <ModuleCard>
         <Field label="AIS candidates" value={formatCandidates(count)} />

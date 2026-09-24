@@ -4,6 +4,7 @@ import {
   ChevronUp,
   Clock,
   Eraser,
+  FileDown,
   FileSearch,
   Globe2,
   Image as ImageIcon,
@@ -131,6 +132,9 @@ interface MapTopBarProps {
   onOccupiedWidthChange?: (px: number) => void;
   evidenceOpen?: boolean;
   onOpenEvidence?: () => void;
+  /** Generates and downloads the PDF evidence report. */
+  onDownloadReport?: () => void;
+  reportBusy?: boolean;
 }
 
 /**
@@ -157,6 +161,8 @@ export function MapTopBar({
   onOccupiedWidthChange,
   evidenceOpen = false,
   onOpenEvidence,
+  onDownloadReport,
+  reportBusy = false,
 }: MapTopBarProps) {
   const [compact, setCompact] = useState(readCompact);
   const toggleCompact = () =>
@@ -194,7 +200,7 @@ export function MapTopBar({
     <div ref={rootRef} className="maritime-top-bar">
       <nav
         aria-label="Map controls"
-        className="maritime-no-scrollbar flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl border border-border bg-card px-1.5 py-1 shadow-lg select-none"
+        className="maritime-no-scrollbar flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-border bg-card px-2.5 py-1.5 shadow-lg select-none"
       >
         {/* Detections */}
         <span
@@ -281,6 +287,16 @@ export function MapTopBar({
                 <FileSearch size={15} strokeWidth={1.9} />
                 {labels && 'Evidence'}
               </button>
+            )}
+            {onDownloadReport && (
+              <Tool
+                icon={reportBusy ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} strokeWidth={1.75} />}
+                label={reportBusy ? 'Preparing report…' : 'Report'}
+                title="Download the PDF evidence report"
+                showLabel={labels}
+                disabled={reportBusy}
+                onClick={onDownloadReport}
+              />
             )}
             <Tool icon={<Eraser size={15} strokeWidth={1.75} />} label="Clear investigation" onClick={onClearInvestigation} />
           </>

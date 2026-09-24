@@ -63,7 +63,10 @@ interface EvidenceDashboardProps {
   forecastError: string | null;
   coastline: CoastlineGeoJSON | null;
   onDownloadReport?: () => void;
+  onReportIntent?: () => void;
   reportBusy?: boolean;
+  reportReady?: boolean;
+  reportStepLabel?: string | null;
 }
 
 const SECTIONS = [
@@ -232,7 +235,10 @@ export function EvidenceDashboard({
   forecastError,
   coastline,
   onDownloadReport,
+  onReportIntent,
   reportBusy = false,
+  reportReady = false,
+  reportStepLabel = null,
 }: EvidenceDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState<string>(SECTIONS[0].id);
@@ -367,12 +373,21 @@ export function EvidenceDashboard({
                 <button
                   type="button"
                   onClick={onDownloadReport}
-                  disabled={reportBusy}
-                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
-                  title="Download this dossier as a PDF report, with the full data tables"
+                  onPointerEnter={onReportIntent}
+                  onFocus={onReportIntent}
+                  aria-busy={reportBusy}
+                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
+                  title={
+                    reportBusy
+                      ? 'Keep working — the report downloads as soon as it is ready'
+                      : reportReady
+                        ? 'Report ready — instant PDF download'
+                        : 'Download this dossier as a PDF report, with the full data tables'
+                  }
                 >
                   {reportBusy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
-                  {reportBusy ? 'Preparing report…' : 'Download PDF report'}
+                  {reportBusy ? (reportStepLabel ?? 'Preparing report…') : 'Download PDF report'}
+                  {reportReady && !reportBusy && <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" aria-label="ready" />}
                 </button>
               )}
               <button

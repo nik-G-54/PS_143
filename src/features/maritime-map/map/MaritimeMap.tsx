@@ -25,6 +25,7 @@ import { MapTopBar, type TopBarModule } from '../controls/MapTopBar';
 import { IncidentModule, ImageModule, TimeModule, VesselsModule } from '../controls/sidebarModules';
 import { InvestigationTimeline } from '../controls/InvestigationTimeline';
 import { EvidenceDashboard } from '../evidence/EvidenceDashboard';
+import { useReportPreparation } from '../evidence/report/useReportPreparation';
 // import { SpillLegend } from '../controls/SpillLegend';
 import { createDeckOverlay } from '../deck/DeckOverlay';
 import { buildDriftLayers } from '../deck/deckLayers';
@@ -1075,25 +1076,23 @@ export function MaritimeMap() {
     setEvidenceOpen(true);
   }, []);
 
-  // PDF evidence report. The generator (and jsPDF) is loaded on first use so
-  // it never weighs on the map's initial bundle; it fetches any backend data
-  // not already loaded here (forecast, AIS tracks) itself.
-  const [isReportBusy, setIsReportBusy] = useState(false);
-  const handleDownloadReport = useCallback(async () => {
-    if (!selectedSpill || isReportBusy) return;
-    setIsReportBusy(true);
-    try {
-      const { downloadEvidenceReport } = await import('../evidence/report/buildEvidenceReport');
-      await downloadEvidenceReport({ spill: selectedSpill, spills, trajectory, environment, attribution, forecast, coastline });
-    } catch (cause) {
-      console.error('[MaritimeMap] evidence report generation failed', cause);
-    } finally {
-      setIsReportBusy(false);
-    }
-  }, [selectedSpill, isReportBusy, spills, trajectory, environment, attribution, forecast, coastline]);
 
   // --- Evidence dossier / docked map ----------------------------------
   const evidenceDocked = evidenceOpen && selectedSpill != null;
+
+  // PDF evidence report, prepared in stages as the analyst's intent firms up
+  // (see useReportPreparation.ts) so a click is usually an instant download
+  // and never blocks the map.
+  const reportInput = useMemo(
+    () => (selectedSpill ? { spill: selectedSpill, spills, trajectory, environment, attribution, forecast, coastline } : null),
+    [selectedSpill, spills, trajectory, environment, attribution, forecast, coastline]
+  );
+  const report = useReportPreparation({
+    input: reportInput,
+    engaged: backtrackActive || evidenceOpen,
+    evidenceOpen: evidenceDocked,
+    mapBusy: timeline.isPlaying || (vesselReveal.stage !== 'idle' && vesselReveal.stage !== 'done'),
+  });
 
   useEffect(() => {
     if (!selectedSpillId) setEvidenceOpen(false);
@@ -1244,8 +1243,11 @@ export function MaritimeMap() {
             onOccupiedWidthChange={setRightInset}
             evidenceOpen={evidenceDocked}
             onOpenEvidence={handleScrollToDetails}
-            onDownloadReport={handleDownloadReport}
-            reportBusy={isReportBusy}
+            onDownloadReport={report.download}
+            onReportIntent={report.noteIntent}
+            reportBusy={report.status === 'generating'}
+            reportReady={report.status === 'ready'}
+            reportStepLabel={report.stepLabel}
             renderModule={(module) => {
               if (!selectedSpill) return null;
               switch (module) {
@@ -1336,6 +1338,19 @@ export function MaritimeMap() {
         )}
       </div>
 
+      {/* Report confirmation — polite, transient, never in the way. */}
+      <div className="maritime-report-toast-slot" aria-live="polite">
+        {report.notice && (
+          <div
+            key={report.notice.text}
+            className={`maritime-report-toast ${report.notice.tone === 'warn' ? 'is-warn' : ''}`}
+            role="status"
+          >
+            {report.notice.text}
+          </div>
+        )}
+      </div>
+
       {selectedSpill && (
         <EvidenceDashboard
           open={evidenceDocked}
@@ -1351,8 +1366,11 @@ export function MaritimeMap() {
           isForecastLoading={isForecastLoading}
           forecastError={forecastError}
           coastline={coastline}
-          onDownloadReport={handleDownloadReport}
-          reportBusy={isReportBusy}
+          onDownloadReport={report.download}
+          onReportIntent={report.noteIntent}
+          reportBusy={report.status === 'generating'}
+          reportReady={report.status === 'ready'}
+          reportStepLabel={report.stepLabel}
         />
       )}
     </div>

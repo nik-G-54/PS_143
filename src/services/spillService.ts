@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { sharedRequest } from './sharedRequest';
 import { BacktrackResponse, VesselsResponse } from '../types/api';
 import { MOCK_SPILL_LIST, MOCK_SCENARIOS } from '../mocks/spillsData';
 
@@ -69,7 +70,8 @@ export const spillService = {
       // Default fallback to Scenario A
       return MOCK_SCENARIOS['spill_A'].vessels;
     }
-    return apiClient.get(`/api/v1/demo/spills/${spillId}/vessels`);
+    const path = `/api/v1/demo/spills/${spillId}/vessels`;
+    return sharedRequest(`GET ${path}`, () => apiClient.get<VesselsResponse>(path));
   },
 
   async getVisualization(spillId: string): Promise<any> {
@@ -85,8 +87,8 @@ export const spillService = {
     // But since the task says: "If backend request fails: use existing mock fallback." we should always attempt real fetch first, or at least bypass mock if we are explicitly instructed to use backend.
     // The instructions say: "If backend attribution trajectory request succeeds: use backend attribution trajectory. If backend request fails: use existing mock fallback."
     try {
-      const result = await apiClient.get(`/api/v1/demo/spills/${spillId}/attribution/trajectory`);
-      return result;
+      const path = `/api/v1/demo/spills/${spillId}/attribution/trajectory`;
+      return await sharedRequest(`GET ${path}`, () => apiClient.get(path));
     } catch (error) {
       console.warn("Failed to fetch attribution trajectory, falling back to mock", error);
       return null;

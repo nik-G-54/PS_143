@@ -414,39 +414,61 @@ class Report {
 }
 
 /* ------------------------------------------------------------------ */
-/* Data completion                                                     */
+/* Data collection                                                     */
 /* ------------------------------------------------------------------ */
 
-async function completeData(input: EvidenceReportInput): Promise<{ attribution: SpillAttribution | null; forecast: SpillForecast | null }> {
-  let { attribution, forecast } = input;
-  const hasTracks = attribution?.vessels.some((v) => v.track.length > 1);
-  const tasks: Promise<void>[] = [];
-  if (!hasTracks) {
-    tasks.push(
-      Promise.all([
-        spillService.getAttributionTrajectory(input.spill.spillId).catch(() => null),
-        spillService.getSpillVessels(input.spill.spillId).catch(() => null),
-      ]).then(([rawTrajectory, rawVessels]) => {
-        const adapted = adaptSpillAttribution(input.spill.spillId, rawTrajectory, rawVessels);
-        if (adapted && adapted.vessels.length > 0) attribution = adapted;
-      })
-    );
-  }
-  if (!forecast) {
-    tasks.push(
-      fetchSpillForecast(input.spill.spillId)
-        .then((raw) => {
-          forecast = adaptSpillForecast(input.spill.spillId, raw);
-        })
-        .catch(() => undefined)
-    );
-  }
-  await Promise.all(tasks);
-  return { attribution, forecast };
+/** Hard cap on any single backend fetch, so a slow service never holds the report. */
+export const REPORT_FETCH_TIMEOUT_MS = 4000;
+
+export interface ReportImage {
+  data: string;
+  w: number;
+  h: number;
 }
 
-async function loadImage(url: string): Promise<{ data: string; w: number; h: number } | null> {
-  try {
+/** Everything the PDF is drawn from — the map's data plus what the report fetched itself. */
+export interface ReportData extends EvidenceReportInput {
+  /** Diagnostic / SAR image, or null when none is published or it wasn't fetched. */
+  image: ReportImage | null;
+  /** Sources that timed out or failed while collecting, noted in the PDF with this time. */
+  unavailable: { tracks?: boolean; forecast?: boolean; image?: boolean };
+  collectedAtMs: number;
+}
+
+export type ReportStep = 'tracks' | 'forecast' | 'image' | 'build';
+
+class TimeoutError extends Error {}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, signal?: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new TimeoutError('timeout')), ms);
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      reject(new DOMException('aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (v) => {
+        window.clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+        resolve(v);
+      },
+      (e) => {
+        window.clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+        reject(e);
+      }
+    );
+  });
+}
+
+const imageCache = new Map<string, Promise<ReportImage | null>>();
+
+/** Fetch + decode an image once per URL (the dossier's image and repeat reports reuse it). */
+function loadImage(url: string): Promise<ReportImage | null> {
+  const hit = imageCache.get(url);
+  if (hit) return hit;
+  const promise = (async () => {
     const res = await fetch(url, { mode: 'cors' });
     if (!res.ok) return null;
     const blob = await res.blob();
@@ -456,33 +478,139 @@ async function loadImage(url: string): Promise<{ data: string; w: number; h: num
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-    const dims = await new Promise<{ w: number; h: number }>((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = reject;
-      img.src = data;
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = data;
     });
-    return { data, ...dims };
-  } catch {
-    return null;
-  }
+    // Re-encode once, here in the (async) collect stage, as a JPEG capped at
+    // 1600px: jsPDF embeds JPEG bytes as-is, whereas a large PNG is decoded
+    // and re-deflated inside the synchronous build — seconds of main-thread
+    // work that would freeze the map.
+    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.round(img.naturalWidth * scale);
+    const h = Math.round(img.naturalHeight * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { data, w: img.naturalWidth, h: img.naturalHeight };
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    return { data: canvas.toDataURL('image/jpeg', 0.86), w, h };
+  })();
+  imageCache.set(url, promise);
+  promise.then(
+    (v) => {
+      if (!v) imageCache.delete(url);
+    },
+    () => imageCache.delete(url)
+  );
+  return promise;
+}
+
+/**
+ * Gather everything the report needs that the map doesn't already have —
+ * AIS tracks, forecast, coastline and (optionally) the SAR image — each
+ * capped at `REPORT_FETCH_TIMEOUT_MS`. A source that times out or fails is
+ * recorded in `unavailable` and the report carries on without it.
+ * Backend requests go through the shared request cache, so anything the map
+ * or dossier fetched (or fetches later) is one request, not two.
+ */
+export async function collectReportData(
+  input: EvidenceReportInput,
+  options: { includeImage: boolean; signal?: AbortSignal; onStep?: (step: ReportStep) => void }
+): Promise<ReportData> {
+  const { spill } = input;
+  const { signal, onStep } = options;
+  const unavailable: ReportData['unavailable'] = {};
+  let { attribution, forecast } = input;
+  const cap = <T,>(p: Promise<T>) => withTimeout(p, REPORT_FETCH_TIMEOUT_MS, signal);
+  const rethrowAbort = (e: unknown) => {
+    if (e instanceof DOMException && e.name === 'AbortError') throw e;
+  };
+
+  const coastlineTask = input.coastline ? Promise.resolve(input.coastline) : loadCoastline('mediterranean').catch(() => null);
+
+  const tracksTask = (async () => {
+    if (attribution?.vessels.some((v) => v.track.length > 1)) return;
+    onStep?.('tracks');
+    try {
+      const [rawTrajectory, rawVessels] = await cap(
+        Promise.all([spillService.getAttributionTrajectory(spill.spillId), spillService.getSpillVessels(spill.spillId).catch(() => null)])
+      );
+      const adapted = adaptSpillAttribution(spill.spillId, rawTrajectory, rawVessels);
+      if (adapted && adapted.vessels.length > 0) attribution = adapted;
+      if (!adapted?.vessels.some((v) => v.track.length > 1)) unavailable.tracks = !rawTrajectory;
+    } catch (e) {
+      rethrowAbort(e);
+      unavailable.tracks = true;
+    }
+  })();
+
+  const forecastTask = (async () => {
+    if (forecast) return;
+    onStep?.('forecast');
+    try {
+      forecast = adaptSpillForecast(spill.spillId, await cap(fetchSpillForecast(spill.spillId)));
+    } catch (e) {
+      rethrowAbort(e);
+      unavailable.forecast = true;
+    }
+  })();
+
+  const imageTask = (async (): Promise<ReportImage | null> => {
+    if (!options.includeImage) return null;
+    onStep?.('image');
+    try {
+      const plotUrl = await cap(fetchDiagnosticPlotUrl(spill.spillId).catch(() => DEFAULT_DIAGNOSTIC_PLOT_URL));
+      // The service falls back to a reference plot of another spill — never present that as this spill's evidence.
+      const own = plotUrl && (plotUrl !== DEFAULT_DIAGNOSTIC_PLOT_URL || spill.spillId === 'spill_ea0e3f') ? plotUrl : spill.imageUrl;
+      if (!own) return null;
+      return await cap(loadImage(own));
+    } catch (e) {
+      rethrowAbort(e);
+      unavailable.image = true;
+      return null;
+    }
+  })();
+
+  const [coastline, , , image] = await Promise.all([coastlineTask, tracksTask, forecastTask, imageTask]);
+  return { ...input, attribution, forecast, coastline, image, unavailable, collectedAtMs: Date.now() };
 }
 
 /* ------------------------------------------------------------------ */
 /* Report                                                              */
 /* ------------------------------------------------------------------ */
 
-export async function downloadEvidenceReport(input: EvidenceReportInput): Promise<void> {
-  const { spill, spills, trajectory, environment } = input;
-  const coastline = input.coastline ?? (await loadCoastline('mediterranean').catch(() => null));
-  const [{ attribution, forecast }, plotUrl] = await Promise.all([
-    completeData(input),
-    fetchDiagnosticPlotUrl(spill.spillId).catch(() => DEFAULT_DIAGNOSTIC_PLOT_URL),
-  ]);
-  // The service falls back to a reference plot of another spill — never present that as this spill's evidence.
-  const ownPlot = plotUrl && (plotUrl !== DEFAULT_DIAGNOSTIC_PLOT_URL || spill.spillId === 'spill_ea0e3f') ? plotUrl : spill.imageUrl;
-  const image = ownPlot ? await loadImage(ownPlot) : null;
+export function reportFileName(spillId: string, generatedMs = Date.now()): string {
+  const stamp = new Date(generatedMs).toISOString().slice(0, 16).replace(/[-:T]/g, '');
+  return `NAUKA_evidence_${spillId}_${stamp}.pdf`;
+}
 
+/** Hand a finished report to the browser as a download. */
+export function saveReportBlob(blob: Blob, spillId: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = reportFileName(spillId);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/** One-shot: collect, build and download (no background preparation). */
+export async function downloadEvidenceReport(input: EvidenceReportInput): Promise<void> {
+  const data = await collectReportData(input, { includeImage: true });
+  saveReportBlob(buildReportPdf(data), input.spill.spillId);
+}
+
+/** Draw the full PDF from collected data. Pure local work — no network. */
+export function buildReportPdf(data: ReportData): Blob {
+  const { spill, spills, trajectory, environment, attribution, forecast, coastline, image, unavailable, collectedAtMs } = data;
   const generated = Date.now();
   const r = new Report();
   const doc = r.doc;
@@ -571,7 +699,13 @@ export async function downloadEvidenceReport(input: EvidenceReportInput): Promis
     doc.text('SAR observation / drift diagnostic plot published for this detection.', M, r.y + 2);
     r.y += 7;
   } else {
-    r.paragraph('No diagnostic plot is published for this detection.', 8.5, MUTED);
+    r.paragraph(
+      unavailable.image
+        ? `Diagnostic plot unavailable at time of generation (${utc(collectedAtMs)}): the image service did not respond in time.`
+        : 'No diagnostic plot is published for this detection.',
+      8.5,
+      MUTED
+    );
   }
   r.subheading('Detection record');
   r.keyValues([
@@ -874,7 +1008,13 @@ export async function downloadEvidenceReport(input: EvidenceReportInput): Promis
         { fontSize: 7 }
       );
     } else {
-      r.paragraph('No AIS track was returned for this vessel around the release time.', 8.5, MUTED);
+      r.paragraph(
+        unavailable.tracks
+          ? `AIS track unavailable at time of generation (${utc(collectedAtMs)}): the attribution service did not respond in time.`
+          : 'No AIS track was returned for this vessel around the release time.',
+        8.5,
+        MUTED
+      );
     }
   }
 
@@ -882,7 +1022,13 @@ export async function downloadEvidenceReport(input: EvidenceReportInput): Promis
   r.newPage();
   r.section('05', 'Drift forecast', 'Where the slick is predicted to travel next, and how close that brings it to the coast.', 'GET /demo/spills/{id}/predict');
   if (!forecast) {
-    r.paragraph('No forecast was available for this spill.', 9, MUTED);
+    r.paragraph(
+      unavailable.forecast
+        ? `Forecast unavailable at time of generation (${utc(collectedAtMs)}): the forecast service did not respond in time.`
+        : 'No forecast was available for this spill.',
+      9,
+      MUTED
+    );
   } else {
     r.kpis([
       { label: 'Horizon', value: `+${forecast.durationHours.toFixed(0)} h` },
@@ -1019,6 +1165,5 @@ export async function downloadEvidenceReport(input: EvidenceReportInput): Promis
   r.writeToc(1, tocY);
   r.finalize(spill, generated);
 
-  const stamp = new Date(generated).toISOString().slice(0, 16).replace(/[-:T]/g, '');
-  doc.save(`NAUKA_evidence_${spill.spillId}_${stamp}.pdf`);
+  return doc.output('blob');
 }

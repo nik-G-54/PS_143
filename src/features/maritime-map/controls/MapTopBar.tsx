@@ -132,9 +132,14 @@ interface MapTopBarProps {
   onOccupiedWidthChange?: (px: number) => void;
   evidenceOpen?: boolean;
   onOpenEvidence?: () => void;
-  /** Generates and downloads the PDF evidence report. */
+  /** Downloads the PDF evidence report (instant when prepared in the background). */
   onDownloadReport?: () => void;
+  /** Hover/focus on Report — tells background preparation the report is likely wanted. */
+  onReportIntent?: () => void;
   reportBusy?: boolean;
+  reportReady?: boolean;
+  /** What an in-progress report is waiting on, e.g. "Fetching AIS tracks". */
+  reportStepLabel?: string | null;
 }
 
 /**
@@ -162,7 +167,10 @@ export function MapTopBar({
   evidenceOpen = false,
   onOpenEvidence,
   onDownloadReport,
+  onReportIntent,
   reportBusy = false,
+  reportReady = false,
+  reportStepLabel = null,
 }: MapTopBarProps) {
   const [compact, setCompact] = useState(readCompact);
   const toggleCompact = () =>
@@ -289,14 +297,24 @@ export function MapTopBar({
               </button>
             )}
             {onDownloadReport && (
-              <Tool
-                icon={reportBusy ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} strokeWidth={1.75} />}
-                label={reportBusy ? 'Preparing report…' : 'Report'}
-                title="Download the PDF evidence report"
-                showLabel={labels}
-                disabled={reportBusy}
-                onClick={onDownloadReport}
-              />
+              <span className="relative flex" onPointerEnter={onReportIntent} onFocus={onReportIntent}>
+                <Tool
+                  icon={reportBusy ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} strokeWidth={1.75} />}
+                  label={reportBusy ? (reportStepLabel ?? 'Preparing report…') : 'Report'}
+                  title={
+                    reportBusy
+                      ? `${reportStepLabel ?? 'Preparing report'} — keep working, it downloads when ready`
+                      : reportReady
+                        ? 'Report ready — instant PDF download'
+                        : 'Download the PDF evidence report'
+                  }
+                  showLabel={labels}
+                  onClick={onDownloadReport}
+                />
+                {reportReady && !reportBusy && (
+                  <span className="pointer-events-none absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+                )}
+              </span>
             )}
             <Tool icon={<Eraser size={15} strokeWidth={1.75} />} label="Clear investigation" onClick={onClearInvestigation} />
           </>

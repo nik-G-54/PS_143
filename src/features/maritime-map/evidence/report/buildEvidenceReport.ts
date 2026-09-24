@@ -586,7 +586,11 @@ export async function collectReportData(
 /* ------------------------------------------------------------------ */
 
 export function reportFileName(spillId: string, generatedMs = Date.now()): string {
-  const stamp = new Date(generatedMs).toISOString().slice(0, 16).replace(/[-:T]/g, '');
+  // "2026-09-24T14:41" → "202609241441". Keep this a plain non-digit strip:
+  // a bracketed character class of the dash, colon and T characters is read by
+  // Tailwind's source scanner as an arbitrary-property class and emits invalid
+  // CSS that fails the production build (lightningcss minify).
+  const stamp = new Date(generatedMs).toISOString().slice(0, 16).replace(/\D/g, '');
   return `NAUKA_evidence_${spillId}_${stamp}.pdf`;
 }
 

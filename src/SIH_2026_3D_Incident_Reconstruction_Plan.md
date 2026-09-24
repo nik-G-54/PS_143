@@ -1301,6 +1301,3 @@ Final 3D UI should show: realistic R3F/WebGL ocean, floating oil slick, oil back
 Do not delete existing architecture. Reuse/adapt it. The current MeshDistortMaterial ocean and procedural ship are foundations, not final visuals. Public GitHub R3F/WebGL ocean/ship/wind/day-night repositories can be reused if suitable.
 
 Create a new authoritative master plan .md instead of continuously modifying the old ship-centric plan. Archive the old plan.
-
-
-

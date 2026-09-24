@@ -6,6 +6,8 @@
  * switch a tooltip off.
  */
 export const LAYER_IDS = {
+  coastline: 'reference-coastline',
+  graticule: 'reference-graticule',
   spillPolygon: 'spill-polygon',
   spillDots: 'spill-dots',
   spillSelectionRing: 'spill-selection-ring',
@@ -17,8 +19,17 @@ export const LAYER_IDS = {
   driftTimeTicks: 'drift-time-ticks',
   driftOrigin: 'drift-origin',
   driftPlayhead: 'drift-playhead',
+  forecastPathCasing: 'forecast-path-casing',
+  forecastPath: 'forecast-path',
+  forecastWaypoints: 'forecast-waypoints',
+  forecastHeatmap: 'forecast-heatmap',
   windArrows: 'env-wind-arrows',
   currentArrows: 'env-current-arrows',
+  oceanFlowWind: 'ocean-flow-wind',
+  oceanFlowCurrent: 'ocean-flow-current',
   vesselTracks: 'vessel-tracks',
   vesselMarkers: 'vessel-markers',
+  vesselRevealShip: 'vessel-reveal-ship',
+  vesselRevealLine: 'vessel-reveal-line',
+  vesselRevealTicks: 'vessel-reveal-ticks',
 } as const;

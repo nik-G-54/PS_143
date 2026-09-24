@@ -99,6 +99,20 @@ export function adaptSpillDetail(
       ? raw.estimated_release_time.trim()
       : base.estimatedReleaseTime;
 
+  const observationLat =
+    isFiniteNumber(raw.observation_latitude) &&
+    raw.observation_latitude >= -90 &&
+    raw.observation_latitude <= 90
+      ? raw.observation_latitude
+      : base.observationLatitude ?? null;
+
+  const observationLon =
+    isFiniteNumber(raw.observation_longitude) &&
+    raw.observation_longitude >= -180 &&
+    raw.observation_longitude <= 180
+      ? raw.observation_longitude
+      : base.observationLongitude ?? null;
+
   const srcLat =
     isFiniteNumber(raw.estimated_source_latitude) &&
     raw.estimated_source_latitude >= -90 &&
@@ -143,6 +157,8 @@ export function adaptSpillDetail(
     estimatedAgeHours,
     estimatedReleaseTime,
     polygon: polygon ?? base.polygon,
+    observationLatitude: observationLat,
+    observationLongitude: observationLon,
     estimatedSourceLatitude: srcLat,
     estimatedSourceLongitude: srcLon,
     estimatedSourceRadiusKm: srcRadius,

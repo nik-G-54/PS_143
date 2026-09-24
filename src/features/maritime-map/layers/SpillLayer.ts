@@ -11,6 +11,14 @@ import {
   createAreaScale,
   radiusForArea,
 } from './spillEncoding';
+import {
+  buildOilPatchFillBands,
+  buildOilPatchGlowBands,
+  buildOilPatchIsolines,
+  buildOilPatchSpeckles,
+  smoothRing,
+} from '../utils/oilPatchGeometry';
+import type { OilPatchBand } from '../utils/oilPatchGeometry';
 
 export interface SpillLayerOptions {
   spills: MapSpill[];
@@ -20,6 +28,25 @@ export interface SpillLayerOptions {
   /** Hide unselected detections entirely instead of dimming them. */
   focusMode: boolean;
   onSelectSpill: (spillId: string) => void;
+  /**
+   * True whenever the investigation timeline is armed (Focus Mode's
+   * traveling polygon is on screen), regardless of `focusMode`. `focusMode`
+   * and the timeline are independent toggles in the UI (see
+   * `InvestigationPanel.tsx`'s "Focus mode" and "Investigate vessels"
+   * buttons) — a user can arm the timeline without ever turning Focus Mode
+   * on. The static authoritative-polygon layer below must still render in
+   * that case so the traveling polygon's detection-handoff fade
+   * (`oilSlickKeyframes.ts`'s `detectionHandoffOpacity`) has something real
+   * to reveal underneath it instead of fading to bare basemap.
+   */
+  backtrackActive: boolean;
+  /**
+   * False while the traveling slick is out along its track (away from the
+   * detection end), so the map never shows two slicks at once. Flips back to
+   * true inside the detection handoff window, where the traveling polygon
+   * dissolves into this one. Defaults to true.
+   */
+  showDetectionPolygon?: boolean;
 }
 
 /**
@@ -75,13 +102,26 @@ function createOrganicSlickContour(
   for (let i = 0; i < numPoints; i++) {
     const theta = (i / numPoints) * 2 * Math.PI;
 
-    // Multi-frequency harmonic perturbation simulating hydrographic fluid spreading
+    // Multi-frequency harmonic perturbation simulating hydrographic fluid
+    // spreading: low-frequency lobes/tendrils plus fractal high-frequency
+    // edge detail, so the rim reads ragged like real sheen, not a blob.
     const wave1 = Math.sin(3 * theta + s1 * 6.28) * 0.16;
     const wave2 = Math.cos(5 * theta + s2 * 6.28) * 0.1;
     const wave3 = Math.sin(7 * theta + s3 * 6.28) * 0.05;
+    const fractal =
+      Math.sin(13 * theta + s2 * 11.3) * 0.035 +
+      Math.sin(23 * theta + s1 * 7.7) * 0.025 +
+      Math.sin(37 * theta + s3 * 5.1) * 0.016;
 
-    // Keep radius comfortably inside the SAR bounding box
-    const r = Math.min(0.96, Math.max(0.65, 0.84 + wave1 + wave2 + wave3));
+    // Two narrow tendril arms (Gaussian radius bumps) pulled out of the body.
+    const arm = (at: number, amp: number, w: number) => {
+      const d = Math.atan2(Math.sin(theta - at), Math.cos(theta - at));
+      return amp * Math.exp(-((d / w) ** 2));
+    };
+    const tendrils = arm(s2 * 2 * Math.PI, 0.3, 0.2) + arm(s3 * 2 * Math.PI + 2.4, 0.18, 0.16);
+
+    // Body stays inside the SAR bounding box; only the tendril tips may reach slightly past it.
+    const r = Math.min(1.16, Math.max(0.58, Math.min(0.97, 0.84 + wave1 + wave2 + wave3 + fractal) + tendrils));
 
     const lon = centerLon + rx * r * Math.cos(theta);
     const lat = centerLat + ry * r * Math.sin(theta);
@@ -97,7 +137,7 @@ export function getResolvedSpillPolygon(selected: MapSpill): [number, number][] 
   if (!selected.polygon || selected.polygon.length < 3) return [];
 
   if (isBoundingBoxPolygon(selected.polygon)) {
-    return createOrganicSlickContour(selected.polygon, selected.spillId);
+    return createOrganicSlickContour(selected.polygon, selected.spillId, 120);
   }
 
   // If already an organic multi-vertex polygon (> 5 points), return as-is
@@ -105,27 +145,55 @@ export function getResolvedSpillPolygon(selected: MapSpill): [number, number][] 
 }
 
 /**
- * Authoritative oil slick boundary polygon for the selected spill detection.
- * In focus mode, renders an organic fluid slick contour instead of a rigid square box.
+ * One flat-colour band of the gradient/fringe fake — see `oilPatchGeometry.ts`.
+ * Inner fill bands carry a hairline contour outline (`band.line`) so the
+ * thickness steps read as contours; isolines (`kind: 'line'`) are outline
+ * only. The boundary itself stays unstroked — the fringe bands draw it.
  */
-function createSpillPolygonLayer(selected: MapSpill): PolygonLayer<MapSpill> {
-  const resolvedPolygon = getResolvedSpillPolygon(selected);
-
-  return new PolygonLayer<MapSpill>({
-    id: LAYER_IDS.spillPolygon,
-    data: [selected],
-    getPolygon: () => resolvedPolygon,
-    filled: true,
-    stroked: true,
-    getFillColor: [...SPILL_RGB, 75],
-    getLineColor: [...SELECTION_RGB, 230],
+function createBandLayer(idPrefix: string, index: number, band: OilPatchBand): PolygonLayer<OilPatchBand> {
+  const isLine = band.kind === 'line';
+  const line = isLine ? { rgb: band.rgb, alpha: band.alpha } : band.line;
+  return new PolygonLayer<OilPatchBand>({
+    id: `${idPrefix}-${index}`,
+    data: [band],
+    getPolygon: (d) => d.ring,
+    filled: !isLine,
+    stroked: line != null,
+    getFillColor: (d) => [...d.rgb, d.alpha],
+    getLineColor: line ? [...line.rgb, line.alpha] : [0, 0, 0, 0],
     lineWidthUnits: 'pixels',
-    getLineWidth: 2,
+    getLineWidth: isLine ? 1 : 0.8,
+    lineWidthMinPixels: 0.6,
     pickable: false,
-    updateTriggers: {
-      getPolygon: [selected.spillId, selected.polygon],
-    },
   });
+}
+
+/**
+ * Authoritative oil slick boundary polygon for the selected spill detection —
+ * a smoothed outline filled with a dark-core/warm-sheen gradient and a soft
+ * outward glow, in place of one flat colour and a hard stroke (see
+ * `oilPatchGeometry.ts` and `spillEncoding.ts`'s `OIL_PATCH_STOPS`/
+ * `OIL_GLOW_STOPS` for why — real oil doesn't render as a single flat tint
+ * with a ruled border). Ordered glow-then-fill, each band widest/faintest
+ * first, so every layer paints correctly under the ones meant to sit on top
+ * of it.
+ */
+function createSpillPolygonLayers(selected: MapSpill): PolygonLayer<OilPatchBand>[] {
+  const resolvedPolygon = getResolvedSpillPolygon(selected);
+  if (resolvedPolygon.length < 4) return [];
+
+  const smoothed = smoothRing(resolvedPolygon);
+  const glowBands = buildOilPatchGlowBands(smoothed);
+  const fillBands = buildOilPatchFillBands(smoothed);
+  const isolines = buildOilPatchIsolines(smoothed);
+  const speckles = buildOilPatchSpeckles(smoothed);
+
+  return [
+    ...isolines.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-iso`, i, band)),
+    ...glowBands.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-glow`, i, band)),
+    ...fillBands.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-fill`, i, band)),
+    ...speckles.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-spot`, i, band)),
+  ];
 }
 
 /** Ring drawn around the spill under investigation. */
@@ -155,7 +223,8 @@ function createSelectionRingLayer(
  * Returns polygon first (bottom), selection ring second, dots third (top).
  */
 export function createSpillLayers(options: SpillLayerOptions): Layer[] {
-  const { spills, selectedSpillId, selectedSpill, focusMode, onSelectSpill } = options;
+  const { spills, selectedSpillId, selectedSpill, focusMode, onSelectSpill, backtrackActive } = options;
+  const showDetectionPolygon = options.showDetectionPolygon ?? true;
   if (spills.length === 0) return [];
 
   const maxSqrtArea = createAreaScale(spills);
@@ -224,9 +293,19 @@ export function createSpillLayers(options: SpillLayerOptions): Layer[] {
 
   const layers: Layer[] = [];
   if (selected) {
-    // Only render the detailed organic slick geometry when Focus Mode is ON
-    if (focusMode && selected.polygon && selected.polygon.length >= 3) {
-      layers.push(createSpillPolygonLayer(selected));
+    // Render the detailed organic slick geometry when Focus Mode is ON, OR
+    // whenever the investigation timeline is armed — the traveling polygon's
+    // detection-handoff fade (see oilSlickKeyframes.ts) needs this layer
+    // present underneath it to reveal, even if the user never toggled Focus
+    // Mode on separately (the two are independent controls; see
+    // `backtrackActive`'s docstring above).
+    if (
+      showDetectionPolygon &&
+      (focusMode || backtrackActive) &&
+      selected.polygon &&
+      selected.polygon.length >= 3
+    ) {
+      layers.push(...createSpillPolygonLayers(selected));
     }
     layers.push(createSelectionRingLayer(selected, maxSqrtArea));
   }

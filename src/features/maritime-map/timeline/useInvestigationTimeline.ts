@@ -5,6 +5,11 @@ import { vesselPositionAt } from '../adapters/vesselAdapter';
 
 export type PlaybackMode = 'forward' | 'backtrack';
 
+/** Selectable playback speed multipliers for the investigation timeline. */
+export const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 1.5, 2] as const;
+export type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
+const DEFAULT_PLAYBACK_SPEED: PlaybackSpeed = 0.5;
+
 export interface TimelineVesselPosition {
   vesselId: string;
   rank: number;
@@ -23,6 +28,9 @@ export interface UseInvestigationTimelineResult {
   play: () => void;
   pause: () => void;
   togglePlay: () => void;
+  /** Playback speed multiplier (0.25x - 2x) applied to the per-tick progress increment. */
+  speed: PlaybackSpeed;
+  setSpeed: (value: PlaybackSpeed) => void;
   /** Absolute time corresponding to progress, or null with no trajectory. */
   currentTimeMs: number | null;
   /** Oil position at the playhead. */
@@ -37,6 +45,17 @@ export interface UseInvestigationTimelineResult {
 }
 
 const PLAY_DURATION_MS = 12_000;
+
+/**
+ * Pure per-tick progress increment: how much `progress` (0..1) should advance
+ * for a given wall-clock delta, base play duration, and speed multiplier.
+ * Kept separate from the rAF loop so the scaling math is testable without
+ * fake timers / real browser frame timing.
+ */
+export function scaledProgressDelta(deltaMs: number, durationMs: number, speed: number): number {
+  if (!Number.isFinite(deltaMs) || deltaMs <= 0) return 0;
+  return (deltaMs / durationMs) * speed;
+}
 
 function interpolateOil(
   points: SpillTrajectory['points'],
@@ -104,6 +123,7 @@ export function useInvestigationTimeline(
 ): UseInvestigationTimelineResult {
   const [progress, setProgressState] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState<PlaybackSpeed>(DEFAULT_PLAYBACK_SPEED);
   const rafRef = useRef<number | null>(null);
   const lastTsRef = useRef<number | null>(null);
 
@@ -132,7 +152,7 @@ export function useInvestigationTimeline(
     const tick = (now: number) => {
       const last = lastTsRef.current ?? now;
       lastTsRef.current = now;
-      const delta = (now - last) / PLAY_DURATION_MS;
+      const delta = scaledProgressDelta(now - last, PLAY_DURATION_MS, speed);
 
       setProgressState((prev) => {
         const next = prev + delta;
@@ -152,7 +172,7 @@ export function useInvestigationTimeline(
       rafRef.current = null;
       lastTsRef.current = null;
     };
-  }, [isPlaying, active, trajectory]);
+  }, [isPlaying, active, trajectory, speed]);
 
   const startMs = trajectory?.points[0]?.timestampMs ?? 0;
   const endMs = trajectory?.points[trajectory.points.length - 1]?.timestampMs ?? 0;
@@ -234,6 +254,8 @@ export function useInvestigationTimeline(
     play,
     pause,
     togglePlay,
+    speed,
+    setSpeed,
     currentTimeMs,
     oilPosition,
     visiblePoints,

@@ -1,7 +1,52 @@
-/* 
+/*
   Styles specifically for the maritime-map feature.
   Keep map-specific styles isolated here.
 */
+
+/* Score-breakdown bars in the Vessel details module fill left→right, staggered per row via inline `animationDelay`. */
+@keyframes maritime-score-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.maritime-score-fill {
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation: maritime-score-fill 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maritime-score-fill {
+    animation: none;
+    transform: none;
+  }
+}
+
+/*
+  Primary tints. `primary` is `var(--primary)` in tailwind.config.js, so
+  Tailwind's `bg-primary/15` opacity modifier silently resolves to
+  transparent — mix the token instead.
+*/
+.maritime-primary-tint {
+  background-color: color-mix(in oklch, var(--primary) 15%, transparent);
+}
+
+.maritime-primary-soft {
+  background-color: color-mix(in oklch, var(--primary) 60%, transparent);
+}
+
+/* Horizontal toolbars scroll when squeezed, without showing a scrollbar. */
+.maritime-no-scrollbar {
+  scrollbar-width: none;
+}
+
+.maritime-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
 .maritime-map-page-content {
   display: flex;
@@ -10,19 +55,295 @@
   width: 100%;
 }
 
+/*
+  Shell for the map "stage" + the evidence dossier. Opening the dossier
+  folds the full map into the slot of the dossier's small situation map
+  (EvidenceMiniMap.tsx) with a GPU transform (translate + uniform scale) and
+  a clip-path cropping it to the slot's aspect — no canvas resize, so it
+  stays at 60fps — then fades it out as the mini-map fades in. --dock-scale
+  and --dock-clip-bottom are set inline from the stage's live size in
+  MaritimeMap.tsx. --mini-* describe the slot: 24px gutter, below the ~98px
+  sticky dossier header, 300px wide, the mini-map card's full height.
+*/
 .maritime-map-shell {
+  --mini-top: 122px;
+  --mini-left: 24px;
+  --mini-w: 300px;
+  --mini-h: 290px;
+  --ease-dock: cubic-bezier(0.22, 1, 0.36, 1);
+  --dock-ms: 700ms;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.maritime-map-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  transform-origin: 0 0;
+  transform: none;
+  clip-path: inset(0 0 0 0 round 0px);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    transform var(--dock-ms) var(--ease-dock),
+    clip-path var(--dock-ms) var(--ease-dock),
+    opacity 220ms ease,
+    visibility 0s;
+}
+
+.maritime-map-stage.is-docked {
+  transform: translate(var(--mini-left), var(--mini-top)) scale(var(--dock-scale, 0.25));
+  clip-path: inset(0 0 var(--dock-clip-bottom, 0px) 0 round var(--dock-radius, 40px));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  /* Fold first, then hand over to the mini-map. */
+  transition:
+    transform var(--dock-ms) var(--ease-dock),
+    clip-path var(--dock-ms) var(--ease-dock),
+    opacity 240ms ease calc(var(--dock-ms) - 140ms),
+    visibility 0s linear calc(var(--dock-ms) + 100ms);
+}
+
+/*
+  Regional 2D inset (RegionInsetMap.tsx): a small card in the top-left
+  corner; expanded it grows to fill the map area (the toolbar floats over it). Size
+  animates via top/left/width/height — the inset's own canvas follows via
+  its ResizeObserver.
+*/
+.maritime-region-inset {
+  position: absolute;
+  z-index: 15;
+  top: 12px;
+  left: 12px;
+  width: 300px;
+  height: 186px;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  min-height: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.55);
+  transition:
+    width 560ms var(--ease-dock),
+    height 560ms var(--ease-dock),
+    border-radius 560ms var(--ease-dock);
+}
+
+.maritime-region-inset.is-expanded {
+  width: calc(100% - 24px);
+  height: calc(100% - 24px);
+  border-radius: 12px;
+}
+
+/* Report confirmation toast (useReportPreparation.ts) — top-centre, under the toolbar. */
+.maritime-report-toast-slot {
+  position: absolute;
+  top: 68px;
+  left: 50%;
+  z-index: 40;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+@keyframes maritime-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.maritime-report-toast {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  border-left: 3px solid #4e9a6e;
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.5);
+  animation: maritime-toast-in 220ms ease-out both;
+}
+
+.maritime-report-toast.is-warn {
+  border-left-color: #d99e3a;
+}
+
+/* Full-screen chrome (rail, timeline, legends, replay) fades out of the docked card. */
+.maritime-stage-chrome,
+.maritime-top-bar {
+  transition: opacity 260ms ease;
+}
+
+.maritime-map-stage.is-docked .maritime-stage-chrome,
+.maritime-map-stage.is-docked .maritime-top-bar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.maritime-map-stage.is-docked .maritime-top-bar > *,
+.maritime-map-stage.is-docked .maritime-stage-chrome * {
+  pointer-events: none;
+}
+
+/* The small map shows positions, not paperwork. */
+.maritime-map-stage.is-docked .maritime-vessel-reveal-marker__card,
+.maritime-map-stage.is-docked .maritime-vessel-reveal-marker__stem,
+.maritime-map-stage.is-docked .maritime-time-marker__subtitle {
+  display: none;
+}
+
+/* Evidence dossier: rises from below into the space beside the docked map. */
+.maritime-evidence {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  background: var(--background);
+  transform: translateY(100%);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform var(--dock-ms) var(--ease-dock),
+    opacity 360ms ease,
+    visibility 0s linear var(--dock-ms);
+}
+
+.maritime-evidence.is-open {
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    transform var(--dock-ms) var(--ease-dock) 60ms,
+    opacity 320ms ease 60ms,
+    visibility 0s;
+}
+
+.maritime-evidence__scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@keyframes maritime-evidence-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.maritime-evidence-section {
+  opacity: 0;
+}
+
+.maritime-evidence.is-open .maritime-evidence-section {
+  animation: maritime-evidence-rise 560ms var(--ease-dock) both;
+}
+
+/* Detection-confidence gauge sweeps in with the section. */
+.maritime-gauge-arc {
+  transition: stroke-dasharray 900ms var(--ease-dock, ease-out);
+}
+
+/* Narrow screens: map docks as a strip on top, dossier fills below. */
+/* Narrow screens: situation column stacks on top, full width. */
+@media (max-width: 1023px) {
+  .maritime-map-shell {
+    --mini-w: calc(100% - 48px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maritime-map-shell {
+    --dock-ms: 1ms;
+  }
+
+  .maritime-evidence.is-open .maritime-evidence-section {
+    animation-duration: 1ms;
+  }
+}
+
+/*
+  Top toolbar + the module card that drops down beneath it on the right.
+  The wrapper spans the map but ignores pointer events, so empty space still
+  pans the map; only the bar and card take clicks.
+*/
+.maritime-top-bar {
+  position: absolute;
+  top: 1rem;
+  /* Starts right of the regional 2D inset (12px + 300px + gap) so the two never overlap. */
+  left: calc(12px + 300px + 16px);
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.maritime-top-bar > * {
+  pointer-events: auto;
+}
+
+.maritime-top-module {
+  align-self: flex-end;
+  width: 320px;
+  max-width: calc(100vw - 6rem);
+  max-height: 100%;
 }
 
 .maritime-map-wrapper {
   position: relative;
   width: 100%;
   height: 100%;
-  flex: 1;
-  min-height: 70vh;
+  min-width: 0;
+  min-height: 0;
+}
+
+/*
+  Shared "module card" look for InvestigationPanel/VesselReasoningPanel
+  sections (Incident, Probable Source, Drift Diagnostic, reasoning checks,
+  etc). Not just Tailwind's `border-border`/`shadow-sm` utilities — in light
+  mode --border/--background/--card sit too close in lightness for a 1px
+  themed border and a barely-there shadow to actually read as a distinct box,
+  so the border and shadow here are hardcoded black/white-alpha instead of
+  theme tokens, strong enough to separate the card from the sidebar behind it
+  in both themes.
+*/
+.maritime-panel-card {
+  border-radius: 0.75rem;
+  background-color: var(--card);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 6px 16px -4px rgba(0, 0, 0, 0.14);
+}
+
+.dark .maritime-panel-card {
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 8px 20px -4px rgba(0, 0, 0, 0.6);
 }
 
 .maritime-map-wrapper:fullscreen,
@@ -39,16 +360,17 @@
   height: 100%;
 }
 
-.maritime-details-section {
-  flex-shrink: 0;
-}
-
 .maritime-timeline-slider {
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
   border-radius: 999px;
-  background: var(--border, #e5e7eb);
+  /* Hard-stop fill (no blend): played portion in primary, remainder in the neutral track colour. */
+  background: linear-gradient(
+    to right,
+    var(--primary) 0 var(--fill, 0%),
+    color-mix(in oklch, var(--muted-foreground) 35%, transparent) var(--fill, 0%) 100%
+  );
   outline: none;
   cursor: pointer;
 }
@@ -151,4 +473,345 @@
   font-family: var(--font-mono, monospace);
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/*
+  Time-tick badges (backtrack "T-12h"/"PROBABLE SOURCE"/"DETECTION", forecast
+  "NOW"/"T+2h"/"PREDICTED POSITION") — `maplibregl.Marker` HTML elements, see
+  `timeTickMarkers.ts`. `--marker-color` is set inline per marker, sampled
+  from the same gradient the path under it uses, so the badge's accent always
+  matches the path colour at that point.
+*/
+.maritime-time-marker {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.4));
+  transition: opacity 160ms ease-out;
+}
+
+/* Set by timeTickMarkers.ts's declutter pass when this badge would crowd a higher-priority one. */
+.maritime-time-marker--hidden {
+  opacity: 0;
+}
+
+/* Sits exactly on the path point; the badge itself reads off to the side, clear of the line. */
+.maritime-time-marker__anchor-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--marker-color);
+  box-shadow:
+    0 0 0 2px rgba(8, 12, 18, 0.85),
+    0 0 6px 1px color-mix(in srgb, var(--marker-color) 80%, transparent);
+  flex-shrink: 0;
+}
+
+.maritime-time-marker--endpoint .maritime-time-marker__anchor-dot {
+  width: 10px;
+  height: 10px;
+}
+
+.maritime-time-marker__stem {
+  width: 20px;
+  height: 1.5px;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--marker-color) 70%, transparent);
+}
+
+.maritime-time-marker__badge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(12, 17, 24, 0.94);
+  border: 1px solid color-mix(in srgb, var(--marker-color) 65%, transparent);
+  white-space: nowrap;
+}
+
+.maritime-time-marker__title {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #f5f5f4;
+}
+
+.maritime-time-marker__subtitle {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  font-weight: 500;
+  color: rgba(245, 245, 244, 0.68);
+  border-left: 1px solid rgba(245, 245, 244, 0.25);
+  padding-left: 0.375rem;
+  margin-left: 0.125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Endpoints (source/detection, now/predicted) read as the anchors of the path — bigger and bolder than an hour tick. */
+.maritime-time-marker--endpoint .maritime-time-marker__badge {
+  padding: 0.4rem 0.8rem;
+}
+
+.maritime-time-marker--endpoint .maritime-time-marker__title {
+  font-size: 12px;
+}
+
+.maritime-time-marker--tick .maritime-time-marker__badge {
+  background: rgba(12, 17, 24, 0.9);
+}
+
+.maritime-time-marker--tick .maritime-time-marker__title {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(245, 245, 244, 0.92);
+}
+
+/*
+  Vessel-reveal info card ("who did this" sequence) — see
+  `vesselRevealMarker.ts`. Same sideways dot/stem/card layout as the time-tick
+  badges above, but its own classes since this card carries several rows of
+  data instead of one short line.
+*/
+.maritime-vessel-reveal-marker {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+/* Sits exactly on the vessel position. */
+.maritime-vessel-reveal-marker__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #d99e3a;
+  border: 1.5px solid var(--card);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+/* Leader clears the ship model centred on the dot (the model is ≤ 90px long). */
+.maritime-vessel-reveal-marker__stem {
+  width: 56px;
+  height: 1px;
+  margin-top: 3.5px;
+  flex-shrink: 0;
+  background: var(--muted-foreground);
+  opacity: 0.7;
+  transition: opacity 180ms ease;
+}
+
+.maritime-vessel-reveal-marker__card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 196px;
+  margin-top: -5px;
+  padding: 7px 9px 8px;
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-left: 2px solid #d99e3a;
+  box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.5);
+  font-size: 10.5px;
+  line-height: 1.3;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+/* Wide zoom: just the dot. */
+.maritime-vessel-reveal-marker.is-far .maritime-vessel-reveal-marker__card,
+.maritime-vessel-reveal-marker.is-far .maritime-vessel-reveal-marker__stem {
+  opacity: 0;
+  transform: translateX(-4px);
+}
+
+.vrm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.vrm-header__title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vrm-name {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vrm-sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.vrm-rank {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 16px;
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.vrm-tag {
+  padding: 0 3px;
+  border: 1px solid #d99e3a;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #a86b12;
+}
+
+.dark .vrm-tag {
+  color: #e0b25c;
+}
+
+.vrm-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.vrm-stat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vrm-stat__value {
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vrm-stat__label {
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.vrm-flag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vrm-flag__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.vrm-flag--ok {
+  color: #2f7a52;
+}
+
+.vrm-flag--warn {
+  color: #a86b12;
+}
+
+.dark .vrm-flag--ok {
+  color: #6fbf8f;
+}
+
+.dark .vrm-flag--warn {
+  color: #e0b25c;
+}
+
+/*
+  Origin -> vessel distance ruler (see vesselDistanceRuler.ts): a coloured
+  dot at each endpoint plus running "Nkm" scale labels along the dashed
+  distance line VesselInvestigationLayer.ts draws in deck.gl.
+*/
+.maritime-distance-ruler__dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.maritime-distance-ruler__dot--origin {
+  background: #f97316;
+  box-shadow:
+    0 0 0 2px rgba(8, 12, 18, 0.9),
+    0 0 10px 2px rgba(249, 115, 22, 0.6);
+}
+
+.maritime-distance-ruler__dot--vessel {
+  background: #3b82f6;
+  box-shadow:
+    0 0 0 2px rgba(8, 12, 18, 0.9),
+    0 0 10px 2px rgba(59, 130, 246, 0.6);
+}
+
+.maritime-distance-ruler__tick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+}
+
+.maritime-distance-ruler__tick-dash {
+  width: 1.5px;
+  height: 6px;
+  background: rgba(226, 232, 240, 0.75);
+}
+
+.maritime-distance-ruler__tick-value {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.85);
+  white-space: nowrap;
+}
+
+/* The exact total distance at the vessel end — reads heavier than the plain Nkm interval ticks. */
+.maritime-distance-ruler__tick--strong .maritime-distance-ruler__tick-dash {
+  height: 9px;
+  width: 2px;
+  background: #f5f5f4;
+}
+
+.maritime-distance-ruler__tick--strong .maritime-distance-ruler__tick-value {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #f5f5f4;
 }

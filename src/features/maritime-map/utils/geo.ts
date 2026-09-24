@@ -33,6 +33,22 @@ export function haversineKm(
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+/** Web Mercator ground resolution at zoom 0, meters/pixel at the equator (256px tiles). */
+const WEB_MERCATOR_ZOOM0_RESOLUTION_M = 156543.03392;
+
+/**
+ * Ground distance one screen pixel covers at a given zoom/latitude, Web Mercator.
+ *
+ * Some deck.gl layers (e.g. `HeatmapLayer`) size themselves purely in screen
+ * pixels with no geographic-unit option, so their footprint on the ground
+ * shrinks every time the camera zooms in. This converts between the two, so a
+ * caller can pick a fixed ground radius and re-derive the pixel value that
+ * currently covers it.
+ */
+export function metersPerPixel(latitude: number, zoom: number): number {
+  return (WEB_MERCATOR_ZOOM0_RESOLUTION_M * Math.cos(toRadians(latitude))) / Math.pow(2, zoom);
+}
+
 /**
  * Grow a bounding box outward by a distance in km.
  *

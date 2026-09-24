@@ -1,17 +1,27 @@
 import React, { useMemo } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
+import {
+  LayoutDashboard,
   Database,
-  Map, 
+  Map,
+  AlertTriangle,
+  Video,
   Scan,
   Box,
   ChevronLeft,
   ChevronRight,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useSidebar } from '../../context/SidebarContext';
+import { useTheme } from '../../context/ThemeContext';
+
+interface SidebarProps {
+  /** Shows a theme toggle in the footer — for pages that don't render their own `<Header />` (with its own ThemeToggle) above the sidebar. */
+  showThemeToggle?: boolean;
+}
 
 interface NavItem {
   id: string;
@@ -28,13 +38,15 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'incident-overview', label: 'Incident Overview', to: '/incident-overview', icon: <Database size={18} strokeWidth={1.5} /> },
 ];
 
-export const Sidebar: React.FC = () => {
+export const Sidebar: React.FC<SidebarProps> = ({ showThemeToggle = false }) => {
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
   const location = useLocation();
 
-  // Calculate current active nav index for the blue right-notch indicator
+  // Current active nav index for the sliding indicator with the blue right notch.
   const activeIndex = useMemo(() => {
-    const idx = NAV_ITEMS.findIndex(item => {
+    const idx = NAV_ITEMS.findIndex((item) => {
       if (item.to === '/') return location.pathname === '/' || location.pathname === '/dashboard';
       return location.pathname.startsWith(item.to);
     });
@@ -136,7 +148,28 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* Footer Toggle Button */}
-      <div className="p-2 border-t border-border mt-auto">
+      <div className="p-2 border-t border-border mt-auto space-y-1">
+        {showThemeToggle && (
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`w-full flex items-center gap-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors font-sans cursor-pointer ${
+              isCollapsed ? 'justify-center px-0' : 'px-3'
+            }`}
+            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <span className="shrink-0">
+              {isDark ? <Sun size={18} strokeWidth={1.5} /> : <Moon size={18} strokeWidth={1.5} />}
+            </span>
+            {!isCollapsed && (
+              <span className="whitespace-nowrap overflow-hidden text-ellipsis text-xs font-medium">
+                {isDark ? 'Light Mode' : 'Dark Mode'}
+              </span>
+            )}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={toggleSidebar}

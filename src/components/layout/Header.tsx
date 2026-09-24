@@ -6,9 +6,6 @@ import {
   Database,
   Map, 
   AlertTriangle, 
-  Sun, 
-  Moon, 
-  ShieldAlert,
   Scan,
   Box,
   Loader2,
@@ -55,8 +52,9 @@ export const Header: React.FC = () => {
           icon: <Activity size={18} className="text-primary" />
         };
       case '/test-image':
+      case '/image-test':
         return {
-          title: 'TEST YOUR IMAGE',
+          title: 'SAR OIL SPILL DETECTION LAB',
           icon: <Scan size={18} className="text-primary" />
         };
       case '/3d-visualisation':

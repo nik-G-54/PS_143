@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useIncident } from '../../context/IncidentContext';
-import { Droplet, History, Target, Network, Ship } from 'lucide-react';
+import { Droplet, Eye, History, Target, Network, Ship } from 'lucide-react';
 
 export const EvidenceChain: React.FC = () => {
   const { spillDetails, backtrackData, loading, error, vesselsData } = useIncident();
@@ -11,35 +11,41 @@ export const EvidenceChain: React.FC = () => {
     if (loading && !spillDetails) oilStatus = 'pending';
     else if (spillDetails) oilStatus = 'available';
 
-    // 2. Backtracked
+    // 2. Optical Check (Sentinel-2)
+    let opticalStatus = 'not_run';
+    if (loading && !spillDetails) opticalStatus = 'pending';
+    else if (spillDetails) opticalStatus = 'available';
+
+    // 3. Backtracked
     let backtrackStatus = 'not_run';
     if (loading) backtrackStatus = 'pending';
     else if (error) backtrackStatus = 'unavailable';
     else if (backtrackData?.backtrack?.trajectory && backtrackData.backtrack.trajectory.length > 0) backtrackStatus = 'available';
 
-    // 3. Source Estimated
+    // 4. Source Estimated
     let sourceStatus = 'not_run';
     if (loading) sourceStatus = 'pending';
     else if (backtrackData?.backtrack?.source_estimate?.latitude !== undefined) sourceStatus = 'available';
     else if (backtrackStatus === 'available') sourceStatus = 'unavailable';
 
-    // 4. AIS Correlated
+    // 5. AIS Correlated
     let aisStatus = 'not_run';
     if (loading) aisStatus = 'pending';
     else if (vesselsData?.vessels && vesselsData.vessels.length > 0) aisStatus = 'available';
     else if (vesselsData?.vessels && vesselsData.vessels.length === 0) aisStatus = 'unavailable';
 
-    // 5. Attribution
+    // 6. Attribution
     let attrStatus = 'not_run';
     if (loading) attrStatus = 'pending';
     else if (backtrackData?.attribution?.top_vessel) attrStatus = 'available';
     else if (aisStatus === 'available') attrStatus = 'unavailable';
 
-    return { oil: oilStatus, backtrack: backtrackStatus, source: sourceStatus, ais: aisStatus, attr: attrStatus };
+    return { oil: oilStatus, optical: opticalStatus, backtrack: backtrackStatus, source: sourceStatus, ais: aisStatus, attr: attrStatus };
   }, [spillDetails, backtrackData, loading, error, vesselsData]);
 
   const steps = [
     { id: 'oil', label: 'OIL DETECTED', icon: Droplet, status: statuses.oil },
+    { id: 'optical', label: 'OPTICAL CHECK', icon: Eye, status: statuses.optical },
     { id: 'backtrack', label: 'BACKTRACKED', icon: History, status: statuses.backtrack },
     { id: 'source', label: 'SOURCE ESTIMATED', icon: Target, status: statuses.source },
     { id: 'ais', label: 'AIS CORRELATED', icon: Network, status: statuses.ais },

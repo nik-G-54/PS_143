@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Database,
@@ -23,10 +23,35 @@ interface SidebarProps {
   showThemeToggle?: boolean;
 }
 
+interface NavItem {
+  id: string;
+  label: string;
+  to: string;
+  icon: React.ReactNode;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: 'dashboard', label: 'Dashboard', to: '/', icon: <LayoutDashboard size={18} strokeWidth={1.5} /> },
+  { id: 'maritime-map', label: 'Maritime Map', to: '/maritime-map', icon: <Map size={18} strokeWidth={1.5} /> },
+  { id: 'test-image', label: 'Test Your Image', to: '/test-image', icon: <Scan size={18} strokeWidth={1.5} /> },
+  { id: '3d-vis', label: '3D Visualisation', to: '/3d-visualisation', icon: <Box size={18} strokeWidth={1.5} /> },
+  { id: 'incident-overview', label: 'Incident Overview', to: '/incident-overview', icon: <Database size={18} strokeWidth={1.5} /> },
+];
+
 export const Sidebar: React.FC<SidebarProps> = ({ showThemeToggle = false }) => {
   const { isCollapsed, toggleSidebar } = useSidebar();
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
+  const location = useLocation();
+
+  // Current active nav index for the sliding indicator with the blue right notch.
+  const activeIndex = useMemo(() => {
+    const idx = NAV_ITEMS.findIndex((item) => {
+      if (item.to === '/') return location.pathname === '/' || location.pathname === '/dashboard';
+      return location.pathname.startsWith(item.to);
+    });
+    return idx >= 0 ? idx : 0;
+  }, [location.pathname]);
 
   return (
     <aside 
@@ -50,7 +75,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ showThemeToggle = false }) => 
         isCollapsed ? 'justify-center' : 'px-4'
       }`}>
         <div className="flex items-center gap-3 overflow-hidden">
-          {/* Maritime Vessel Official Logo */}
           {isCollapsed ? (
             <button
               type="button"
@@ -89,30 +113,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ showThemeToggle = false }) => 
       </div>
       
       {/* Navigation Links */}
-      <nav className="flex-1 py-4 px-2 overflow-y-auto space-y-[4px]">
-        <SidebarItem icon={<LayoutDashboard size={18} strokeWidth={1.5} />} label="Dashboard" to="/" isCollapsed={isCollapsed} />
-        {/* <SidebarItem icon={<Database size={18} strokeWidth={1.5} />} label="Incident Overview" to="/incident-overview" isCollapsed={isCollapsed} /> */}
-        <SidebarItem icon={<Map size={18} strokeWidth={1.5} />} label="Maritime Map" to="/maritime-map" isCollapsed={isCollapsed} />
-        <SidebarItem 
-          icon={<Scan size={18} strokeWidth={1.5} />} 
-          label="Test Your Image" 
-          to="/test-image" 
-          isCollapsed={isCollapsed}
-        />
-        {/* <SidebarItem 
-          icon={<Video size={18} strokeWidth={1.5} />} 
-          label="3D Incident Reconstruction" 
-          to="/incident-reconstruction" 
-          isCollapsed={isCollapsed}
-        /> */}
-        <SidebarItem 
-          icon={<Box size={18} strokeWidth={1.5} />} 
-          label="3D Visualisation" 
-          to="/3d-visualisation" 
-          isCollapsed={isCollapsed}
-        />
-        <SidebarItem icon={<Database size={18} strokeWidth={1.5} />} label="Incident Overview" to="/incident-overview" isCollapsed={isCollapsed} />
-        {/* <SidebarItem icon={<AlertTriangle size={18} strokeWidth={1.5} />} label="Incidents" to="/incidents" isCollapsed={isCollapsed} /> */}
+      <nav className="relative flex-1 py-4 px-2 overflow-y-auto space-y-[4px]">
+        {/* Active Row Indicator with Smooth Spring & Blue Right Notch */}
+        <div 
+          className="absolute left-2 right-2 h-[42px] bg-primary/10 rounded-md transition-transform duration-380 ease-[cubic-bezier(0.34,1.16,0.42,1)] pointer-events-none z-0"
+          style={{ 
+            transform: `translateY(${activeIndex * 46}px)`,
+            opacity: activeIndex >= 0 ? 1 : 0 
+          }}
+        >
+          {/* Blue Right Side Radius Notch Pill */}
+          <div className="absolute top-1/2 right-0 -translate-y-1/2 w-2 h-4 rounded-l-md bg-primary shadow-sm" />
+        </div>
+
+        {NAV_ITEMS.map((item) => (
+          <NavLink 
+            key={item.id}
+            to={item.to}
+            title={isCollapsed ? item.label : undefined}
+            className={({ isActive }) => 
+              `relative z-10 flex items-center gap-3 h-[42px] rounded-md text-sm transition-colors duration-150 font-sans ${
+                isCollapsed ? 'justify-center px-0' : 'px-3'
+              } ${
+                isActive 
+                  ? 'text-primary font-semibold' 
+                  : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+              }`
+            }
+          >
+            <span className="shrink-0">{item.icon}</span>
+            {!isCollapsed && <span className="whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>}
+          </NavLink>
+        ))}
       </nav>
 
       {/* Footer Toggle Button */}
@@ -158,31 +190,5 @@ export const Sidebar: React.FC<SidebarProps> = ({ showThemeToggle = false }) => 
         </button>
       </div>
     </aside>
-  );
-};
-
-const SidebarItem: React.FC<{ icon: React.ReactNode; label: string; to: string; isCollapsed?: boolean }> = ({ 
-  icon, 
-  label, 
-  to, 
-  isCollapsed 
-}) => {
-  return (
-    <NavLink 
-      to={to}
-      title={isCollapsed ? label : undefined}
-      className={({ isActive }) => 
-        `flex items-center gap-3 py-2.5 rounded-md text-sm transition-all duration-150 font-sans ${
-          isCollapsed ? 'justify-center px-0' : 'px-3'
-        } ${
-          isActive 
-            ? 'bg-primary/10 text-primary border-l-[3px] border-primary font-semibold' 
-            : 'text-muted-foreground hover:bg-accent hover:text-foreground border-l-[3px] border-transparent'
-        }`
-      }
-    >
-      <span className="shrink-0">{icon}</span>
-      {!isCollapsed && <span className="whitespace-nowrap overflow-hidden text-ellipsis">{label}</span>}
-    </NavLink>
   );
 };

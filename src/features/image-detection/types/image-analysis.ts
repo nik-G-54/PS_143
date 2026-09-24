@@ -18,6 +18,7 @@ export interface MLPredictionResponse {
   filename?: string;
   detected_at?: string;
   message?: string;
+  inference_time_ms?: number;
 }
 
 export type UIState = 'idle' | 'selected' | 'uploading' | 'scanning' | 'result' | 'error';

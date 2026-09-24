@@ -1,16 +1,38 @@
 import { BacktrackResponse, VesselsResponse } from '../types/api';
 
 // Create 97 lightweight spill records
-export const MOCK_SPILL_LIST = Array.from({ length: 97 }, (_, i) => ({
-  spill_id: i === 0 ? 'spill_A' : i === 1 ? 'spill_B' : i === 2 ? 'spill_C' : i === 3 ? 'spill_D' : i === 4 ? 'spill_E' : `spill_${i + 5}`,
-  detected_at: new Date(Date.now() - i * 86400000).toISOString(),
-  centroid: { latitude: 35.0494 + (Math.random() - 0.5), longitude: 24.0517 + (Math.random() - 0.5) },
-  area_km2: parseFloat((Math.random() * 5 + 0.1).toFixed(2)),
-  confidence_score: Math.floor(Math.random() * 20 + 80),
-  candidate_count: i < 5 ? (i === 2 ? 3 : 1) : Math.floor(Math.random() * 5),
-  status: 'UNDER INVESTIGATION',
-  location_name: 'Mediterranean Sea'
-}));
+export const MOCK_SPILL_LIST = Array.from({ length: 97 }, (_, i) => {
+  const isClean = i === 5;
+  const area = isClean ? 0 : parseFloat((Math.random() * 5 + 0.1).toFixed(2));
+  return {
+    spill_id:
+      i === 0
+        ? 'spill_A'
+        : i === 1
+        ? 'spill_B'
+        : i === 2
+        ? 'spill_C'
+        : i === 3
+        ? 'spill_D'
+        : i === 4
+        ? 'spill_E'
+        : i === 5
+        ? 'spill_clean'
+        : `spill_${i + 5}`,
+    detected_at: new Date(Date.now() - i * 86400000).toISOString(),
+    centroid: { latitude: 35.0494 + (Math.random() - 0.5), longitude: 24.0517 + (Math.random() - 0.5) },
+    area_km2: area,
+    spill_area_km2: area,
+    is_slick_detected: !isClean,
+    confidence_score: isClean ? 98 : Math.floor(Math.random() * 20 + 80),
+    anomaly_index: isClean ? 0.02 : 0.35,
+    polygon_count: isClean ? 0 : Math.floor(Math.random() * 3 + 1),
+    severity: isClean ? 'LOW' : i % 2 === 0 ? 'CRITICAL' : 'HIGH',
+    candidate_count: isClean ? 0 : i < 5 ? (i === 2 ? 3 : 1) : Math.floor(Math.random() * 5),
+    status: isClean ? 'VERIFIED CLEAN' : 'UNDER INVESTIGATION',
+    location_name: 'Mediterranean Sea',
+  };
+});
 
 // SYNTHETIC FRONTEND TEST TRAJECTORY
 const syntheticTrajectory = [

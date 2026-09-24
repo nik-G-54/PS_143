@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { Maximize2, RotateCcw } from 'lucide-react';
 import * as turf from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -23,7 +23,7 @@ import { InvestigationPanel } from '../controls/InvestigationPanel';
 import { MapRightSidebar, type RightSidebarModule } from '../controls/MapRightSidebar';
 import { IncidentModule, ImageModule, TimeModule, VesselsModule } from '../controls/sidebarModules';
 import { InvestigationTimeline } from '../controls/InvestigationTimeline';
-import { SpillDetailsSection } from '../drawers/SpillDetailsSection';
+import { EvidenceDashboard } from '../evidence/EvidenceDashboard';
 // import { SpillLegend } from '../controls/SpillLegend';
 import { createDeckOverlay } from '../deck/DeckOverlay';
 import { buildDriftLayers } from '../deck/deckLayers';
@@ -51,7 +51,9 @@ import type { CoastlineGeoJSON } from '../utils/coastalAlert';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import {
   buildOilSlickKeyframes,
+  DETECTION_HANDOFF_THRESHOLD,
   detectionHandoffOpacity,
+  distanceFromDetection,
   resolvePolygonAtProgress,
 } from '../utils/oilSlickKeyframes';
 import { DEFAULT_VERTEX_COUNT } from '../utils/organicPolygon';
@@ -115,6 +117,8 @@ export function MaritimeMap() {
    * actions fresh — closing a module only sticks for the current spill.
    */
   const [activeModule, setActiveModule] = useState<RightSidebarModule | null>('investigation');
+  /** Evidence dossier open: the map docks left and the dossier slides up beside it. */
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
   /** Px of the map's right edge covered by the right rail + open module — the timeline stops short of it. */
   const [rightInset, setRightInset] = useState(0);
 
@@ -150,7 +154,7 @@ export function MaritimeMap() {
     forecast,
     isLoading: isForecastLoading,
     error: forecastError,
-  } = useSpillForecast(investigationMode === 'forecast' ? selectedSpillId : null);
+  } = useSpillForecast(investigationMode === 'forecast' || evidenceOpen ? selectedSpillId : null);
 
   // Coastline extract — doubles as forecast mode's coastal-alert readout
   // input (see `coastalAlert.ts`) and as the map's spatial-reference line
@@ -406,6 +410,12 @@ export function MaritimeMap() {
   // each other. See oilSlickKeyframes.ts's `detectionHandoffOpacity`. Pure
   // function of (progress, playbackMode), recomputed on every render, so
   // manual slider drags fade identically to playback.
+  // Static detection slick only while the traveling one is at (or dissolving
+  // into) the detection end — a boolean, so spill layers rebuild twice per
+  // playthrough rather than every frame.
+  const detectionPolygonVisible =
+    !backtrackActive || distanceFromDetection(timeline.progress, playbackMode) <= DETECTION_HANDOFF_THRESHOLD;
+
   const focusPolygonOpacity = useMemo(
     () => detectionHandoffOpacity(timeline.progress, playbackMode),
     [timeline.progress, playbackMode]
@@ -746,8 +756,9 @@ export function MaritimeMap() {
         focusMode,
         onSelectSpill: selectSpill,
         backtrackActive,
+        showDetectionPolygon: detectionPolygonVisible,
       }),
-    [spills, selectedSpillId, selectedSpill, focusMode, selectSpill, backtrackActive]
+    [spills, selectedSpillId, selectedSpill, focusMode, selectSpill, backtrackActive, detectionPolygonVisible]
   );
 
   // --- Push the deck.gl layer stack whenever any of the above change ---
@@ -1058,15 +1069,103 @@ export function MaritimeMap() {
   }, [clearInvestigation]);
 
   const handleScrollToDetails = useCallback(() => {
-    document.getElementById('spill-investigation-details')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    });
+    setEvidenceOpen(true);
   }, []);
 
+  // --- Evidence dossier / docked map ----------------------------------
+  const evidenceDocked = evidenceOpen && selectedSpill != null;
+
+  useEffect(() => {
+    if (!selectedSpillId) setEvidenceOpen(false);
+  }, [selectedSpillId]);
+
+  useEffect(() => {
+    if (!evidenceDocked) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setEvidenceOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [evidenceDocked]);
+
+  // The map canvas follows its container every frame while the stage
+  // animates between full-bleed and docked, so the dock transition reads as
+  // one continuous motion instead of a stretched canvas snapping at the end.
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+    let frame: number | null = null;
+    const observer = new ResizeObserver(() => {
+      if (frame != null) return;
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        mapRef.current?.resize();
+      });
+    });
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      if (frame != null) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  // Once the stage settles, re-frame the investigation for the new size —
+  // tight padding for the small docked card, the usual framing full-screen.
+  const handleStageTransitionEnd = useCallback(
+    (event: React.TransitionEvent<HTMLDivElement>) => {
+      if (event.target !== event.currentTarget || event.propertyName !== 'left') return;
+      const map = mapRef.current;
+      if (!map) return;
+      if (!evidenceDocked) {
+        handleRecenter();
+        return;
+      }
+      const bounds = investigationMode === 'forecast' ? forecast?.bounds : trajectory?.bounds;
+      if (bounds) {
+        map.fitBounds(
+          [
+            [bounds.minLon, bounds.minLat],
+            [bounds.maxLon, bounds.maxLat],
+          ],
+          { padding: { top: 56, bottom: 28, left: 28, right: 28 }, maxZoom: 12, duration: 700 }
+        );
+      } else if (selectedSpill) {
+        flyToSpill(map, selectedSpill);
+      }
+    },
+    [evidenceDocked, handleRecenter, investigationMode, forecast, trajectory, selectedSpill]
+  );
+
   return (
-    <div className="maritime-map-shell flex h-screen min-h-0 w-full flex-col">
-      <div className="maritime-map-body flex w-full min-w-0 flex-1 flex-col">
+    <div className="maritime-map-shell">
+      {/*
+        The map "stage" — the same map instance in both layouts. With the
+        evidence dossier open it docks into a card on the left (CSS
+        transitions on its inset, with map.resize() following every frame via
+        the ResizeObserver above), so the map is never unmounted or replaced.
+      */}
+      <div
+        className={`maritime-map-stage ${evidenceDocked ? 'is-docked' : ''}`}
+        onTransitionEnd={handleStageTransitionEnd}
+      >
+        {evidenceDocked && selectedSpill && (
+          <div className="maritime-dock-header">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-emerald-500" />
+              <span className="truncate font-mono text-[11px] font-semibold text-foreground">{selectedSpill.spillId}</span>
+              <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Live map</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setEvidenceOpen(false)}
+              className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-accent"
+              title="Back to full map"
+            >
+              <Maximize2 size={12} />
+              Expand
+            </button>
+          </div>
+        )}
         <div ref={wrapperRef} className="maritime-map-wrapper relative min-w-0 flex-1 h-full">
           {/*
             Bottom-left now only carries legends — every control moved into
@@ -1074,7 +1173,7 @@ export function MaritimeMap() {
             rendered content, so legends never overlap or rely on guessed
             `bottom-N` offsets.
           */}
-          <div className="absolute bottom-4 left-4 z-10 flex flex-col-reverse items-start gap-1.5">
+          <div className="maritime-stage-chrome absolute bottom-4 left-4 z-10 flex flex-col-reverse items-start gap-1.5">
             {oceanFlow.visible && oceanFlow.status === 'ready' && <OceanFlowLegend />}
 
             {/* Only meaningful once a forecast is actually on screen — the
@@ -1086,7 +1185,7 @@ export function MaritimeMap() {
             <button
               type="button"
               onClick={vesselReveal.start}
-              className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-card-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-accent"
+              className="maritime-stage-chrome absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-card-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-accent"
               title="Replay the vessel reconstruction"
             >
               <RotateCcw size={12} />
@@ -1148,6 +1247,8 @@ export function MaritimeMap() {
             onClearInvestigation={handleClearInvestigation}
             highlighted={{ vessels: isRevealing && rank1Vessel != null }}
             onOccupiedWidthChange={setRightInset}
+            evidenceOpen={evidenceDocked}
+            onOpenEvidence={handleScrollToDetails}
             renderModule={(module) => {
               if (!selectedSpill) return null;
               switch (module) {
@@ -1211,7 +1312,7 @@ export function MaritimeMap() {
         */}
         {selectedSpill && backtrackActive && trajectory && (
           <div
-            className="absolute bottom-4 z-20 flex items-end justify-center pointer-events-none"
+            className="maritime-stage-chrome absolute bottom-4 z-20 flex items-end justify-center pointer-events-none"
             // Stops short of whatever the right rail + open module cover,
             // so the timeline never slides underneath them.
             style={{ left: 16, right: rightInset + 16 }}
@@ -1257,15 +1358,20 @@ export function MaritimeMap() {
       </div>
 
       {selectedSpill && (
-        <SpillDetailsSection
+        <EvidenceDashboard
+          open={evidenceDocked}
+          onClose={() => setEvidenceOpen(false)}
           spill={selectedSpill}
+          spills={spills}
           trajectory={trajectory}
+          isTrajectoryLoading={isTrajectoryLoading}
           environment={environment}
           attribution={attribution}
-          isTrajectoryLoading={isTrajectoryLoading}
           isAttributionLoading={isAttributionLoading}
-          currentTimeMs={timeline.currentTimeMs}
-          backtrackActive={backtrackActive}
+          forecast={forecast}
+          isForecastLoading={isForecastLoading}
+          forecastError={forecastError}
+          coastline={coastline}
         />
       )}
     </div>

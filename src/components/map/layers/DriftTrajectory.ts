@@ -5,6 +5,7 @@ import {
   buildOilPatchFillBands,
   buildOilPatchGlowBands,
   buildOilPatchIsolines,
+  buildOilPatchSpeckles,
   smoothRing,
 } from '../../../features/maritime-map/utils/oilPatchGeometry';
 import type { OilPatchBand } from '../../../features/maritime-map/utils/oilPatchGeometry';
@@ -282,7 +283,9 @@ export function updateFocusPolygon(
   glowSource.setData(
     bandsToFeatureCollection([...buildOilPatchIsolines(smoothed), ...buildOilPatchGlowBands(smoothed)].map(fade))
   );
-  fillSource.setData(bandsToFeatureCollection(buildOilPatchFillBands(smoothed).map(fade)));
+  fillSource.setData(
+    bandsToFeatureCollection([...buildOilPatchFillBands(smoothed), ...buildOilPatchSpeckles(smoothed)].map(fade))
+  );
 }
 
 export function removeFocusPolygon(map: Map) {

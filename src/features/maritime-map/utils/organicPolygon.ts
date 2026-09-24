@@ -117,6 +117,19 @@ export function generateOrganicPolygon(
         ]
       : [];
 
+  // Tendrils: one or two narrow arms reaching out of the body (a Gaussian
+  // bump in radius over a small arc) — the finger-like streamers real slicks
+  // pull out along wind rows. Stable-seeded like octave 3 so arms don't jump
+  // between keyframes.
+  const tendrils =
+    count >= 64
+      ? Array.from({ length: 2 }, () => ({
+          angle: fineRand() * Math.PI * 2,
+          amp: 0.2 + fineRand() * 0.18,
+          width: 0.14 + fineRand() * 0.08,
+        }))
+      : [];
+
   const hasDrift = driftBearingDeg != null && Number.isFinite(driftBearingDeg);
   const driftRad = hasDrift ? ((driftBearingDeg as number) * Math.PI) / 180 : 0;
   const strength = Math.max(0, elongationStrength);
@@ -134,6 +147,10 @@ export function generateOrganicPolygon(
     }
     for (const h of fractalHarmonics) {
       wobble += h.amp * Math.sin(angle * h.freq + h.phase);
+    }
+    for (const t of tendrils) {
+      const d = Math.atan2(Math.sin(angle - t.angle), Math.cos(angle - t.angle));
+      wobble += t.amp * Math.exp(-((d / t.width) ** 2));
     }
     wobble = Math.max(0.45, wobble);
 

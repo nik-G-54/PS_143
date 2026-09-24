@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Clock,
   Eraser,
+  FileSearch,
   Globe2,
   Image as ImageIcon,
   Info,
@@ -239,6 +240,9 @@ interface MapRightSidebarProps {
    * investigation timeline can stop short of it instead of sliding under it.
    */
   onOccupiedWidthChange?: (px: number) => void;
+  /** Evidence dossier state — opens the full-screen dossier with the map docked beside it. */
+  evidenceOpen?: boolean;
+  onOpenEvidence?: () => void;
 }
 
 /**
@@ -271,6 +275,8 @@ export function MapRightSidebar({
   highlighted,
   renderModule,
   onOccupiedWidthChange,
+  evidenceOpen = false,
+  onOpenEvidence,
 }: MapRightSidebarProps) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -456,6 +462,16 @@ export function MapRightSidebar({
                   />
                 );
               })}
+              {onOpenEvidence && (
+                <RailItem
+                  icon={<FileSearch size={18} strokeWidth={1.5} />}
+                  label="Evidence dossier"
+                  title="Open the full evidence dossier"
+                  collapsed={collapsed}
+                  active={evidenceOpen}
+                  onClick={onOpenEvidence}
+                />
+              )}
               <RailItem
                 icon={<Eraser size={18} strokeWidth={1.5} />}
                 label="Clear investigation"

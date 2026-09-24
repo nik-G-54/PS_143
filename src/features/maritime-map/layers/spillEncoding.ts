@@ -70,9 +70,9 @@ function lerpRgb(a: [number, number, number], b: [number, number, number], t: nu
 }
 
 /** Bright amber-orange sheen right at the patch's true boundary. */
-const OIL_SHEEN_RGB: [number, number, number] = [214, 104, 44];
+const OIL_SHEEN_RGB: [number, number, number] = [238, 150, 58];
 /** Deep rust-brown weathered crude at the patch's interior — dark, but still reads as oil, not a hole. */
-const OIL_CORE_RGB: [number, number, number] = [112, 40, 22];
+const OIL_CORE_RGB: [number, number, number] = [132, 48, 22];
 
 /**
  * On-map footprint relative to the source geometry. The detected polygon /
@@ -90,8 +90,8 @@ export const OIL_PATCH_DISPLAY_SCALE = 0.7;
  * the way thickness bands show in a processed SAR/optical slick image.
  */
 export const OIL_CONTOUR_LINE: { rgb: [number, number, number]; alpha: number } = {
-  rgb: [72, 24, 12],
-  alpha: 90,
+  rgb: [98, 34, 14],
+  alpha: 34,
 };
 
 /**
@@ -112,16 +112,17 @@ export const OIL_CONTOUR_LINE: { rgb: [number, number, number]; alpha: number } 
  * edge reads as a visible ring — a bullseye, not a smooth fade. More/smaller
  * steps push those transitions below what's easy to pick out from real
  * viewing distance/zoom, at negligible extra cost (they're just polygons).
- * Bands are spaced near-evenly (a mild `t ** 1.1`) so, with their contour
- * outlines (`OIL_CONTOUR_LINE`), they read as layered thickness steps from a
- * bright rim into a rust-brown body rather than a smooth airbrushed fade.
+ * Bands are spaced evenly and the colour ramp front-loads (`t ** 0.55`) so a
+ * yellow-amber rim falls quickly into a warm rust-orange body; the faint
+ * contour outlines (`OIL_CONTOUR_LINE`) add subtle thickness steps without
+ * turning it into a bullseye.
  */
-const OIL_PATCH_BAND_COUNT = 9;
+const OIL_PATCH_BAND_COUNT = 12;
 export const OIL_PATCH_STOPS: { insetFraction: number; rgb: [number, number, number] }[] = Array.from(
   { length: OIL_PATCH_BAND_COUNT },
   (_, i) => {
     const t = i / (OIL_PATCH_BAND_COUNT - 1);
-    return { insetFraction: 0.8 * t ** 1.1, rgb: lerpRgb(OIL_SHEEN_RGB, OIL_CORE_RGB, t ** 0.7) };
+    return { insetFraction: 0.82 * t, rgb: lerpRgb(OIL_SHEEN_RGB, OIL_CORE_RGB, t ** 0.55) };
   }
 );
 
@@ -136,9 +137,25 @@ export const OIL_PATCH_FILL_ALPHA = 232;
  * brighter rings paint on top.
  */
 export const OIL_GLOW_STOPS: { outsetFraction: number; rgb: [number, number, number]; alpha: number }[] = [
-  { outsetFraction: 0.09, rgb: [64, 128, 136], alpha: 26 },
-  { outsetFraction: 0.05, rgb: [72, 162, 150], alpha: 62 },
-  { outsetFraction: 0.018, rgb: [236, 150, 78], alpha: 170 },
+  { outsetFraction: 0.085, rgb: [58, 120, 128], alpha: 24 },
+  { outsetFraction: 0.045, rgb: [66, 168, 146], alpha: 74 },
+  { outsetFraction: 0.014, rgb: [248, 184, 84], alpha: 196 },
+];
+
+/**
+ * Mottling: small lighter/darker blotches inside the body — the pooled,
+ * uneven thickness visible in real slick imagery. Positions are fractions of
+ * the patch's own radius/angle so they travel and scale with the patch.
+ */
+export const OIL_SPECKLES: { angle: number; dist: number; size: number; rgb: [number, number, number]; alpha: number }[] = [
+  { angle: 0.3, dist: 0.42, size: 0.07, rgb: [200, 96, 42], alpha: 120 },
+  { angle: 1.4, dist: 0.28, size: 0.05, rgb: [200, 96, 42], alpha: 110 },
+  { angle: 2.2, dist: 0.5, size: 0.06, rgb: [96, 32, 14], alpha: 90 },
+  { angle: 3.1, dist: 0.18, size: 0.08, rgb: [188, 84, 36], alpha: 100 },
+  { angle: 3.9, dist: 0.46, size: 0.045, rgb: [206, 104, 46], alpha: 120 },
+  { angle: 4.7, dist: 0.34, size: 0.055, rgb: [96, 32, 14], alpha: 80 },
+  { angle: 5.5, dist: 0.55, size: 0.04, rgb: [214, 116, 52], alpha: 120 },
+  { angle: 0.9, dist: 0.62, size: 0.035, rgb: [214, 116, 52], alpha: 110 },
 ];
 
 /**

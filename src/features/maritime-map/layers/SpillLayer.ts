@@ -15,6 +15,7 @@ import {
   buildOilPatchFillBands,
   buildOilPatchGlowBands,
   buildOilPatchIsolines,
+  buildOilPatchSpeckles,
   smoothRing,
 } from '../utils/oilPatchGeometry';
 import type { OilPatchBand } from '../utils/oilPatchGeometry';
@@ -39,6 +40,13 @@ export interface SpillLayerOptions {
    * to reveal underneath it instead of fading to bare basemap.
    */
   backtrackActive: boolean;
+  /**
+   * False while the traveling slick is out along its track (away from the
+   * detection end), so the map never shows two slicks at once. Flips back to
+   * true inside the detection handoff window, where the traveling polygon
+   * dissolves into this one. Defaults to true.
+   */
+  showDetectionPolygon?: boolean;
 }
 
 /**
@@ -105,8 +113,15 @@ function createOrganicSlickContour(
       Math.sin(23 * theta + s1 * 7.7) * 0.025 +
       Math.sin(37 * theta + s3 * 5.1) * 0.016;
 
-    // Keep radius comfortably inside the SAR bounding box
-    const r = Math.min(0.97, Math.max(0.58, 0.84 + wave1 + wave2 + wave3 + fractal));
+    // Two narrow tendril arms (Gaussian radius bumps) pulled out of the body.
+    const arm = (at: number, amp: number, w: number) => {
+      const d = Math.atan2(Math.sin(theta - at), Math.cos(theta - at));
+      return amp * Math.exp(-((d / w) ** 2));
+    };
+    const tendrils = arm(s2 * 2 * Math.PI, 0.3, 0.2) + arm(s3 * 2 * Math.PI + 2.4, 0.18, 0.16);
+
+    // Body stays inside the SAR bounding box; only the tendril tips may reach slightly past it.
+    const r = Math.min(1.16, Math.max(0.58, Math.min(0.97, 0.84 + wave1 + wave2 + wave3 + fractal) + tendrils));
 
     const lon = centerLon + rx * r * Math.cos(theta);
     const lat = centerLat + ry * r * Math.sin(theta);
@@ -171,11 +186,13 @@ function createSpillPolygonLayers(selected: MapSpill): PolygonLayer<OilPatchBand
   const glowBands = buildOilPatchGlowBands(smoothed);
   const fillBands = buildOilPatchFillBands(smoothed);
   const isolines = buildOilPatchIsolines(smoothed);
+  const speckles = buildOilPatchSpeckles(smoothed);
 
   return [
     ...isolines.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-iso`, i, band)),
     ...glowBands.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-glow`, i, band)),
     ...fillBands.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-fill`, i, band)),
+    ...speckles.map((band, i) => createBandLayer(`${LAYER_IDS.spillPolygon}-spot`, i, band)),
   ];
 }
 
@@ -207,6 +224,7 @@ function createSelectionRingLayer(
  */
 export function createSpillLayers(options: SpillLayerOptions): Layer[] {
   const { spills, selectedSpillId, selectedSpill, focusMode, onSelectSpill, backtrackActive } = options;
+  const showDetectionPolygon = options.showDetectionPolygon ?? true;
   if (spills.length === 0) return [];
 
   const maxSqrtArea = createAreaScale(spills);
@@ -281,7 +299,12 @@ export function createSpillLayers(options: SpillLayerOptions): Layer[] {
     // present underneath it to reveal, even if the user never toggled Focus
     // Mode on separately (the two are independent controls; see
     // `backtrackActive`'s docstring above).
-    if ((focusMode || backtrackActive) && selected.polygon && selected.polygon.length >= 3) {
+    if (
+      showDetectionPolygon &&
+      (focusMode || backtrackActive) &&
+      selected.polygon &&
+      selected.polygon.length >= 3
+    ) {
       layers.push(...createSpillPolygonLayers(selected));
     }
     layers.push(createSelectionRingLayer(selected, maxSqrtArea));

@@ -63,11 +63,190 @@
   width: 100%;
 }
 
+/*
+  Shell for the map "stage" + the evidence dossier. The stage is the live map
+  (same MapLibre/deck.gl instance throughout); opening the dossier animates
+  its inset from full-bleed to a docked card on the left while the dossier
+  rises into the space beside it. MaritimeMap.tsx's ResizeObserver calls
+  map.resize() every frame of that inset transition.
+*/
 .maritime-map-shell {
-  display: flex;
-  flex-direction: column;
+  --dock-w: clamp(320px, 34%, 560px);
+  --dock-gap: 16px;
+  --ease-dock: cubic-bezier(0.22, 1, 0.36, 1);
+  --dock-ms: 680ms;
+  position: relative;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.maritime-map-stage {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 0;
+  transition:
+    top var(--dock-ms) var(--ease-dock),
+    right var(--dock-ms) var(--ease-dock),
+    bottom var(--dock-ms) var(--ease-dock),
+    left var(--dock-ms) var(--ease-dock),
+    border-radius var(--dock-ms) var(--ease-dock),
+    border-color var(--dock-ms) ease,
+    box-shadow var(--dock-ms) ease;
+}
+
+.maritime-map-stage.is-docked {
+  top: var(--dock-gap);
+  left: var(--dock-gap);
+  bottom: var(--dock-gap);
+  right: calc(100% - var(--dock-gap) - var(--dock-w));
+  border-radius: 14px;
+  border-color: var(--border);
+  box-shadow: 0 22px 48px -20px rgba(0, 0, 0, 0.55);
+}
+
+/* Full-screen chrome (rail, timeline, legends, replay) fades out of the docked card. */
+.maritime-stage-chrome,
+.maritime-right-sidebar {
+  transition: opacity 260ms ease;
+}
+
+.maritime-map-stage.is-docked .maritime-stage-chrome,
+.maritime-map-stage.is-docked .maritime-right-sidebar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.maritime-map-stage.is-docked .maritime-right-sidebar > *,
+.maritime-map-stage.is-docked .maritime-stage-chrome * {
+  pointer-events: none;
+}
+
+/* The small map shows positions, not paperwork. */
+.maritime-map-stage.is-docked .maritime-vessel-reveal-marker__card,
+.maritime-map-stage.is-docked .maritime-vessel-reveal-marker__stem,
+.maritime-map-stage.is-docked .maritime-time-marker__subtitle {
+  display: none;
+}
+
+@keyframes maritime-fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.maritime-dock-header {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.4);
+  animation: maritime-fade-down 320ms var(--ease-dock) 420ms both;
+}
+
+/* Evidence dossier: rises from below into the space beside the docked map. */
+.maritime-evidence {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: calc(var(--dock-w) + var(--dock-gap) * 1.5);
+  z-index: 3;
+  background: var(--background);
+  transform: translateY(100%);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform var(--dock-ms) var(--ease-dock),
+    opacity 360ms ease,
+    visibility 0s linear var(--dock-ms);
+}
+
+.maritime-evidence.is-open {
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    transform var(--dock-ms) var(--ease-dock) 60ms,
+    opacity 320ms ease 60ms,
+    visibility 0s;
+}
+
+.maritime-evidence__scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@keyframes maritime-evidence-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.maritime-evidence-section {
+  opacity: 0;
+}
+
+.maritime-evidence.is-open .maritime-evidence-section {
+  animation: maritime-evidence-rise 560ms var(--ease-dock) both;
+}
+
+/* Detection-confidence gauge sweeps in with the section. */
+.maritime-gauge-arc {
+  transition: stroke-dasharray 900ms var(--ease-dock, ease-out);
+}
+
+/* Narrow screens: map docks as a strip on top, dossier fills below. */
+@media (max-width: 1023px) {
+  .maritime-map-stage.is-docked {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    bottom: 62%;
+  }
+
+  .maritime-evidence {
+    left: 0;
+    top: calc(38% + 8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maritime-map-shell {
+    --dock-ms: 1ms;
+  }
+
+  .maritime-evidence.is-open .maritime-evidence-section,
+  .maritime-dock-header {
+    animation-duration: 1ms;
+  }
 }
 
 /*
@@ -95,57 +274,12 @@
   max-height: 100%;
 }
 
-.maritime-map-body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  /*
-    Must match .maritime-map-wrapper's own min-height... actually this one
-    just needs to be tall regardless of siblings — SpillDetailsSection's
-    shrink-0 natural height (often taller than the viewport) would otherwise
-    starve this flex item down to 0px. 100vh (not a fraction of it) so the
-    map+timeline fill the whole screen — with no header above it any more,
-    that's the entire available viewport — and SpillDetailsSection sits
-    fully below the fold, one scroll away, instead of its top edge already
-    peeking into view.
-  */
-  min-height: 100vh;
-  width: 100%;
-}
-
 .maritime-map-wrapper {
   position: relative;
   width: 100%;
   height: 100%;
-  flex: 1;
   min-width: 0;
-  /*
-    No min-height here — this needs to be free to shrink within
-    .maritime-map-body's 100vh budget so .maritime-timeline-dock has room to
-    sit below it without the two overlapping. A min-height here would
-    re-demand the *whole* 100vh for the map alone, leaving the dock nothing
-    but overflow.
-  */
   min-height: 0;
-}
-
-/*
-  Playback scrubber, docked below the map instead of floating on top of it
-  as an absolute overlay (the investigation panels *do* float on top of the
-  map now — see the `aside` in MaritimeMap.tsx — but this one stays docked
-  so it doesn't cover the map's own drift-path visuals). The card inside
-  (.maritime-panel-card, applied in InvestigationTimeline.tsx) reads as
-  raised off this slightly-recessed background rather than blending into it.
-*/
-.maritime-timeline-dock {
-  flex-shrink: 0;
-  padding: 0.75rem 1rem;
-  background-color: var(--muted);
-  border-top: 1px solid var(--border);
-}
-
-.dark .maritime-timeline-dock {
-  background-color: var(--background);
 }
 
 /*
@@ -186,10 +320,6 @@
 .maritime-map-wrapper:-webkit-full-screen .maritime-map-container {
   width: 100%;
   height: 100%;
-}
-
-.maritime-details-section {
-  flex-shrink: 0;
 }
 
 .maritime-timeline-slider {

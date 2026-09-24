@@ -225,7 +225,7 @@ export function InvestigationPanel({
       </button>
 
       <button type="button" onClick={onScrollToDetails} className={`${ACTION_BUTTON} ${ACTION_IDLE}`}>
-        Evidence details ↓
+        Open evidence dossier
       </button>
 
       <p className="text-[10px] leading-relaxed text-muted-foreground">

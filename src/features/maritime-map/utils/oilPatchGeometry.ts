@@ -16,6 +16,7 @@ import {
   OIL_PATCH_DISPLAY_SCALE,
   OIL_PATCH_FILL_ALPHA,
   OIL_PATCH_STOPS,
+  OIL_SPECKLES,
 } from '../layers/spillEncoding';
 
 export interface OilPatchBand {
@@ -111,6 +112,39 @@ export function buildOilPatchFillBands(ring: number[][]): OilPatchBand[] {
     // handles that; contour lines only on the inner steps.
     line: i === 0 ? undefined : OIL_CONTOUR_LINE,
   }));
+}
+
+/**
+ * Mottling blotches, painted after the fill bands. Placed in the ring's own
+ * lon/lat spread (mean absolute deviation per axis) so they stay inside the
+ * body and keep the patch's aspect as it travels and grows.
+ */
+export function buildOilPatchSpeckles(ring: number[][]): OilPatchBand[] {
+  const [cx, cy] = ringCentroid(ring);
+  let sx = 0;
+  let sy = 0;
+  for (const [x, y] of ring) {
+    sx += Math.abs(x - cx);
+    sy += Math.abs(y - cy);
+  }
+  // Mean abs deviation of a circle's coordinate is 2R/π — convert back to a radius.
+  const rx = ((sx / ring.length) * Math.PI) / 2 * OIL_PATCH_DISPLAY_SCALE;
+  const ry = ((sy / ring.length) * Math.PI) / 2 * OIL_PATCH_DISPLAY_SCALE;
+  const SEGMENTS = 14;
+
+  return OIL_SPECKLES.map((spot) => {
+    const ox = cx + Math.cos(spot.angle) * spot.dist * rx;
+    const oy = cy + Math.sin(spot.angle) * spot.dist * ry;
+    const pts: number[][] = [];
+    for (let i = 0; i < SEGMENTS; i += 1) {
+      const a = (i / SEGMENTS) * Math.PI * 2;
+      // Slight per-vertex wobble so blotches aren't perfect discs.
+      const wob = 1 + 0.18 * Math.sin(a * 3 + spot.angle * 5);
+      pts.push([ox + Math.cos(a) * spot.size * rx * wob, oy + Math.sin(a) * spot.size * ry * wob]);
+    }
+    pts.push([pts[0][0], pts[0][1]]);
+    return { ring: pts, rgb: spot.rgb, alpha: spot.alpha, kind: 'fill' as const };
+  });
 }
 
 /** Edge fringe bands, widest/faintest first — render in this order so the narrower, brighter ring near the boundary paints on top. */

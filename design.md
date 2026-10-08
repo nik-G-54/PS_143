@@ -1,4 +1,4 @@
-# NAUKA — Maritime Intelligence Design System
+# NAUKA —  Maritime Intelligence Design System
 
 This document outlines the official design system, typography scales, color tokens, and layout guidelines for **NAUKA — Maritime Intelligence**.
 

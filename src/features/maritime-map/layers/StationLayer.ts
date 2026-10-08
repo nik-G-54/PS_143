@@ -1,5 +1,5 @@
 // Nearest-coast-guard layer: the dashed link from the selected spill to its
-// nearest station, a marker on every station, and a green ring on spills that
+// nearest station, a marker on every station, and a spill-coloured ring on spills that
 // have already been alerted.
 //
 // Markers are ScatterplotLayers, the same primitive the spill dots use. A
@@ -14,7 +14,7 @@ import * as turf from '@turf/turf';
 import type { CoastGuardStation, NearestStation } from '../types/alertTypes';
 import type { MapSpill } from '../types/spillTypes';
 import { LAYER_IDS } from './layerIds';
-import { radiusForArea } from './spillEncoding';
+import { radiusForArea, SPILL_RGB } from './spillEncoding';
 
 export interface StationLayerOptions {
   stations: CoastGuardStation[];
@@ -41,7 +41,8 @@ const LINK_HIT_RGBA: [number, number, number, number] = [0, 0, 0, 1];
 const DISC_RGBA: [number, number, number, number] = [15, 23, 42, 235];
 const NEAREST_RGBA: [number, number, number, number] = [245, 158, 11, 255];
 const STATION_RGBA: [number, number, number, number] = [148, 163, 184, 255];
-const ALERTED_RGBA: [number, number, number, number] = [34, 197, 94, 255];
+/** Same hue as the spill dots, so the ring reads as part of the dot rather than a second colour. */
+const ALERTED_RGBA: [number, number, number, number] = [...SPILL_RGB, 255];
 
 /** One drawn segment of the spill → station line, carrying what its tooltip needs. */
 export interface StationLinkDatum {

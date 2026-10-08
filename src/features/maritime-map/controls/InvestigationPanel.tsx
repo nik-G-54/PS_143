@@ -1,5 +1,19 @@
 import { useMemo } from 'react';
-import { AlertTriangle, Crosshair, Eye, EyeOff, Mail, Rewind, TrendingUp } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  ChevronRight,
+  Crosshair,
+  Eye,
+  EyeOff,
+  Loader2,
+  Mail,
+  Rewind,
+  RotateCw,
+  Send,
+  TrendingUp,
+} from 'lucide-react';
+import type { AlertPhase } from '../alerts/alertSendState';
 import type { MapSpill } from '../types/spillTypes';
 import type { SpillTrajectory } from '../types/trajectoryTypes';
 import type { SpillForecast } from '../types/forecastTypes';
@@ -28,6 +42,11 @@ interface InvestigationPanelProps {
   onToggleBacktrack: () => void;
   onRecenter: () => void;
   onScrollToDetails: () => void;
+  /** Send state for this spill's drill alert (see `alerts/alertSendState.ts`). */
+  alertPhase: AlertPhase;
+  /** True when the alert log already holds a successful alert for this spill. */
+  alerted: boolean;
+  onOpenAlert: () => void;
 }
 
 /** Banner background per severity — the whole point is to be readable at a glance. */
@@ -39,9 +58,9 @@ const COASTAL_ALERT_STYLES: Record<AlertSeverity, string> = {
 };
 
 /**
- * How urgently the predicted landfall should read. `critical`/`watch` add a
- * simulated notification line — no email is actually sent, this is a UI
- * mock of what a real alerting pipeline would surface here.
+ * How urgently the predicted landfall should read. Nothing is sent from here:
+ * `critical`/`watch` only point at the Send Alert button, which previews and
+ * then sends an explicit drill alert.
  */
 function CoastalAlertBanner({ severity }: { severity: AlertSeverity }) {
   const notifies = severity === 'critical' || severity === 'watch';
@@ -55,12 +74,26 @@ function CoastalAlertBanner({ severity }: { severity: AlertSeverity }) {
       {notifies && (
         <div className="mt-1 flex items-center gap-1.5 text-[10px] normal-case tracking-normal opacity-90">
           <Mail size={11} className="shrink-0" />
-          Alert emailed to nikhilgupta542006@gmail.com
+          Use “Send drill alert” below to notify the nearest station.
         </div>
       )}
     </div>
   );
 }
+
+const ALERT_BUTTON_LABEL: Record<AlertPhase, string> = {
+  idle: 'Send drill alert',
+  sending: 'Sending…',
+  sent: 'Alert sent',
+  failed: 'Failed — retry',
+};
+
+const ALERT_BUTTON_TONE: Record<AlertPhase, string> = {
+  idle: 'border-border bg-card text-foreground hover:bg-accent',
+  sending: 'border-border bg-muted text-muted-foreground',
+  sent: 'border-green-600/50 bg-green-600/10 text-green-800 dark:text-green-300',
+  failed: 'border-red-500/60 bg-red-500/10 text-red-800 dark:text-red-300',
+};
 
 const ACTION_BUTTON =
   'flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-[11px] font-semibold uppercase tracking-wider transition-colors';
@@ -90,6 +123,9 @@ export function InvestigationPanel({
   onToggleBacktrack,
   onRecenter,
   onScrollToDetails,
+  alertPhase,
+  alerted,
+  onOpenAlert,
 }: InvestigationPanelProps) {
   // See `computeForecastAlertSeverity` — shared with `MaritimeMap.tsx`'s
   // predicted-position marker so the banner here and that marker's colour
@@ -102,7 +138,18 @@ export function InvestigationPanel({
   return (
     <>
       <div className="maritime-panel-card flex items-center justify-between gap-2 p-2.5">
-        <span className="truncate font-mono text-sm font-semibold text-primary">{spill.spillId}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-mono text-sm font-semibold text-primary">{spill.spillId}</span>
+          {alerted && (
+            <span
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-green-600/40 bg-green-600/10 py-0.5 pl-1.5 pr-2 text-[10.5px] font-semibold text-green-800 dark:text-green-300"
+              title="A drill alert for this spill is in the alert log"
+            >
+              <Check size={10} strokeWidth={3} />
+              Alert sent
+            </span>
+          )}
+        </span>
         <button
           type="button"
           onClick={onRecenter}
@@ -227,6 +274,32 @@ export function InvestigationPanel({
       <button type="button" onClick={onScrollToDetails} className={`${ACTION_BUTTON} ${ACTION_IDLE}`}>
         Open evidence dossier
       </button>
+
+      <div className="mt-1 border-t border-border pt-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Notify</p>
+        <button
+          type="button"
+          onClick={onOpenAlert}
+          disabled={alertPhase === 'sending'}
+          title="Preview a drill alert to the nearest coast guard station"
+          className={`flex h-11 w-full items-center gap-2.5 rounded-lg border px-3.5 text-left text-[13px] font-semibold transition-colors disabled:cursor-wait disabled:opacity-70 ${ALERT_BUTTON_TONE[alertPhase]}`}
+        >
+          {alertPhase === 'sending' ? (
+            <Loader2 size={15} className="shrink-0 animate-spin" />
+          ) : alertPhase === 'sent' ? (
+            <Check size={15} className="shrink-0" />
+          ) : alertPhase === 'failed' ? (
+            <RotateCw size={15} className="shrink-0" />
+          ) : (
+            <Send size={15} className="shrink-0 text-primary" />
+          )}
+          <span className="flex-1">{ALERT_BUTTON_LABEL[alertPhase]}</span>
+          {alertPhase === 'idle' && <ChevronRight size={14} className="shrink-0 text-muted-foreground" />}
+        </button>
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          Opens a preview first{alerted ? '. An alert for this spill is already in the log.' : '. Nothing is sent until you confirm.'}
+        </p>
+      </div>
 
       <p className="text-[10px] leading-relaxed text-muted-foreground">
         {focusMode ? 'Other detections hidden.' : 'Other detections dimmed for spatial context.'}

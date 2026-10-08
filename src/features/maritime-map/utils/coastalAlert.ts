@@ -57,6 +57,15 @@ export function computeDistanceToCoast(point: GeoPoint, coastlineGeoJSON: Coastl
 }
 
 /**
+ * Hours for drift at `speedKnots` to cover `distanceKm`, or null when the drift
+ * is too slow (below `STATIONARY_SPEED_KNOTS`) for an ETA to mean anything.
+ */
+export function computeEtaHours(distanceKm: number, speedKnots: number): number | null {
+  if (speedKnots < STATIONARY_SPEED_KNOTS) return null;
+  return distanceKm / (speedKnots * KM_PER_KNOT_HOUR);
+}
+
+/**
  * Classify how urgently a coastal landfall should be flagged.
  *
  * Below `STATIONARY_SPEED_KNOTS` the drift has effectively stalled, so an ETA
@@ -65,10 +74,8 @@ export function computeDistanceToCoast(point: GeoPoint, coastlineGeoJSON: Coastl
  * rather than relying on the resulting huge ETA to fall into `'advisory'`.
  */
 export function computeAlertSeverity(distanceKm: number, speedKnots: number): AlertSeverity {
-  if (speedKnots < STATIONARY_SPEED_KNOTS) return 'monitor';
-
-  const speedKmh = speedKnots * KM_PER_KNOT_HOUR;
-  const etaHours = distanceKm / speedKmh;
+  const etaHours = computeEtaHours(distanceKm, speedKnots);
+  if (etaHours === null) return 'monitor';
 
   if (etaHours <= CRITICAL_ETA_HOURS) return 'critical';
   if (etaHours <= WATCH_ETA_HOURS) return 'watch';
@@ -91,6 +98,27 @@ export function computeForecastAlertSeverity(
   forecast: SpillForecast | null,
   coastline: CoastlineGeoJSON | null
 ): AlertSeverity | null {
+  return computeForecastCoastalAssessment(forecast, coastline)?.severity ?? null;
+}
+
+export interface CoastalAssessment {
+  severity: AlertSeverity;
+  /** Predicted position → nearest coastline, km. Null when the coastline extract has no usable line. */
+  distanceToCoastKm: number | null;
+  /** Null when the drift is effectively stationary (severity is then 'monitor'). */
+  etaHours: number | null;
+  speedKnots: number;
+}
+
+/**
+ * Severity plus the distance and ETA it was derived from, so a caller that
+ * wants to show the numbers (the drill-alert preview) reads the same values
+ * the banner and map marker colour were computed from.
+ */
+export function computeForecastCoastalAssessment(
+  forecast: SpillForecast | null,
+  coastline: CoastlineGeoJSON | null
+): CoastalAssessment | null {
   if (!forecast || !coastline) return null;
   const target = forecast.predictedPosition;
   if (!target) return null;
@@ -99,7 +127,12 @@ export function computeForecastAlertSeverity(
   const speedKnots = lastPoint?.driftSpeedKnots ?? forecast.averageSpeedKnots ?? 0;
 
   const distanceKm = computeDistanceToCoast(target, coastline);
-  return computeAlertSeverity(distanceKm, speedKnots);
+  return {
+    severity: computeAlertSeverity(distanceKm, speedKnots),
+    distanceToCoastKm: Number.isFinite(distanceKm) ? distanceKm : null,
+    etaHours: computeEtaHours(distanceKm, speedKnots),
+    speedKnots,
+  };
 }
 
 /** CSS colour per severity — the predicted-position marker's dot/badge accent, and the HUD legend's swatches. */

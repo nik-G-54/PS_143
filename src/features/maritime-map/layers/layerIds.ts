@@ -32,4 +32,7 @@ export const LAYER_IDS = {
   vesselRevealShip: 'vessel-reveal-ship',
   vesselRevealLine: 'vessel-reveal-line',
   vesselRevealTicks: 'vessel-reveal-ticks',
+  stationLink: 'station-link',
+  stationIcons: 'station-icons',
+  alertedBadge: 'alerted-spill-badge',
 } as const;

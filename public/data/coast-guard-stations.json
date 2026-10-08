@@ -1,0 +1,80 @@
+[
+  {
+    "id": "HCG-SFAKION",
+    "name": "Hora Sfakion Port Station",
+    "name_local": "Λιμενικός Σταθμός Χώρας Σφακίων",
+    "organisation": "Hellenic Coast Guard",
+    "country": "Greece",
+    "lat": 35.20133,
+    "lon": 24.13609,
+    "source_url": "https://edla.hcg.gr/authorities/",
+    "coordinate_source": "openstreetmap",
+    "coordinate_source_url": "https://www.openstreetmap.org/node/137750059",
+    "coordinate_note": "Geocoded from the official address (Χώρα Σφακίων, 73011) to the village of Hora Sfakion in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres)."
+  },
+  {
+    "id": "HCG-PALAIOCHORA",
+    "name": "Paleochora Port Station",
+    "name_local": "Λιμενικός Σταθμός Παλαιόχωρας",
+    "organisation": "Hellenic Coast Guard",
+    "country": "Greece",
+    "lat": 35.23056,
+    "lon": 23.68218,
+    "source_url": "https://edla.hcg.gr/authorities/",
+    "coordinate_source": "openstreetmap",
+    "coordinate_source_url": "https://www.openstreetmap.org/node/247946516",
+    "coordinate_note": "Geocoded from the official address (Παλαιόχωρα Χανίων, 73001) to the town of Paleochora in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres)."
+  },
+  {
+    "id": "HCG-CHANIA-CENTRAL",
+    "name": "Chania Central Port Authority, Souda",
+    "name_local": "Κεντρικό Λιμεναρχείο Χανίων",
+    "organisation": "Hellenic Coast Guard",
+    "country": "Greece",
+    "lat": 35.51848,
+    "lon": 24.01912,
+    "source_url": "https://edla.hcg.gr/authorities/",
+    "coordinate_source": "openstreetmap",
+    "coordinate_source_url": "https://www.openstreetmap.org/way/1069073941",
+    "coordinate_note": "OSM feature named Κεντρικό Λιμεναρχείο Χανίων, at Souda port (matches the official address Λιμένας Σούδας, 73200). Point is the centre of the mapped outline."
+  },
+  {
+    "id": "HCG-RETHYMNO",
+    "name": "Rethymno Port Authority",
+    "name_local": "Λιμεναρχείο Ρεθύμνου",
+    "organisation": "Hellenic Coast Guard",
+    "country": "Greece",
+    "lat": 35.36689,
+    "lon": 24.48362,
+    "source_url": "https://edla.hcg.gr/authorities/",
+    "coordinate_source": "openstreetmap",
+    "coordinate_source_url": "https://www.openstreetmap.org/node/6958839737",
+    "coordinate_note": "OSM node tagged amenity=coast_guard and named Λιμεναρχείο Ρεθύμνου (Rethymno Port Authority) - the facility itself, in Rethymno."
+  },
+  {
+    "id": "HCG-AGIA-GALINI",
+    "name": "Agia Galini Port Station",
+    "name_local": "Λιμενικός Σταθμός Αγίας Γαλήνης",
+    "organisation": "Hellenic Coast Guard",
+    "country": "Greece",
+    "lat": 35.09715,
+    "lon": 24.68849,
+    "source_url": "https://edla.hcg.gr/authorities/",
+    "coordinate_source": "openstreetmap",
+    "coordinate_source_url": "https://www.openstreetmap.org/node/29459170",
+    "coordinate_note": "Geocoded from the official address (Αγία Γαλήνη, 74056) to the town of Agia Galini in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres)."
+  },
+  {
+    "id": "HCG-KISSAMOS",
+    "name": "Kissamos Port Station",
+    "name_local": "Λιμενικός Σταθμός Κισσάμου",
+    "organisation": "Hellenic Coast Guard",
+    "country": "Greece",
+    "lat": 35.49334,
+    "lon": 23.65947,
+    "source_url": "https://edla.hcg.gr/authorities/",
+    "coordinate_source": "openstreetmap",
+    "coordinate_source_url": "https://www.openstreetmap.org/node/247916299",
+    "coordinate_note": "Geocoded from the official address (Κάστελι Κισσάμου, 73400) to the town of Kissamos (Kastelli) in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres)."
+  }
+]

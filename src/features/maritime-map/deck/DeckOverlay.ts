@@ -5,6 +5,7 @@ import type { TrajectoryPoint } from '../types/trajectoryTypes';
 import type { DriftOriginDatum } from '../layers/TrajectoryLayer';
 import type { EnvArrow } from '../layers/EnvironmentLayer';
 import type { AttributedVessel } from '../types/attributionTypes';
+import type { CoastGuardStation } from '../types/alertTypes';
 import type { TimelineVesselPosition } from '../timeline/useInvestigationTimeline';
 import { LAYER_IDS } from '../layers/layerIds';
 import {
@@ -130,6 +131,15 @@ function vesselTrackTooltip(vessel: AttributedVessel) {
   ]);
 }
 
+function stationTooltip(station: CoastGuardStation) {
+  return tooltip([
+    title(station.name || station.id),
+    row('Organisation', station.organisation || '—'),
+    row('Country', station.country || '—'),
+    row('Position', formatLatLon(station.lon, station.lat)),
+  ]);
+}
+
 /**
  * Route a hover to the right readout.
  *
@@ -155,6 +165,8 @@ function getMaritimeTooltip(info: PickingInfo) {
       return vesselMarkerTooltip(info.object as TimelineVesselPosition);
     case LAYER_IDS.vesselTracks:
       return vesselTrackTooltip(info.object as AttributedVessel);
+    case LAYER_IDS.stationIcons:
+      return stationTooltip(info.object as CoastGuardStation);
     default:
       return null;
   }

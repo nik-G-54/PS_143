@@ -54,8 +54,12 @@ import {
   ALERT_SEVERITY_CSS,
 } from '../utils/coastalAlert';
 import type { CoastlineGeoJSON } from '../utils/coastalAlert';
-import { createStationLayers } from '../layers/StationLayer';
+import { createStationLayers, linkMidpoint } from '../layers/StationLayer';
+import { createAreaScale } from '../layers/spillEncoding';
 import { findNearestStation } from '../utils/nearestStation';
+import { NEAREST_COAST_GUARD_PREF, readBooleanPref, writeBooleanPref } from '../utils/layerPrefs';
+import { hideStationLabels, showStationLabels } from './stationMarkers';
+import { StationCard } from '../controls/StationCard';
 import { AlertPreviewModal } from '../alerts/AlertPreviewModal';
 import { AlertLogModule } from '../alerts/AlertLogModule';
 import { buildAlertDetails } from '../alerts/alertDetails';
@@ -140,17 +144,33 @@ export function MaritimeMap() {
   const [rightInset, setRightInset] = useState(0);
   /** Drill-alert preview modal. Closed whenever the selection changes (see the effect below). */
   const [alertOpen, setAlertOpen] = useState(false);
+  /** "Nearest coast guard" layer toggle (persisted, default on). Independent of the Send Alert modal. */
+  const [nearestGuardVisible, setNearestGuardVisible] = useState(() =>
+    readBooleanPref(NEAREST_COAST_GUARD_PREF, true)
+  );
+  /** Station whose detail card is open, and whether the pointer is over the spill→station line. */
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
+  const [linkHovered, setLinkHovered] = useState(false);
+  const toggleNearestGuard = useCallback(() => {
+    setNearestGuardVisible((prev) => {
+      writeBooleanPref(NEAREST_COAST_GUARD_PREF, !prev);
+      return !prev;
+    });
+  }, []);
 
   const oceanFlow = useOceanFlow(theme);
   const stations = useStations();
   const alertLog = useAlertLog();
 
-  const { spills, isLoading: isSpillsLoading, error: spillsError, reload } = useSpills();  const { selectedSpillId, focusMode, selectSpill, clearInvestigation, toggleFocusMode } =
+  const { spills, isLoading: isSpillsLoading, error: spillsError, reload } = useSpills();
+  const { selectedSpillId, focusMode, selectSpill, clearInvestigation, toggleFocusMode } =
     useInvestigation();
 
   useEffect(() => {
     setActiveModule('investigation');
     setAlertOpen(false);
+    setSelectedStationId(null);
+    setLinkHovered(false);
   }, [selectedSpillId]);
 
   const backtrackActive = backtrackSpillId != null && backtrackSpillId === selectedSpillId;
@@ -585,7 +605,8 @@ export function MaritimeMap() {
       map.on('movestart', () => setIsCameraInteracting(true));
       map.on('moveend', () => setIsCameraInteracting(false));
 
-      mapRef.current = map;    } catch (e) {
+      mapRef.current = map;
+    } catch (e) {
       console.error('Failed to initialize MapLibre:', e);
       setError('Map could not be loaded.');
       setIsLoading(false);
@@ -803,8 +824,58 @@ export function MaritimeMap() {
   );
 
   const stationLayers = useMemo(
-    () => createStationLayers({ stations, nearest: nearestStation, selectedSpill, alertedSpills }),
-    [stations, nearestStation, selectedSpill, alertedSpills]
+    () =>
+      createStationLayers({
+        stations,
+        nearest: nearestStation,
+        selectedSpill,
+        alertedSpills,
+        maxSqrtArea: createAreaScale(spills),
+        visible: nearestGuardVisible,
+        linkHovered,
+        onLinkHover: setLinkHovered,
+        onStationClick: setSelectedStationId,
+      }),
+    [stations, nearestStation, selectedSpill, alertedSpills, spills, nearestGuardVisible, linkHovered]
+  );
+
+  // Turning the layer off (or losing the line) while the pointer was over it
+  // never fires a "left" event, so clear the hover flag explicitly.
+  useEffect(() => {
+    if (!nearestGuardVisible) setLinkHovered(false);
+  }, [nearestGuardVisible]);
+
+  // "NEAREST COAST GUARD · 42 km" at the line's midpoint, and the station's
+  // name at its end — HTML badges like DETECTION / PROBABLE SOURCE. Shown only
+  // with the toggle on and a spill selected; removed otherwise.
+  const spillLat = selectedSpill?.latitude;
+  const spillLon = selectedSpill?.longitude;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!nearestGuardVisible || spillLat == null || spillLon == null || !nearestStation) {
+      hideStationLabels(map);
+      return;
+    }
+    showStationLabels(map, {
+      station: nearestStation.station,
+      distanceKm: nearestStation.distanceKm,
+      midpoint: linkMidpoint([spillLon, spillLat], [nearestStation.station.lon, nearestStation.station.lat]),
+    });
+    return () => hideStationLabels(map);
+  }, [nearestGuardVisible, spillLat, spillLon, nearestStation]);
+
+  // Detail card: only while the layer is on and a spill is selected.
+  const cardStation = useMemo(
+    () => (nearestGuardVisible && selectedSpill ? (stations.find((s) => s.id === selectedStationId) ?? null) : null),
+    [nearestGuardVisible, selectedSpill, stations, selectedStationId]
+  );
+  const cardDistanceKm = useMemo(
+    () =>
+      cardStation && spillLat != null && spillLon != null
+        ? turf.distance([spillLon, spillLat], [cardStation.lon, cardStation.lat], { units: 'kilometers' })
+        : null,
+    [cardStation, spillLat, spillLon]
   );
 
   const coastalAssessment = useMemo(
@@ -1240,6 +1311,18 @@ export function MaritimeMap() {
             {/* Only meaningful once a forecast is actually on screen — the
                 predicted-position marker it explains doesn't exist otherwise. */}
             {selectedSpill && investigationMode === 'forecast' && forecast && <AlertSeverityLegend />}
+
+            {cardStation && (
+              <div className="pointer-events-none flex min-h-0 max-h-[min(560px,calc(100dvh-260px))] flex-col">
+                <StationCard
+                  station={cardStation}
+                  distanceKm={cardDistanceKm}
+                  isNearest={cardStation.id === nearestStation?.station.id}
+                  onSendAlert={handleOpenAlert}
+                  onClose={() => setSelectedStationId(null)}
+                />
+              </div>
+            )}
           </div>
 
           {selectedSpill && backtrackActive && vesselReveal.stage !== 'idle' && (
@@ -1306,6 +1389,8 @@ export function MaritimeMap() {
             onSelectModule={setActiveModule}
             onClearInvestigation={handleClearInvestigation}
             highlighted={{ vessels: isRevealing && rank1Vessel != null }}
+            nearestGuardVisible={nearestGuardVisible}
+            onToggleNearestGuard={toggleNearestGuard}
             onOccupiedWidthChange={setRightInset}
             evidenceOpen={evidenceDocked}
             onOpenEvidence={handleScrollToDetails}

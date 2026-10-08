@@ -1,16 +1,20 @@
-// Coast guard stations, the dashed link from the selected spill to its nearest
-// station, and a small badge on spills that have already been alerted.
+// Nearest-coast-guard layer: the dashed link from the selected spill to its
+// nearest station, a marker on every station, and a green ring on spills that
+// have already been alerted.
 //
-// Icons use fixed colours on their own dark disc rather than a theme token, so
-// they read the same on the light and dark basemaps.
+// Markers are ScatterplotLayers, the same primitive the spill dots use. A
+// deck.gl IconLayer was tried first and draws nothing on this MapLibre globe
+// (verified in the browser even with a plain explicit atlas), so it is not used.
+// Fixed colours on a dark disc keep the markers readable on light and dark basemaps.
 
-import { IconLayer, PathLayer } from '@deck.gl/layers';
+import { PathLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { PathStyleExtension } from '@deck.gl/extensions';
 import type { Layer } from '@deck.gl/core';
 import * as turf from '@turf/turf';
 import type { CoastGuardStation, NearestStation } from '../types/alertTypes';
 import type { MapSpill } from '../types/spillTypes';
 import { LAYER_IDS } from './layerIds';
+import { radiusForArea } from './spillEncoding';
 
 export interface StationLayerOptions {
   stations: CoastGuardStation[];
@@ -19,33 +23,32 @@ export interface StationLayerOptions {
   selectedSpill: MapSpill | null;
   /** Spills with a successful alert in the log. */
   alertedSpills: MapSpill[];
+  /** Same scale the spill dots use (`createAreaScale`), so an alert ring hugs its dot. */
+  maxSqrtArea: number;
+  /** The "Nearest coast guard" layer toggle. Off hides the line and every station marker. */
+  visible: boolean;
+  /** Pointer is over the line — draws it thicker and brighter. */
+  linkHovered: boolean;
+  onLinkHover?: (hovered: boolean) => void;
+  onStationClick?: (stationId: string) => void;
 }
 
-const svgUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-
-const anchorGlyph = (stroke: string) =>
-  `<g fill="none" stroke="${stroke}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">` +
-  `<circle cx="32" cy="17" r="5"/><path d="M32 22V50M22 31H42M14 40C16 48 24 52 32 52C40 52 48 48 50 40"/></g>`;
-
-const stationSvg = (ring: string, glyph: string) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">` +
-  `<circle cx="32" cy="32" r="29" fill="#0f172a" fill-opacity="0.88" stroke="${ring}" stroke-width="3"/>` +
-  `${anchorGlyph(glyph)}</svg>`;
-
-const STATION_ICON = { url: svgUrl(stationSvg('#94a3b8', '#e2e8f0')), width: 64, height: 64 };
-const NEAREST_ICON = { url: svgUrl(stationSvg('#f59e0b', '#fde68a')), width: 64, height: 64 };
-
-const ALERTED_ICON = {
-  url: svgUrl(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">` +
-      `<circle cx="16" cy="16" r="14" fill="#15803d" stroke="#ffffff" stroke-width="2.5"/>` +
-      `<path d="M9.5 16.5L14 21L22.5 11.5" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
-  ),
-  width: 32,
-  height: 32,
-};
-
 const LINK_RGBA: [number, number, number, number] = [245, 158, 11, 230];
+const LINK_HOVER_RGBA: [number, number, number, number] = [253, 186, 60, 255];
+/** Wide, near-invisible companion line so the thin dashed one is easy to hover. */
+const LINK_HIT_RGBA: [number, number, number, number] = [0, 0, 0, 1];
+
+const DISC_RGBA: [number, number, number, number] = [15, 23, 42, 235];
+const NEAREST_RGBA: [number, number, number, number] = [245, 158, 11, 255];
+const STATION_RGBA: [number, number, number, number] = [148, 163, 184, 255];
+const ALERTED_RGBA: [number, number, number, number] = [34, 197, 94, 255];
+
+/** One drawn segment of the spill → station line, carrying what its tooltip needs. */
+export interface StationLinkDatum {
+  path: [number, number][];
+  station: CoastGuardStation;
+  distanceKm: number;
+}
 
 /**
  * Great-circle path between the spill and the station so the line follows the
@@ -63,59 +66,122 @@ function linkPaths(from: [number, number], to: [number, number]): [number, numbe
   }
 }
 
+/** The great-circle midpoint of the line — where its label is pinned. */
+export function linkMidpoint(from: [number, number], to: [number, number]): [number, number] {
+  const { coordinates } = turf.midpoint(from, to).geometry;
+  return [coordinates[0], coordinates[1]];
+}
+
 export function createStationLayers(options: StationLayerOptions): Layer[] {
-  const { stations, nearest, selectedSpill, alertedSpills } = options;
+  const {
+    stations,
+    nearest,
+    selectedSpill,
+    alertedSpills,
+    maxSqrtArea,
+    visible,
+    linkHovered,
+    onLinkHover,
+    onStationClick,
+  } = options;
   const layers: Layer[] = [];
 
-  if (selectedSpill && nearest) {
-    const paths = linkPaths(
+  // The whole nearest-coast-guard layer — line and markers (and, via
+  // MaritimeMap, its labels and card) — needs the toggle on AND a spill to
+  // measure from.
+  if (visible && selectedSpill && nearest) {
+    const data: StationLinkDatum[] = linkPaths(
       [selectedSpill.longitude, selectedSpill.latitude],
       [nearest.station.lon, nearest.station.lat]
-    );
+    ).map((path) => ({ path, station: nearest.station, distanceKm: nearest.distanceKm }));
+
     layers.push(
-      new PathLayer<[number, number][], { getDashArray: number[]; dashJustified: boolean }>({
-        id: LAYER_IDS.stationLink,
-        data: paths,
-        getPath: (d) => d,
-        getColor: LINK_RGBA,
-        getWidth: 1.75,
+      new PathLayer<StationLinkDatum>({
+        id: LAYER_IDS.stationLinkHit,
+        data,
+        getPath: (d) => d.path,
+        getColor: LINK_HIT_RGBA,
+        getWidth: 16,
         widthUnits: 'pixels',
-        widthMinPixels: 1.5,
+        pickable: true,
+        onHover: (info) => onLinkHover?.(Boolean(info.object)),
+      }),
+      new PathLayer<StationLinkDatum, { getDashArray: number[]; dashJustified: boolean }>({
+        id: LAYER_IDS.stationLink,
+        data,
+        getPath: (d) => d.path,
+        getColor: linkHovered ? LINK_HOVER_RGBA : LINK_RGBA,
+        getWidth: linkHovered ? 3.25 : 2,
+        widthUnits: 'pixels',
+        widthMinPixels: linkHovered ? 3 : 1.5,
         getDashArray: [5, 3],
         dashJustified: true,
         extensions: [new PathStyleExtension({ dash: true })],
         pickable: false,
+        updateTriggers: { getColor: [linkHovered], getWidth: [linkHovered] },
       })
     );
   }
 
-  if (stations.length > 0) {
+  if (visible && selectedSpill && stations.length > 0) {
     const nearestId = nearest?.station.id ?? null;
+    const isNearest = (d: CoastGuardStation) => d.id === nearestId;
     layers.push(
-      new IconLayer<CoastGuardStation>({
+      // Dark disc with a coloured ring — the clickable, hoverable marker.
+      new ScatterplotLayer<CoastGuardStation>({
         id: LAYER_IDS.stationIcons,
         data: stations,
         getPosition: (d) => [d.lon, d.lat],
-        getIcon: (d) => (d.id === nearestId ? NEAREST_ICON : STATION_ICON),
-        getSize: (d) => (d.id === nearestId ? 26 : 20),
-        sizeUnits: 'pixels',
+        getRadius: (d) => (isNearest(d) ? 12 : 8),
+        radiusUnits: 'pixels',
+        filled: true,
+        getFillColor: DISC_RGBA,
+        stroked: true,
+        getLineColor: (d) => (isNearest(d) ? NEAREST_RGBA : STATION_RGBA),
+        getLineWidth: (d) => (isNearest(d) ? 3 : 2),
+        lineWidthUnits: 'pixels',
         pickable: true,
-        updateTriggers: { getIcon: [nearestId], getSize: [nearestId] },
+        autoHighlight: true,
+        highlightColor: [255, 255, 255, 70],
+        onClick: (info) => {
+          if (!info.object) return false;
+          onStationClick?.(info.object.id);
+          // Stop the click here so it never reaches the basemap behind the marker.
+          return true;
+        },
+        updateTriggers: { getRadius: [nearestId], getLineColor: [nearestId], getLineWidth: [nearestId] },
+      }),
+      // Solid core, so the marker reads as a target rather than just another ring.
+      new ScatterplotLayer<CoastGuardStation>({
+        id: LAYER_IDS.stationCore,
+        data: stations,
+        getPosition: (d) => [d.lon, d.lat],
+        getRadius: (d) => (isNearest(d) ? 4.5 : 3),
+        radiusUnits: 'pixels',
+        filled: true,
+        getFillColor: (d) => (isNearest(d) ? NEAREST_RGBA : STATION_RGBA),
+        stroked: false,
+        pickable: false,
+        updateTriggers: { getRadius: [nearestId], getFillColor: [nearestId] },
       })
     );
   }
 
   if (alertedSpills.length > 0) {
     layers.push(
-      new IconLayer<MapSpill>({
+      new ScatterplotLayer<MapSpill>({
         id: LAYER_IDS.alertedBadge,
         data: alertedSpills,
         getPosition: (d) => [d.longitude, d.latitude],
-        getIcon: () => ALERTED_ICON,
-        getSize: 13,
-        sizeUnits: 'pixels',
-        getPixelOffset: [10, -10],
+        getRadius: (d) => radiusForArea(d.areaKm2, maxSqrtArea) + 4,
+        radiusUnits: 'pixels',
+        filled: false,
+        stroked: true,
+        getLineColor: ALERTED_RGBA,
+        lineWidthUnits: 'pixels',
+        getLineWidth: 2,
         pickable: false,
+        updateTriggers: { getRadius: [maxSqrtArea] },
       })
     );
   }

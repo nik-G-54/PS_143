@@ -10,7 +10,12 @@
     "source_url": "https://edla.hcg.gr/authorities/",
     "coordinate_source": "openstreetmap",
     "coordinate_source_url": "https://www.openstreetmap.org/node/137750059",
-    "coordinate_note": "Geocoded from the official address (Χώρα Σφακίων, 73011) to the village of Hora Sfakion in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres)."
+    "coordinate_note": "Geocoded from the official address (Χώρα Σφακίων, 73011) to the village of Hora Sfakion in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres).",
+    "photo": "data/station-photos/hcg-sfakion.jpg",
+    "photo_caption": "Hora Sfakion harbour seen from the sea. The harbour, not the station building.",
+    "photo_author": "Rockhopper2",
+    "photo_license": "CC BY-SA 3.0",
+    "photo_source_url": "https://commons.wikimedia.org/wiki/File:Chora_Sfakion_ferry.JPG"
   },
   {
     "id": "HCG-PALAIOCHORA",
@@ -23,7 +28,12 @@
     "source_url": "https://edla.hcg.gr/authorities/",
     "coordinate_source": "openstreetmap",
     "coordinate_source_url": "https://www.openstreetmap.org/node/247946516",
-    "coordinate_note": "Geocoded from the official address (Παλαιόχωρα Χανίων, 73001) to the town of Paleochora in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres)."
+    "coordinate_note": "Geocoded from the official address (Παλαιόχωρα Χανίων, 73001) to the town of Paleochora in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres).",
+    "photo": "data/station-photos/hcg-palaiochora.jpg",
+    "photo_caption": "Paleochora harbour and seafront (panorama). The harbour, not the station building.",
+    "photo_author": "Frode Inge Helland",
+    "photo_license": "CC BY-SA 3.0",
+    "photo_source_url": "https://commons.wikimedia.org/wiki/File:PaleochoraHarbourPanorama.jpg"
   },
   {
     "id": "HCG-CHANIA-CENTRAL",
@@ -36,7 +46,12 @@
     "source_url": "https://edla.hcg.gr/authorities/",
     "coordinate_source": "openstreetmap",
     "coordinate_source_url": "https://www.openstreetmap.org/way/1069073941",
-    "coordinate_note": "OSM feature named Κεντρικό Λιμεναρχείο Χανίων, at Souda port (matches the official address Λιμένας Σούδας, 73200). Point is the centre of the mapped outline."
+    "coordinate_note": "OSM feature named Κεντρικό Λιμεναρχείο Χανίων, at Souda port (matches the official address Λιμένας Σούδας, 73200). Point is the centre of the mapped outline.",
+    "photo": "data/station-photos/hcg-chania-central.jpg",
+    "photo_caption": "Souda port, Chania, where the Central Port Authority is based. The port, not the authority building.",
+    "photo_author": "Sk!marina",
+    "photo_license": "CC BY-SA 4.0",
+    "photo_source_url": "https://commons.wikimedia.org/wiki/File:%CE%9B%CE%B9%CE%BC%CE%AC%CE%BD%CE%B9_%CE%A7%CE%B1%CE%BD%CE%AF%CF%89%CE%BD-_%CE%A3%CF%8C%CF%85%CE%B4%CE%B1.jpg"
   },
   {
     "id": "HCG-RETHYMNO",
@@ -49,7 +64,12 @@
     "source_url": "https://edla.hcg.gr/authorities/",
     "coordinate_source": "openstreetmap",
     "coordinate_source_url": "https://www.openstreetmap.org/node/6958839737",
-    "coordinate_note": "OSM node tagged amenity=coast_guard and named Λιμεναρχείο Ρεθύμνου (Rethymno Port Authority) - the facility itself, in Rethymno."
+    "coordinate_note": "OSM node tagged amenity=coast_guard and named Λιμεναρχείο Ρεθύμνου (Rethymno Port Authority) - the facility itself, in Rethymno.",
+    "photo": "data/station-photos/hcg-rethymno.jpg",
+    "photo_caption": "A Rethymno Port Authority building; its signs read Hellenic Coast Guard / Port Authority of Rethymno.",
+    "photo_author": "Joehawkins",
+    "photo_license": "CC BY-SA 4.0",
+    "photo_source_url": "https://commons.wikimedia.org/wiki/File:K%C3%BCstenwache_Rethymnon.jpg"
   },
   {
     "id": "HCG-AGIA-GALINI",
@@ -62,7 +82,12 @@
     "source_url": "https://edla.hcg.gr/authorities/",
     "coordinate_source": "openstreetmap",
     "coordinate_source_url": "https://www.openstreetmap.org/node/29459170",
-    "coordinate_note": "Geocoded from the official address (Αγία Γαλήνη, 74056) to the town of Agia Galini in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres)."
+    "coordinate_note": "Geocoded from the official address (Αγία Γαλήνη, 74056) to the town of Agia Galini in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres).",
+    "photo": "data/station-photos/hcg-agia-galini.jpg",
+    "photo_caption": "Agia Galini harbour, with a patrol boat marked ΛΣ-192 moored at centre. The harbour, not the station building.",
+    "photo_author": "DOWIMA",
+    "photo_license": "CC BY-SA 4.0",
+    "photo_source_url": "https://commons.wikimedia.org/wiki/File:Agia_galini_2015_4.JPG"
   },
   {
     "id": "HCG-KISSAMOS",
@@ -75,6 +100,11 @@
     "source_url": "https://edla.hcg.gr/authorities/",
     "coordinate_source": "openstreetmap",
     "coordinate_source_url": "https://www.openstreetmap.org/node/247916299",
-    "coordinate_note": "Geocoded from the official address (Κάστελι Κισσάμου, 73400) to the town of Kissamos (Kastelli) in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres)."
+    "coordinate_note": "Geocoded from the official address (Κάστελι Κισσάμου, 73400) to the town of Kissamos (Kastelli) in OSM; the station building itself is not mapped. Accurate to the port area (a few hundred metres).",
+    "photo": "data/station-photos/hcg-kissamos.jpg",
+    "photo_caption": "Port of Kissamos. The port, not the station building.",
+    "photo_author": "Moonik",
+    "photo_license": "CC BY-SA 3.0",
+    "photo_source_url": "https://commons.wikimedia.org/wiki/File:Port_of_Kissamos_in_Crete,_Greece_001.jpg"
   }
 ]

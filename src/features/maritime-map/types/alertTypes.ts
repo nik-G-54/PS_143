@@ -20,6 +20,18 @@ export interface CoastGuardStation {
   coordinate_source_url?: string;
   /** Plain-language precision caveat, e.g. "port-level, building not mapped". */
   coordinate_note?: string;
+
+  // Optional licensed photo. All of photo / photo_author / photo_license /
+  // photo_source_url are present together or the validator drops the photo.
+  /** Local path under public/, e.g. "data/station-photos/hcg-sfakion.jpg". Never a remote URL. */
+  photo?: string;
+  /** What the picture actually shows, e.g. "Hora Sfakion harbour (not the station building)". */
+  photo_caption?: string;
+  photo_author?: string;
+  /** e.g. "CC BY-SA 4.0". */
+  photo_license?: string;
+  /** Commons (or other) page for the file, where the licence and author can be checked. */
+  photo_source_url?: string;
 }
 
 export interface NearestStation {

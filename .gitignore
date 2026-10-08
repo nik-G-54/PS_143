@@ -25,3 +25,6 @@ resources/
 *.njsproj
 *.sln
 *.sw?
+
+# analysis output (raw backend spill list)
+scripts/out/

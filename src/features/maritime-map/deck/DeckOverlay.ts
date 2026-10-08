@@ -5,6 +5,9 @@ import type { TrajectoryPoint } from '../types/trajectoryTypes';
 import type { DriftOriginDatum } from '../layers/TrajectoryLayer';
 import type { EnvArrow } from '../layers/EnvironmentLayer';
 import type { AttributedVessel } from '../types/attributionTypes';
+import type { CoastGuardStation } from '../types/alertTypes';
+import type { StationLinkDatum } from '../layers/StationLayer';
+import { buildLinkTooltip } from '../utils/stationLinkText';
 import type { TimelineVesselPosition } from '../timeline/useInvestigationTimeline';
 import { LAYER_IDS } from '../layers/layerIds';
 import {
@@ -41,6 +44,8 @@ const escapeHtml = (value: string) =>
 
 const title = (value: string) =>
   `<div class="maritime-tooltip__title">${escapeHtml(value)}</div>`;
+
+const note = (value: string) => `<div class="maritime-tooltip__note">${escapeHtml(value)}</div>`;
 
 const row = (label: string, value: string) =>
   `<div class="maritime-tooltip__row"><span>${label}</span><span>${escapeHtml(value)}</span></div>`;
@@ -130,6 +135,24 @@ function vesselTrackTooltip(vessel: AttributedVessel) {
   ]);
 }
 
+function stationTooltip(station: CoastGuardStation) {
+  return tooltip([
+    title(station.name || station.id),
+    row('Organisation', station.organisation || '—'),
+    note('Click for details'),
+  ]);
+}
+
+/** Hover on the spill → nearest-station line: says what the line is for. */
+function stationLinkTooltip(link: StationLinkDatum) {
+  const content = buildLinkTooltip(link.station, link.distanceKm);
+  return tooltip([
+    title(content.title),
+    ...content.rows.map((r) => row(r.label, r.value)),
+    note(content.note),
+  ]);
+}
+
 /**
  * Route a hover to the right readout.
  *
@@ -155,6 +178,11 @@ function getMaritimeTooltip(info: PickingInfo) {
       return vesselMarkerTooltip(info.object as TimelineVesselPosition);
     case LAYER_IDS.vesselTracks:
       return vesselTrackTooltip(info.object as AttributedVessel);
+    case LAYER_IDS.stationIcons:
+      return stationTooltip(info.object as CoastGuardStation);
+    case LAYER_IDS.stationLink:
+    case LAYER_IDS.stationLinkHit:
+      return stationLinkTooltip(info.object as StationLinkDatum);
     default:
       return null;
   }

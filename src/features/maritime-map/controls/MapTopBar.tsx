@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  Anchor,
+  Bell,
   ChevronUp,
   Clock,
   Eraser,
@@ -20,7 +22,7 @@ import {
 } from 'lucide-react';
 import type { BasemapMode } from '../map/mapConfig';
 
-export type TopBarModule = 'investigation' | 'incident' | 'image' | 'vessels' | 'time';
+export type TopBarModule = 'investigation' | 'incident' | 'image' | 'vessels' | 'time' | 'alerts';
 
 export const TOP_BAR_MODULES: { id: TopBarModule; label: string; icon: React.ReactNode }[] = [
   { id: 'investigation', label: 'Investigation', icon: <Radar size={16} strokeWidth={1.75} /> },
@@ -28,6 +30,7 @@ export const TOP_BAR_MODULES: { id: TopBarModule; label: string; icon: React.Rea
   { id: 'image', label: 'Image', icon: <ImageIcon size={16} strokeWidth={1.75} /> },
   { id: 'vessels', label: 'Vessel details', icon: <Ship size={16} strokeWidth={1.75} /> },
   { id: 'time', label: 'Time & drift', icon: <Clock size={16} strokeWidth={1.75} /> },
+  { id: 'alerts', label: 'Alert log', icon: <Bell size={16} strokeWidth={1.75} /> },
 ];
 
 const COMPACT_STORAGE_KEY = 'maritime-map.top-bar.compact';
@@ -140,6 +143,9 @@ interface MapTopBarProps {
   reportReady?: boolean;
   /** What an in-progress report is waiting on, e.g. "Fetching AIS tracks". */
   reportStepLabel?: string | null;
+  /** "Nearest coast guard" layer toggle (line, label and station markers together). Omit to hide the button. */
+  nearestGuardVisible?: boolean;
+  onToggleNearestGuard?: () => void;
 }
 
 /**
@@ -171,6 +177,8 @@ export function MapTopBar({
   reportBusy = false,
   reportReady = false,
   reportStepLabel = null,
+  nearestGuardVisible = true,
+  onToggleNearestGuard,
 }: MapTopBarProps) {
   const [compact, setCompact] = useState(readCompact);
   const toggleCompact = () =>
@@ -263,6 +271,22 @@ export function MapTopBar({
             </button>
           ))}
         </div>
+
+        {/* Layer toggles */}
+        {onToggleNearestGuard && (
+          <Tool
+            icon={<Anchor size={15} strokeWidth={1.75} />}
+            label="Nearest coast guard"
+            title={
+              nearestGuardVisible
+                ? 'Hide the nearest coast guard line, label and station markers'
+                : 'Show the nearest coast guard line, label and station markers'
+            }
+            showLabel={labels}
+            active={nearestGuardVisible}
+            onClick={onToggleNearestGuard}
+          />
+        )}
 
         {hasSelection && (
           <>

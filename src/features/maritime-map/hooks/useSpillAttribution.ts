@@ -6,6 +6,13 @@ import type { SpillAttribution, RawAttributionTrajectoryResponse, RawVesselsResp
 export interface UseSpillAttributionResult {
   attribution: SpillAttribution | null;
   isLoading: boolean;
+  /**
+   * True while the trajectory half (`attribution_qualification` lives only
+   * there) is requested but the stored result predates it. Separate from
+   * `isLoading` so arming backtrack keeps showing the candidate list while it
+   * refreshes, as it always has.
+   */
+  isTrajectoryPending: boolean;
   error: string | null;
 }
 
@@ -13,9 +20,16 @@ interface AttributionState {
   spillId: string | null;
   attribution: SpillAttribution | null;
   error: string | null;
+  /** Whether the stored result was fetched with the trajectory request (settled, success or not). */
+  withTrajectory: boolean;
 }
 
-const EMPTY_STATE: AttributionState = { spillId: null, attribution: null, error: null };
+const EMPTY_STATE: AttributionState = {
+  spillId: null,
+  attribution: null,
+  error: null,
+  withTrajectory: false,
+};
 
 /**
  * Load vessel candidates and AIS attribution for a selected spill.
@@ -61,6 +75,7 @@ export function useSpillAttribution(
             attribution && attribution.vessels.length > 0
               ? null
               : 'No candidate vessels found for this detection.',
+          withTrajectory: backtrackActive,
         });
       })
       .catch((cause: unknown) => {
@@ -70,6 +85,7 @@ export function useSpillAttribution(
           spillId,
           attribution: null,
           error: 'Could not load vessel attribution.',
+          withTrajectory: backtrackActive,
         });
       });
 
@@ -79,7 +95,7 @@ export function useSpillAttribution(
   }, [spillId, backtrackActive]);
 
   if (!spillId) {
-    return { attribution: null, isLoading: false, error: null };
+    return { attribution: null, isLoading: false, isTrajectoryPending: false, error: null };
   }
 
   const isResolved = state.spillId === spillId;
@@ -87,6 +103,7 @@ export function useSpillAttribution(
   return {
     attribution: isResolved ? state.attribution : null,
     isLoading: !isResolved,
+    isTrajectoryPending: backtrackActive && !(isResolved && state.withTrajectory),
     error: isResolved ? state.error : null,
   };
 }

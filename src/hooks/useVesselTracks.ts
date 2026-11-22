@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import type { VesselCandidate, VesselTrack } from '../types/vessel';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://naavss.duckdns.org/api/v1/demo';
+const API_BASE_ROOT = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const API_BASE = `${API_BASE_ROOT}/api/v1/demo`;
 
 // Generate synthetic vessel trajectory for demo
 function generateVesselPath(

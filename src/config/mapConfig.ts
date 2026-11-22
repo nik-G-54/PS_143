@@ -5,6 +5,9 @@ export const MAP_STYLES: Record<Theme, string> = {
   light: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
 };
 
+
+
+
 export const INITIAL_VIEW_STATE = {
   longitude: 18.0,    // Mediterranean center
   latitude: 37.0,

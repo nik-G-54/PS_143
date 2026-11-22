@@ -10,8 +10,9 @@ import {
 } from '../types/spill';
 import { fetchDiagnosticPlotUrl } from './diagnosticPlotService';
 
-const BASE_URL = 'https://naavss.duckdns.org/api/v1/demo/spills';
-const VISUALIZATION_URL = 'https://naavss.duckdns.org/api/v1/visualization/spills';
+const API_BASE_ROOT = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const BASE_URL = `${API_BASE_ROOT}/api/v1/demo/spills`;
+const VISUALIZATION_URL = `${API_BASE_ROOT}/api/v1/visualization/spills`;
 
 export function normalizeSpill(item: SpillItemRaw): NormalizedSpill {
   const rawConf = typeof item.confidence_score === 'number' && !isNaN(item.confidence_score) ? item.confidence_score : 0;
@@ -166,7 +167,7 @@ export interface CandidateVesselRaw {
 
 export async function getSpillVessels(id: string, signal?: AbortSignal): Promise<CandidateVesselRaw[]> {
   try {
-    const res = await fetch(`https://naavss.duckdns.org/api/v1/demo/spills/${encodeURIComponent(id)}/vessels`, { signal });
+    const res = await fetch(`${API_BASE_ROOT}/api/v1/demo/spills/${encodeURIComponent(id)}/vessels`, { signal });
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data?.vessels) ? data.vessels : [];
@@ -177,7 +178,7 @@ export async function getSpillVessels(id: string, signal?: AbortSignal): Promise
 
 export async function getDiagnosticPlotUrl(id: string, signal?: AbortSignal): Promise<string | null> {
   try {
-    const res = await fetch(`https://naavss.duckdns.org/api/v1/drift/${encodeURIComponent(id)}/diagnostic-plot`, { signal });
+    const res = await fetch(`${API_BASE_ROOT}/api/v1/drift/${encodeURIComponent(id)}/diagnostic-plot`, { signal });
     if (!res.ok) return null;
     const data = await res.json();
     return data?.diagnostic_plot_url || null;

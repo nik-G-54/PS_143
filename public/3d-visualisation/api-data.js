@@ -7,7 +7,8 @@
  */
 (function() {
   const SPILL_ID = 'spill_05b4e0';
-  const API_URL = `https://naavss.duckdns.org/api/v1/demo/spills/${SPILL_ID}`;
+  const API_BASE = (window.parent && window.parent.__API_BASE__) || (window.location.hostname === 'localhost' ? 'http://localhost:8000' : '');
+  const API_URL = API_BASE ? `${API_BASE}/api/v1/demo/spills/${SPILL_ID}` : `/api/v1/demo/spills/${SPILL_ID}`;
 
   const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const MONTHS_UPPER = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];

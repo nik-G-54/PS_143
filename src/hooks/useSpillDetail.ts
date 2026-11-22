@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import type { SpillDetail, VesselCandidate, VisualizationData } from '../types/detail';
 
-const API_BASE = 'https://naavss.duckdns.org/api/v1/demo';
+const API_BASE_ROOT = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const API_BASE = `${API_BASE_ROOT}/api/v1/demo`;
 
 interface SpillDetailData {
   spill: SpillDetail | null;
@@ -33,7 +34,7 @@ export function useSpillDetail(spillId: string | null): SpillDetailData {
         const [spillRes, vesselsRes, vizRes] = await Promise.all([
           fetch(`${API_BASE}/spills/${spillId}`, { signal: controller.signal }),
           fetch(`${API_BASE}/spills/${spillId}/vessels`, { signal: controller.signal }),
-          fetch(`https://naavss.duckdns.org/api/v1/visualization/spills/${spillId}`, { signal: controller.signal }),
+          fetch(`${API_BASE_ROOT}/api/v1/visualization/spills/${spillId}`, { signal: controller.signal }),
         ]);
 
         const [spillData, vesselsData, vizData] = await Promise.all([

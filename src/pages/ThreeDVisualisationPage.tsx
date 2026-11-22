@@ -7,6 +7,10 @@ export const ThreeDVisualisationPage: React.FC = () => {
   const { theme } = useTheme();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  useEffect(() => {
+    (window as any).__API_BASE__ = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  }, []);
+
   const syncThemeToIframe = useCallback(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;

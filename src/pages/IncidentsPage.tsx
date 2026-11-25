@@ -10,6 +10,7 @@ import { MOCK_SPILL_LIST } from '../mocks/spillsData';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import type { Incident } from '../types/incident';
 
+
 const IncidentsPage: React.FC = () => {
   const navigate = useNavigate();
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -70,6 +71,7 @@ const IncidentsPage: React.FC = () => {
   useEffect(() => {
     fetchIncidents();
   }, [fetchIncidents]);
+
 
   const {
     filteredIncidents,
@@ -138,6 +140,7 @@ const IncidentsPage: React.FC = () => {
     </div>
   );
 };
+
 
 export default IncidentsPage;
 
